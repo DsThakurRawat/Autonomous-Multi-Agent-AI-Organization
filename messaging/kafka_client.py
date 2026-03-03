@@ -171,6 +171,17 @@ class KafkaProducerClient:
         payload = json.dumps(data, default=str).encode("utf-8")
         return await self.publish(topic, payload, key, headers)
 
+    async def publish_model(
+        self,
+        topic: str,
+        model: Any,   # Any Pydantic BaseModel
+        key: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> bool:
+        """Serialize a Pydantic model and publish to Kafka."""
+        payload = model.model_dump_json().encode("utf-8")
+        return await self.publish(topic, payload, key, headers)
+
     def close(self):
         if self._producer:
             self._producer.close()
@@ -336,6 +347,32 @@ class KafkaConsumerClient:
         if self._consumer:
             self._consumer.close()
         logger.info("Kafka consumer stopped", topics=self.topics)
+
+    async def close(self):
+        """Async close — called by KafkaDispatcher on shutdown."""
+        self.stop()
+
+    async def consume_stream(self):
+        """
+        Async generator that yields parsed JSON dicts from subscribed topics.
+        Used by KafkaDispatcher's result consumer loop.
+        Yields raw dicts (caller is responsible for Pydantic parsing).
+        """
+        self._running = True
+        logger.info("consume_stream started", topics=self.topics)
+        while self._running:
+            msg = await self.consume_one(timeout_ms=500)
+            if msg is None:
+                await asyncio.sleep(0.05)
+                continue
+            try:
+                raw_value = msg.get("value", b"{}")
+                if isinstance(raw_value, (bytes, bytearray)):
+                    raw_value = raw_value.decode("utf-8")
+                data = json.loads(raw_value)
+                yield data
+            except Exception as e:
+                logger.error("consume_stream parse error", error=str(e))
 
 
 class KafkaAdminManager:

@@ -65,6 +65,22 @@ class KafkaTopics:
     def all_task_topics(cls) -> list:
         return list(cls.ROLE_TO_TOPIC.values())
 
+    # ── Dispatcher-friendly aliases ────────────────────────────────────────
+    @classmethod
+    def agent_task_topic(cls, agent_role: str) -> str:
+        """Alias for task_topic_for_role — used by KafkaDispatcher."""
+        return cls.task_topic_for_role(agent_role)
+
+    @classmethod
+    def task_result(cls, project_id: str) -> str:
+        """Alias for results_topic — used by KafkaDispatcher."""
+        return cls.results_topic(project_id)
+
+    @classmethod
+    def project_events(cls, project_id: str) -> str:
+        """Alias for events_topic — used by KafkaEventPublisher."""
+        return cls.events_topic(project_id)
+
     # ── Topic Configurations ───────────────────────────────────────────────
     # Used when creating topics programmatically
     TOPIC_CONFIGS = {
