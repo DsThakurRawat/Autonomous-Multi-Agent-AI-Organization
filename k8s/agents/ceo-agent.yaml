@@ -1,0 +1,152 @@
+# ═══════════════════════════════════════════════════════════════════════
+# CEO Agent — Kubernetes Deployment + Service + HPA
+# ═══════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ceo-agent
+  namespace: ai-org
+  labels:
+    app: ceo-agent
+    component: agent
+    version: "2.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ceo-agent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: ceo-agent
+        component: agent
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: ai-org-agent-sa
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: ceo-agent
+          image: ${ECR_REGISTRY}/ai-org/ceo-agent:${IMAGE_TAG}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+              name: http
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: AGENT_ROLE
+              value: "CEO"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-org-config
+                  key: kafka_bootstrap_servers
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ai-org-secrets
+                  key: redis_url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-org-secrets
+                  key: openai_api_key
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-org-secrets
+                  key: anthropic_api_key
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-org-config
+                  key: otel_endpoint
+            - name: ENVIRONMENT
+              value: "production"
+            - name: PROMETHEUS_PORT
+              value: "9091"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8083
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [ceo-agent]
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ceo-agent
+  namespace: ai-org
+  labels:
+    app: ceo-agent
+spec:
+  selector:
+    app: ceo-agent
+  ports:
+    - name: http
+      port: 8083
+      targetPort: 8083
+    - name: metrics
+      port: 9091
+      targetPort: 9091
+  type: ClusterIP
+---
+# KEDA ScaledObject — scale based on Kafka consumer lag
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ceo-agent-scaledobject
+  namespace: ai-org
+spec:
+  scaleTargetRef:
+    name: ceo-agent
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  cooldownPeriod: 120
+  pollingInterval: 15
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.ai-org.svc.cluster.local:9092
+        consumerGroup: ceo-agent-group
+        topic: ai-org.tasks.ceo
+        lagThreshold: "5" # Scale up when 5+ messages pending
+        offsetResetPolicy: earliest

@@ -1,0 +1,75 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "ai-org-local"
+    environment: "development"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [] # Add alertmanager target in production
+
+rule_files: []
+
+scrape_configs:
+  # ── API Gateway ──────────────────────────────────────────────────────
+  - job_name: "api-gateway"
+    static_configs:
+      - targets: ["orchestrator:8080"]
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+
+  # ── Orchestrator ─────────────────────────────────────────────────────
+  - job_name: "orchestrator"
+    static_configs:
+      - targets: ["orchestrator:9090"]
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+
+  # ── Agent Services (individual Prometheus ports) ─────────────────────
+  - job_name: "agents"
+    static_configs:
+      - targets:
+          - "ceo-agent:9091"
+          - "cto-agent:9092"
+          - "engineer-backend:9093"
+          - "engineer-frontend:9094"
+          - "qa-agent:9095"
+          - "devops-agent:9096"
+          - "finance-agent:9097"
+    metrics_path: "/metrics"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # ── MoE Router ───────────────────────────────────────────────────────
+  - job_name: "moe-router"
+    static_configs:
+      - targets: ["moe-router:9098"]
+    metrics_path: "/metrics"
+
+  # ── Kafka (via JMX exporter in production) ────────────────────────────
+  - job_name: "kafka"
+    static_configs:
+      - targets: ["kafka:9999"]
+
+  # ── Redis ─────────────────────────────────────────────────────────────
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # ── Node/Container Metrics ────────────────────────────────────────────
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # ── cAdvisor (container metrics) ─────────────────────────────────────
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]

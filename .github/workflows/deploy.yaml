@@ -1,0 +1,220 @@
+name: AI Organization — CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  EKS_CLUSTER: ai-org-eks
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────
+  # JOB 1: Lint + Test
+  # ─────────────────────────────────────────────────────────────────────
+  test:
+    name: 🧪 Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov ruff black bandit
+
+      - name: Run ruff linting
+        run: ruff check . --output-format=github
+
+      - name: Run black formatting check
+        run: black --check .
+
+      - name: Run unit tests with coverage
+        env:
+          KAFKA_MOCK: "true"
+          ENVIRONMENT: "test"
+        run: |
+          pytest tests/unit/ \
+            --tb=short \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=term \
+            --cov-fail-under=70 \
+            -v
+
+      - name: Run bandit security scan
+        run: |
+          bandit -r agents/ orchestrator/ api/ moe/ messaging/ tools/ \
+            -f json -o bandit-report.json -ll || true
+          python -c "
+          import json, sys
+          with open('bandit-report.json') as f:
+              data = json.load(f)
+          high = [r for r in data.get('results',[]) if r.get('issue_severity')=='HIGH']
+          if high:
+              print(f'FAIL: {len(high)} HIGH severity issues')
+              for h in high[:5]: print(f'  {h[\"filename\"]}:{h[\"line_number\"]} — {h[\"issue_text\"]}')
+              sys.exit(1)
+          print(f'PASS: No high-severity issues')
+          "
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+
+  # ─────────────────────────────────────────────────────────────────────
+  # JOB 2: Build and Push Docker Images
+  # ─────────────────────────────────────────────────────────────────────
+  build:
+    name: 🐳 Build Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        service:
+          - { name: orchestrator, dockerfile: Dockerfile.orchestrator }
+          - { name: ceo-agent, dockerfile: agents/Dockerfile.ceo }
+          - { name: cto-agent, dockerfile: agents/Dockerfile.cto }
+          - {
+              name: engineer-backend,
+              dockerfile: agents/Dockerfile.engineer_be,
+            }
+          - {
+              name: engineer-frontend,
+              dockerfile: agents/Dockerfile.engineer_fe,
+            }
+          - { name: qa-agent, dockerfile: agents/Dockerfile.qa }
+          - { name: devops-agent, dockerfile: agents/Dockerfile.devops }
+          - { name: finance-agent, dockerfile: agents/Dockerfile.finance }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::8}-$(date +%Y%m%d)" >> $GITHUB_ENV
+
+      - name: Build and push ${{ matrix.service.name }}
+        run: |
+          IMAGE="${{ env.ECR_REGISTRY }}/ai-org/${{ matrix.service.name }}"
+          docker build \
+            -f ${{ matrix.service.dockerfile }} \
+            -t "${IMAGE}:${IMAGE_TAG}" \
+            -t "${IMAGE}:latest" \
+            --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+            --build-arg GIT_COMMIT=${GITHUB_SHA::8} \
+            .
+          docker push "${IMAGE}:${IMAGE_TAG}"
+          docker push "${IMAGE}:latest"
+          echo "${{ matrix.service.name }}_IMAGE=${IMAGE}:${IMAGE_TAG}" >> $GITHUB_ENV
+
+  # ─────────────────────────────────────────────────────────────────────
+  # JOB 3: Deploy to EKS (Production)
+  # ─────────────────────────────────────────────────────────────────────
+  deploy:
+    name: 🚀 Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://ai-org.example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.EKS_CLUSTER }}
+
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::8}-$(date +%Y%m%d)" >> $GITHUB_ENV
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install ai-org ./helm/ai-org \
+            --namespace ai-org \
+            --create-namespace \
+            --set global.imageTag=${IMAGE_TAG} \
+            --set global.ecrRegistry=${{ env.ECR_REGISTRY }} \
+            --set global.environment=production \
+            --wait \
+            --timeout 10m \
+            --atomic
+
+      - name: Verify deployment health
+        run: |
+          kubectl rollout status deployment/orchestrator -n ai-org --timeout=5m
+          kubectl rollout status deployment/ceo-agent -n ai-org --timeout=5m
+          kubectl rollout status deployment/cto-agent -n ai-org --timeout=5m
+          echo "✅ All deployments healthy"
+
+      - name: Run smoke tests
+        run: |
+          API_URL=$(kubectl get service api-gateway -n ai-org -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f "http://${API_URL}/health" || exit 1
+          curl -f "http://${API_URL}/api/agents" || exit 1
+          echo "✅ Smoke tests passed"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed — rolling back"
+          helm rollback ai-org --namespace ai-org
+
+  # ─────────────────────────────────────────────────────────────────────
+  # JOB 4: Integration Tests (post deploy)
+  # ─────────────────────────────────────────────────────────────────────
+  integration_test:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run integration tests
+        env:
+          KAFKA_MOCK: "false"
+          ENVIRONMENT: "production"
+          API_BASE_URL: https://api.ai-org.example.com
+        run: |
+          pip install pytest pytest-asyncio httpx
+          pytest tests/integration/ -v --timeout=120
