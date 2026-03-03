@@ -1,62 +1,402 @@
-version: '3.9'
+version: "3.9"
+
+# ═══════════════════════════════════════════════════════════════════════
+# 🏢 Autonomous Multi-Agent AI Organization
+# One-command startup: docker compose up -d
+#
+# Platform support: Linux · macOS · Windows (Docker Desktop / WSL2)
+# Architecture:     linux/amd64 · linux/arm64 (Apple M1/M2/M3)
+#
+# Services:
+#   Core:         postgres · redis · orchestrator · api-gateway
+#   Agents:       ceo · cto · engineer-backend · engineer-frontend
+#                 qa · devops · finance
+#   Messaging:    zookeeper · kafka · kafka-ui
+#   Observability: prometheus · grafana · jaeger
+#   Dashboard:    nextjs-dashboard (port 3000)
+# ═══════════════════════════════════════════════════════════════════════
+
+x-agent-defaults: &agent-defaults
+  build:
+    context: .
+    dockerfile: Dockerfile.agent
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    KAFKA_MOCK: "false"
+    REDIS_URL: redis://redis:6379/0
+    DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    ENVIRONMENT: ${ENVIRONMENT:-development}
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+  networks:
+    - ai-org-net
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
-  # ── Infrastructure ────────────────────────────────────────
+
+  # ══════════════════════════════════════════════════════════════════════
+  # INFRASTRUCTURE
+  # ══════════════════════════════════════════════════════════════════════
+
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ai_org
+      POSTGRES_USER: aiorg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiorg_secret_2026}
+      POSTGRES_DB: aiorg
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U aiorg -d aiorg" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    networks:
+      - ai-org-net
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save 60 1 --appendonly yes
     ports:
-      - "6380:6379"
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ai-org-net
 
-  # ── Orchestrator (AI control plane) ──────────────────────
+  # ══════════════════════════════════════════════════════════════════════
+  # MESSAGE BUS — Kafka
+  # ══════════════════════════════════════════════════════════════════════
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "echo ruok | nc localhost 2181" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - ai-org-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:${KAFKA_PORT:-9092}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+      KAFKA_LOG4J_LOGGERS: "kafka=WARN,kafka.controller=WARN,kafka.log.LogCleaner=WARN,state.change.logger=WARN,kafka.producer.async.DefaultEventHandler=WARN"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - ai-org-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_UI_PORT:-8888}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ai-org-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - ai-org-net
+
+  # ══════════════════════════════════════════════════════════════════════
+  # CORE SERVICES
+  # ══════════════════════════════════════════════════════════════════════
+
   orchestrator:
     build:
       context: .
       dockerfile: Dockerfile.orchestrator
-    ports:
-      - "8088:8080"
+    restart: unless-stopped
+    env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres/ai_org
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_MOCK: "false"
       REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: dev-secret-only
-      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      PROMETHEUS_PORT: "9090"
+    ports:
+      - "${ORCHESTRATOR_PORT:-8081}:8081"
+      - "9099:9090" # Prometheus metrics
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     volumes:
       - ./output:/app/output
-    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/health" ]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ai-org-net
 
-  # ── Dashboard (static server) ─────────────────────────────
-  dashboard:
-    image: nginx:alpine
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    restart: unless-stopped
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8080 --workers 2
+    env_file: .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
     ports:
-      - "3001:80"
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - ai-org-net
+
+  # ══════════════════════════════════════════════════════════════════════
+  # AGENT MICROSERVICES
+  # ══════════════════════════════════════════════════════════════════════
+
+  ceo-agent:
+    <<: *agent-defaults
+    environment:
+      <<: *agent-defaults
+      AGENT_ROLE: CEO
+      KAFKA_CONSUMER_TOPIC: ai-org.tasks.ceo
+      KAFKA_CONSUMER_GROUP: ceo-agent-group
+      PROMETHEUS_PORT: "9091"
+    ports:
+      - "9091:9091"
+
+  cto-agent:
+    <<: *agent-defaults
+    environment:
+      <<: *agent-defaults
+      AGENT_ROLE: CTO
+      KAFKA_CONSUMER_TOPIC: ai-org.tasks.cto
+      KAFKA_CONSUMER_GROUP: cto-agent-group
+      PROMETHEUS_PORT: "9092"
+    ports:
+      - "9092:9092"
+
+  engineer-backend:
+    <<: *agent-defaults
+    environment:
+      <<: *agent-defaults
+      AGENT_ROLE: Engineer_Backend
+      KAFKA_CONSUMER_TOPIC: ai-org.tasks.engineer_backend
+      KAFKA_CONSUMER_GROUP: engineer-backend-group
+      PROMETHEUS_PORT: "9093"
+    ports:
+      - "9093:9093"
+
+  engineer-frontend:
+    <<: *agent-defaults
+    environment:
+      <<: *agent-defaults
+      AGENT_ROLE: Engineer_Frontend
+      KAFKA_CONSUMER_TOPIC: ai-org.tasks.engineer_frontend
+      KAFKA_CONSUMER_GROUP: engineer-frontend-group
+      PROMETHEUS_PORT: "9094"
+    ports:
+      - "9094:9094"
+
+  qa-agent:
+    <<: *agent-defaults
+    environment:
+      <<: *agent-defaults
+      AGENT_ROLE: QA
+      KAFKA_CONSUMER_TOPIC: ai-org.tasks.qa
+      KAFKA_CONSUMER_GROUP: qa-agent-group
+      PROMETHEUS_PORT: "9095"
+    ports:
+      - "9095:9095"
+
+  devops-agent:
+    <<: *agent-defaults
+    environment:
+      <<: *agent-defaults
+      AGENT_ROLE: DevOps
+      KAFKA_CONSUMER_TOPIC: ai-org.tasks.devops
+      KAFKA_CONSUMER_GROUP: devops-agent-group
+      PROMETHEUS_PORT: "9096"
+    ports:
+      - "9096:9096"
+
+  finance-agent:
+    <<: *agent-defaults
+    environment:
+      <<: *agent-defaults
+      AGENT_ROLE: Finance
+      KAFKA_CONSUMER_TOPIC: ai-org.tasks.finance
+      KAFKA_CONSUMER_GROUP: finance-agent-group
+      PROMETHEUS_PORT: "9097"
+    ports:
+      - "9097:9097"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # DASHBOARD — Next.js (will be built in feature/nextjs-dashboard)
+  # ══════════════════════════════════════════════════════════════════════
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8080}
+      NEXT_PUBLIC_WS_URL: ws://localhost:${API_PORT:-8080}
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - ai-org-net
+
+  # ══════════════════════════════════════════════════════════════════════
+  # OBSERVABILITY
+  # ══════════════════════════════════════════════════════════════════════
+
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
-      - ./dashboard:/usr/share/nginx/html:ro
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    networks:
+      - ai-org-net
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3002}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-ai-org-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - ai-org-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    restart: unless-stopped
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - ai-org-net
+
+# ════════════════════════════════════════════════════════════════════════
+# VOLUMES
+# ════════════════════════════════════════════════════════════════════════
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  kafka_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ════════════════════════════════════════════════════════════════════════
+# NETWORKS
+# ════════════════════════════════════════════════════════════════════════
+
+networks:
+  ai-org-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

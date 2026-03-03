@@ -1,0 +1,91 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Dockerfile.agent — Shared base image for ALL agent microservices
+# Multi-stage build: builder → runtime (slim, non-root, production-safe)
+# Works on: linux/amd64 · linux/arm64 (Apple M1/M2/M3, Raspberry Pi)
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Stage 1: Builder ────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+# Build args for image metadata
+ARG BUILD_DATE
+ARG GIT_COMMIT
+ARG AGENT_ROLE=generic
+
+WORKDIR /build
+
+# Install build dependencies (needed for some pip packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only requirements first — Docker layer cache optimization
+COPY requirements.txt .
+
+# Install into a prefix for easy copying
+RUN pip install --upgrade pip && \
+    pip install --prefix=/install --no-cache-dir -r requirements.txt
+
+
+# ── Stage 2: Runtime ────────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+ARG BUILD_DATE
+ARG GIT_COMMIT
+ARG AGENT_ROLE=generic
+
+# OCI image labels
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.title="ai-org-agent-${AGENT_ROLE}"
+LABEL org.opencontainers.image.description="Autonomous AI Organization — ${AGENT_ROLE} Agent"
+
+WORKDIR /app
+
+# Runtime system deps only (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 1001 --gid 0 --home /app aiorg
+
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application source
+COPY agents/ ./agents/
+COPY orchestrator/ ./orchestrator/
+COPY messaging/ ./messaging/
+COPY moe/ ./moe/
+COPY observability/ ./observability/
+COPY tools/ ./tools/
+COPY utils/ ./utils/
+COPY api/ ./api/
+
+# Set ownership
+RUN chown -R 1001:0 /app
+
+# Non-root user (security best practice)
+USER 1001
+
+# Environment defaults (overridden by docker-compose)
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    AGENT_ROLE=${AGENT_ROLE} \
+    KAFKA_MOCK=false \
+    ENVIRONMENT=development
+
+# Health check — agents expose a simple /health endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8083/health || exit 1
+
+# Use dumb-init to handle signals correctly (PID 1 problem)
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command — runs the agent service
+# Each agent container overrides AGENT_ROLE via env
+CMD ["python", "-m", "agents.agent_service"]
