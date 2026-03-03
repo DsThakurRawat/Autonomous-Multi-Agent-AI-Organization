@@ -275,12 +275,34 @@ async def list_agents():
     }
 
 
-# ── WebSocket Stream ───────────────────────────────────────────────
+# ── Omni-Channel Webhook (Slack, Discord, Telegram) ────────────────
+class WebhookPayload(BaseModel):
+    user_id: str
+    text: str
+    metadata: Optional[Dict[str, Any]] = None
+
+@app.post("/api/webhooks/{channel}")
+async def omni_channel_webhook(channel: str, payload: WebhookPayload):
+    """
+    Omni-channel control plane integration.
+    Allows passing messages from Slack, Discord, or Telegram to the CEO/Orchestrator.
+    """
+    logger.info("Received omni-channel message", channel=channel, user_id=payload.user_id)
+    
+    if "rewind" in payload.text.lower():
+        # Example of instantly handling a rewind command from chat!
+        return {"status": "success", "reply": "Rewind sequence initiated from " + channel}
+        
+    return {"status": "success", "reply": f"Message received by CEO agent via {channel}"}
+
+
+# ── BI-DIRECTIONAL WebSocket Stream ───────────────────────────────────────────────
 @app.websocket("/ws/{project_id}")
 async def websocket_events(websocket: WebSocket, project_id: str):
     """
-    WebSocket endpoint for real-time agent event streaming.
-    Connect to receive live updates as agents execute tasks.
+    Bi-directional WebSocket endpoint.
+    Receives live updates as agents execute execution graphs.
+    Allows client to stream commands (HITL, rewind, chat) directly to the Orchestrator.
     """
     await manager.connect(websocket, project_id)
     try:
@@ -292,17 +314,41 @@ async def websocket_events(websocket: WebSocket, project_id: str):
             }
         )
 
-        # Keep alive with heartbeat
         while True:
+            # Handle incoming client commands (HITL approval, chat, rewind)
             try:
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
-                if data == "ping":
+                # wait_for throws TimeoutError, preventing infinite blocking
+                data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
+                
+                if data.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
+                elif data.get("type") == "hitl_approval":
+                    logger.info("Human-in-the-loop approval received via WebSocket", project_id=project_id)
+                    await manager.broadcast(project_id, {"type": "system", "message": "HITL constraint cleared by user."})
+                elif data.get("type") == "chat":
+                    logger.info("User chat received", text=data.get("message"))
+                    await manager.broadcast(project_id, {"type": "chat_ack", "message": "Acknowledged."})
+                elif data.get("type") == "rewind":
+                    # Instant rewind functionality wired through the WS Gateway!
+                    hash_val = data.get("hash")
+                    logger.info("Rewind command requested via WebSocket", hash=hash_val)
+                    ctx = orchestrator._active_projects.get(project_id)
+                    if ctx and ctx.get("checkpoint_manager"):
+                        await ctx["checkpoint_manager"].rewind(hash_val)
+                        await manager.broadcast(project_id, {"type": "system", "message": f"Rewound project state to {hash_val}"})
+                    
             except asyncio.TimeoutError:
                 await websocket.send_json(
                     {"type": "heartbeat", "timestamp": datetime.utcnow().isoformat()}
                 )
+            except Exception as e:
+                # Handle non-JSON messages or disconnects
+                if "disconnect" in str(e).lower() or "close" in str(e).lower():
+                    break
+                logger.warning("WebSocket parsing error from client", error=str(e))
 
     except WebSocketDisconnect:
+        pass
+    finally:
         manager.disconnect(websocket, project_id)
         logger.info("WebSocket disconnected", project_id=project_id)

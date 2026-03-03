@@ -15,6 +15,7 @@ from .memory.project_memory import ProjectMemory
 from .memory.decision_log import DecisionLog
 from .memory.cost_ledger import CostLedger
 from .memory.artifacts_store import ArtifactsStore
+from .memory.checkpointing import CheckpointManager
 
 logger = structlog.get_logger(__name__)
 
@@ -145,9 +146,11 @@ class OrchestratorEngine:
             "decision_log": decision_log,
             "cost_ledger": cost_ledger,
             "artifacts": artifacts,
+            "checkpoint_manager": CheckpointManager(project_id, self.output_dir),
             "task_graph": None,
             "status": "bootstrapping",
             "started_at": datetime.utcnow(),
+            "kafka_dispatcher": None,
         }
 
         await self._emit(
@@ -263,7 +266,20 @@ class OrchestratorEngine:
             )
 
             # ── Phase 3: Build Task Graph ──────────────────────────
-            task_graph = build_standard_task_graph(project_id, memory.architecture)
+            ceo = self._agent_registry.get("CEO")
+            if ceo and getattr(ceo, "llm_client", None):
+                from .task_graph import generate_dynamic_task_graph
+                task_graph = await generate_dynamic_task_graph(
+                    project_id=project_id,
+                    business_plan=memory.business_plan,
+                    architecture=memory.architecture,
+                    llm_client=ceo.llm_client,
+                    model_name=ceo.model_name
+                )
+            else:
+                from .task_graph import build_standard_task_graph
+                task_graph = build_standard_task_graph(project_id, memory.architecture)
+                
             ctx["task_graph"] = task_graph
 
             await self._emit(
@@ -379,6 +395,21 @@ class OrchestratorEngine:
                     output = {"status": "simulated", "task": task.name}
 
                 task.mark_completed(output)
+
+                # Persist state into shadow git branch
+                checkpoint_manager = ctx.get("checkpoint_manager")
+                if checkpoint_manager:
+                    memory_state = {
+                        "business_plan": ctx["memory"].business_plan,
+                        "architecture": ctx["memory"].architecture,
+                        "project_config": ctx["memory"].project_config
+                    }
+                    await checkpoint_manager.save_checkpoint(
+                        task_name=task.name,
+                        agent_role=task.agent_role,
+                        memory_state=memory_state
+                    )
+
                 await self._emit(
                     ExecutionEvent(
                         "task_completed",

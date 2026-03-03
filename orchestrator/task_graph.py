@@ -315,3 +315,77 @@ def build_standard_task_graph(
         "Standard task graph built", project_id=project_id, total_tasks=len(graph.tasks)
     )
     return graph
+
+async def generate_dynamic_task_graph(
+    project_id: str, 
+    business_plan: Dict[str, Any], 
+    architecture: Dict[str, Any],
+    llm_client: Any,
+    model_name: str
+) -> TaskGraph:
+    """
+    Goal-Driven Graph Generation.
+    Uses Gemini to analyze the business plan and architecture and emit a dynamic JSON array of tasks.
+    """
+    import json
+    
+    prompt = f"""
+You are the AI Orchestrator of an Autonomous Software Company.
+You need to generate a precise Directed Acyclic Graph (DAG) of actionable tasks to build and deploy the following application.
+
+Business Plan:
+{json.dumps(business_plan, indent=2)}
+
+Architecture:
+{json.dumps(architecture, indent=2)}
+
+Output strictly a JSON array of objects representing the tasks.
+Requirements for each task:
+- "id": a unique string (e.g. "task_backend_api")
+- "name": a short text description
+- "description": deep details of what to build
+- "agent_role": MUST be exactly one of: ["Engineer_Backend", "Engineer_Frontend", "QA", "DevOps", "Finance"]
+- "priority": integer 1 (critical) to 4 (low)
+- "dependencies": an array of "id" strings representing tasks this one blocks on
+- "estimated_duration_seconds": roughly 60-300
+
+Make sure there are no dependency cycles! 
+Return raw JSON ONLY. No markdown blocks.
+    """
+    
+    try:
+        response = await asyncio.to_thread(
+            llm_client.models.generate_content, 
+            model=model_name, 
+            contents=prompt
+        )
+        text = response.text.replace('```json', '').replace('```', '').strip()
+        data = json.loads(text)
+        
+        graph = TaskGraph(project_id=project_id)
+        
+        uuid_map = {}
+        for t_spec in data:
+            t = Task(
+                name=t_spec.get('name', 'Unknown Task'),
+                description=t_spec.get('description', ''),
+                agent_role=t_spec.get('agent_role', 'Engineer_Backend'),
+                priority=TaskPriority(t_spec.get('priority', 3)),
+                estimated_duration_seconds=t_spec.get('estimated_duration_seconds', 60)
+            )
+            uuid_map[t_spec['id']] = t.id
+            t_spec["_obj"] = t
+            
+        for t_spec in data:
+            obj = t_spec["_obj"]
+            for dep in t_spec.get('dependencies', []):
+                if dep in uuid_map:
+                    obj.dependencies.append(uuid_map[dep])
+            graph.add_task(obj)
+            
+        logger.info("Dynamic task graph generated", project_id=project_id, total_tasks=len(graph.tasks))
+        return graph
+
+    except Exception as e:
+        logger.error("Failed dynamic graph generation, falling back cleanly", error=str(e))
+        return build_standard_task_graph(project_id, architecture)
