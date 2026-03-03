@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ai-org.fullname" . }}-config
+  labels:
+    {{- include "ai-org.labels" . | nindent 4 }}
+data:
+  LOG_LEVEL: {{ .Values.env.logLevel | quote }}
+  KAFKA_MODE: {{ .Values.env.kafkaMode | quote }}
+  MOE_RUST_URL: "http://{{ include "ai-org.fullname" . }}-moe-scoring:8090"

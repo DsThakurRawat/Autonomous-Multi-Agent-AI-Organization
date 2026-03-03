@@ -5,7 +5,7 @@ mod metrics;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use axum::{
     extract::{Json, State},
@@ -16,10 +16,10 @@ use axum::{
 };
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
-use tracing::{info, warn};
+use tracing::info;
 
 use models::{
-    BatchRouteRequest, BatchRouteResponse, ErrorResponse,
+    BatchRouteRequest, BatchRouteResponse,
     Expert, ExpertStats, HealthResponse, RouteRequest, RouteResponse,
 };
 use scorer::{rank_experts, should_use_ensemble, ENSEMBLE_THRESHOLD};
@@ -239,7 +239,9 @@ async fn handle_metrics() -> impl IntoResponse {
 }
 
 async fn handle_experts(State(state): State<AppState>) -> impl IntoResponse {
-    JsonResponse(&*state.default_experts)
+    // Clone the map out of the Arc so we return owned data, not a reference
+    let experts: HashMap<String, Expert> = (*state.default_experts).clone();
+    JsonResponse(experts)
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────

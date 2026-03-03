@@ -21,6 +21,9 @@ redis==5.0.2
 aiohttp==3.9.3
 asyncio-mqtt==0.16.2
 
+# ── Kafka ─────────────────────────────────────────────────
+kafka-python==2.0.2
+
 # ── Database ───────────────────────────────────────────────
 sqlalchemy==2.0.27
 asyncpg==0.29.0
@@ -30,9 +33,6 @@ psycopg2-binary==2.9.9
 # ── Memory & Vector DB ────────────────────────────────────
 pinecone-client==3.0.2
 opensearch-py==2.5.0
-
-# ── AWS Services ──────────────────────────────────────────
-boto3==1.34.51
 
 # ── Code Execution & Sandboxing ───────────────────────────
 docker==7.0.0
