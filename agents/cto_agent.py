@@ -5,7 +5,7 @@ Outputs: tech stack, database schema, API contracts, cost estimates, infra spec.
 """
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 import structlog
 from .base_agent import BaseAgent
 
@@ -56,7 +56,7 @@ You explain your architectural decisions with rationale.
         business_plan: Dict[str, Any] = None,
         budget_usd: float = 200.0,
         context: Any = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """Design complete system architecture from business plan."""
         logger.info("CTO Agent: Designing architecture")
@@ -114,7 +114,7 @@ Return a JSON architecture specification:
         raw = await self.call_llm(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            response_format="json_object"
+            response_format="json_object",
         )
 
         try:
@@ -137,7 +137,7 @@ Return a JSON architecture specification:
                 input_context={"features": features, "budget": budget_usd},
                 output={k: v for k, v in arch.items() if k != "database_schema"},
                 confidence=0.92,
-                tags=["architecture", "aws", "cost"]
+                tags=["architecture", "aws", "cost"],
             )
             context.artifacts.save(
                 artifact_type="document",
@@ -145,13 +145,13 @@ Return a JSON architecture specification:
                 content=arch,
                 agent_role=self.ROLE,
                 tags=["architecture"],
-                file_extension=".json"
+                file_extension=".json",
             )
 
         logger.info(
             "CTO: Architecture designed",
             estimated_cost=arch.get("estimated_monthly_cost_usd"),
-            budget=budget_usd
+            budget=budget_usd,
         )
         return arch
 
@@ -159,7 +159,9 @@ Return a JSON architecture specification:
         """Downgrade components if estimated cost exceeds budget."""
         est = arch.get("estimated_monthly_cost_usd", 100)
         if est > budget:
-            logger.warning("Architecture cost exceeds budget, optimizing", cost=est, budget=budget)
+            logger.warning(
+                "Architecture cost exceeds budget, optimizing", cost=est, budget=budget
+            )
             # Downgrade database instance
             if "database" in arch:
                 arch["database"]["instance"] = "db.t3.micro"
@@ -172,10 +174,26 @@ Return a JSON architecture specification:
 
     def _default_architecture(self, budget: float) -> Dict[str, Any]:
         return {
-            "frontend": {"framework": "Next.js 14", "hosting": "ECS Fargate", "cdn": "CloudFront"},
-            "backend": {"framework": "FastAPI", "language": "Python 3.11", "runtime": "ECS Fargate"},
-            "database": {"type": "PostgreSQL 15", "hosting": "RDS", "instance": "db.t3.micro"},
-            "cache": {"type": "Redis 7", "hosting": "ElastiCache", "instance": "cache.t3.micro"},
+            "frontend": {
+                "framework": "Next.js 14",
+                "hosting": "ECS Fargate",
+                "cdn": "CloudFront",
+            },
+            "backend": {
+                "framework": "FastAPI",
+                "language": "Python 3.11",
+                "runtime": "ECS Fargate",
+            },
+            "database": {
+                "type": "PostgreSQL 15",
+                "hosting": "RDS",
+                "instance": "db.t3.micro",
+            },
+            "cache": {
+                "type": "Redis 7",
+                "hosting": "ElastiCache",
+                "instance": "cache.t3.micro",
+            },
             "auth": {"service": "AWS Cognito", "type": "JWT + OAuth2"},
             "storage": {"service": "S3"},
             "cdn": {"service": "CloudFront"},
@@ -190,8 +208,8 @@ Return a JSON architecture specification:
                         {"name": "hashed_password", "type": "TEXT"},
                         {"name": "is_active", "type": "BOOLEAN", "default": True},
                         {"name": "created_at", "type": "TIMESTAMP WITH TIME ZONE"},
-                        {"name": "updated_at", "type": "TIMESTAMP WITH TIME ZONE"}
-                    ]
+                        {"name": "updated_at", "type": "TIMESTAMP WITH TIME ZONE"},
+                    ],
                 },
                 {
                     "table": "items",
@@ -202,9 +220,9 @@ Return a JSON architecture specification:
                         {"name": "description", "type": "TEXT"},
                         {"name": "status", "type": "VARCHAR(50)"},
                         {"name": "created_at", "type": "TIMESTAMP WITH TIME ZONE"},
-                        {"name": "updated_at", "type": "TIMESTAMP WITH TIME ZONE"}
-                    ]
-                }
+                        {"name": "updated_at", "type": "TIMESTAMP WITH TIME ZONE"},
+                    ],
+                },
             ],
             "api_contracts": [
                 {"method": "POST", "path": "/api/auth/login", "auth": False},
@@ -212,14 +230,14 @@ Return a JSON architecture specification:
                 {"method": "GET", "path": "/api/items", "auth": True},
                 {"method": "POST", "path": "/api/items", "auth": True},
                 {"method": "PUT", "path": "/api/items/{id}", "auth": True},
-                {"method": "DELETE", "path": "/api/items/{id}", "auth": True}
+                {"method": "DELETE", "path": "/api/items/{id}", "auth": True},
             ],
             "security": {
                 "cors": "Restricted to frontend domain",
                 "rate_limiting": "100 req/min per IP",
-                "encryption": "AES-256 at rest, TLS 1.3 in transit"
+                "encryption": "AES-256 at rest, TLS 1.3 in transit",
             },
             "estimated_monthly_cost_usd": min(95, budget * 0.85),
             "scaling_policy": "Auto-scale ECS at 70% CPU",
-            "disaster_recovery": "Multi-AZ RDS, S3 versioning"
+            "disaster_recovery": "Multi-AZ RDS, S3 versioning",
         }

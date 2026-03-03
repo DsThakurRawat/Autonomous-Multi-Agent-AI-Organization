@@ -5,9 +5,11 @@ parallel task readiness, and status tracking.
 """
 
 import pytest
-import asyncio
 from orchestrator.task_graph import (
-    Task, TaskGraph, TaskStatus, TaskPriority, build_standard_task_graph
+    Task,
+    TaskGraph,
+    TaskStatus,
+    build_standard_task_graph,
 )
 
 
@@ -20,11 +22,15 @@ class TestTask:
         assert task.id is not None
 
     def test_can_retry_when_under_limit(self):
-        task = Task(name="T", description="", agent_role="CEO", retry_count=2, max_retries=3)
+        task = Task(
+            name="T", description="", agent_role="CEO", retry_count=2, max_retries=3
+        )
         assert task.can_retry() is True
 
     def test_cannot_retry_at_limit(self):
-        task = Task(name="T", description="", agent_role="CEO", retry_count=3, max_retries=3)
+        task = Task(
+            name="T", description="", agent_role="CEO", retry_count=3, max_retries=3
+        )
         assert task.can_retry() is False
 
     def test_mark_completed(self):
@@ -70,6 +76,7 @@ class TestTaskGraph:
     def test_cycle_detection(self):
         """Manually introduced cycles are detectable via networkx DAG check."""
         import networkx as nx
+
         graph = self._make_graph()
         t1 = Task(name="T1", description="", agent_role="CEO")
         t1_id = graph.add_task(t1)
@@ -85,7 +92,9 @@ class TestTaskGraph:
     def test_missing_dependency_raises(self):
         """Adding a task with a non-existent dependency ID should raise ValueError."""
         graph = self._make_graph()
-        t = Task(name="T", description="", agent_role="CEO", dependencies=["nonexistent-id"])
+        t = Task(
+            name="T", description="", agent_role="CEO", dependencies=["nonexistent-id"]
+        )
         with pytest.raises(ValueError, match="not found"):
             graph.add_task(t)
 
@@ -129,8 +138,18 @@ class TestTaskGraph:
         graph = self._make_graph()
         t1 = Task(name="Root", description="", agent_role="CEO")
         t1_id = graph.add_task(t1)
-        t2 = Task(name="Branch1", description="", agent_role="Engineer_Backend", dependencies=[t1_id])
-        t3 = Task(name="Branch2", description="", agent_role="Engineer_Frontend", dependencies=[t1_id])
+        t2 = Task(
+            name="Branch1",
+            description="",
+            agent_role="Engineer_Backend",
+            dependencies=[t1_id],
+        )
+        t3 = Task(
+            name="Branch2",
+            description="",
+            agent_role="Engineer_Frontend",
+            dependencies=[t1_id],
+        )
         graph.add_task(t2)
         graph.add_task(t3)
 
@@ -177,16 +196,19 @@ class TestTaskGraph:
 
 class TestBuildStandardTaskGraph:
     def test_standard_graph_has_expected_tasks(self):
-        graph = build_standard_task_graph("proj-123", {"estimated_monthly_cost_usd": 95})
-        assert len(graph.tasks) >= 5    # At least setup, backend, frontend, qa, deploy
+        graph = build_standard_task_graph(
+            "proj-123", {"estimated_monthly_cost_usd": 95}
+        )
+        assert len(graph.tasks) >= 5  # At least setup, backend, frontend, qa, deploy
 
     def test_standard_graph_is_dag(self):
         """The standard task graph must be acyclic."""
         import networkx as nx
+
         graph = build_standard_task_graph("proj-123", {})
         assert nx.is_directed_acyclic_graph(graph.graph)
 
     def test_first_tasks_have_no_deps(self):
         graph = build_standard_task_graph("proj-123", {})
         ready = graph.get_ready_tasks()
-        assert len(ready) >= 1     # At least repo setup should be immediately ready
+        assert len(ready) >= 1  # At least repo setup should be immediately ready

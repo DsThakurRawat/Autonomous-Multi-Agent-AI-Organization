@@ -4,7 +4,6 @@ Generates tests, runs security analysis, validates API contracts.
 Implements agentic test-fix loop: if tests fail, report to Engineers.
 """
 
-import json
 import textwrap
 from typing import Any, Dict, List
 import structlog
@@ -51,7 +50,7 @@ Always produce valid, runnable pytest code.
         task: Any = None,
         context: Any = None,
         architecture: Dict[str, Any] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """Run full QA pipeline and return results."""
         arch = context.memory.architecture if context else (architecture or {})
@@ -81,8 +80,11 @@ Always produce valid, runnable pytest code.
             bug_reports.append(bug)
             if context:
                 context.artifacts.save(
-                    "bug_report", f"bug_{len(bug_reports)}",
-                    bug, self.ROLE, tags=["bug", "qa"]
+                    "bug_report",
+                    f"bug_{len(bug_reports)}",
+                    bug,
+                    self.ROLE,
+                    tags=["bug", "qa"],
                 )
 
         result = {
@@ -91,7 +93,8 @@ Always produce valid, runnable pytest code.
             "security_scan": security_results,
             "coverage": coverage,
             "bug_reports": bug_reports,
-            "qa_passed": test_results["failed"] == 0 and security_results["high_severity"] == 0
+            "qa_passed": test_results["failed"] == 0
+            and security_results["high_severity"] == 0,
         }
 
         if context:
@@ -103,14 +106,14 @@ Always produce valid, runnable pytest code.
                 input_context={"api_count": len(api_contracts)},
                 output={"qa_passed": result["qa_passed"], "coverage": coverage},
                 confidence=0.95,
-                tags=["testing", "quality"]
+                tags=["testing", "quality"],
             )
 
         logger.info(
             "QA complete",
             passed=test_results["passed"],
             failed=test_results["failed"],
-            coverage=coverage["line_coverage_pct"]
+            coverage=coverage["line_coverage_pct"],
         )
         return result
 
@@ -125,7 +128,7 @@ Always produce valid, runnable pytest code.
             "tests/test_items.py": self._generate_items_tests(),
             "tests/test_security.py": self._generate_security_tests(),
             "tests/test_health.py": self._generate_health_tests(),
-            "pyproject.toml": self._generate_pyproject()
+            "pyproject.toml": self._generate_pyproject(),
         }
 
     def _generate_conftest(self) -> str:
@@ -383,7 +386,7 @@ Always produce valid, runnable pytest code.
         ''').strip()
 
     def _generate_pyproject(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             [tool.pytest.ini_options]
             asyncio_mode = "auto"
             testpaths = ["tests"]
@@ -396,7 +399,7 @@ Always produce valid, runnable pytest code.
 
             [tool.coverage.report]
             fail_under = 70
-        ''').strip()
+        """).strip()
 
     def _simulate_test_run(self, api_contracts: List[Dict]) -> Dict[str, Any]:
         total = 20 + len(api_contracts) * 2
@@ -407,7 +410,7 @@ Always produce valid, runnable pytest code.
             "failed": failed,
             "errors": 0,
             "duration_seconds": 12.4,
-            "failures": []
+            "failures": [],
         }
 
     def _simulate_security_scan(self) -> Dict[str, Any]:
@@ -418,8 +421,11 @@ Always produce valid, runnable pytest code.
             "medium_severity": 0,
             "low_severity": 1,
             "issues": [
-                {"severity": "LOW", "desc": "Consider using secrets module for token generation"}
-            ]
+                {
+                    "severity": "LOW",
+                    "desc": "Consider using secrets module for token generation",
+                }
+            ],
         }
 
     def _simulate_coverage(self) -> Dict[str, Any]:
@@ -428,7 +434,7 @@ Always produce valid, runnable pytest code.
             "branch_coverage_pct": 71.5,
             "uncovered_files": ["backend/config.py"],
             "target_pct": 70,
-            "passed": True
+            "passed": True,
         }
 
     def _create_bug_report(self, failure: Dict[str, Any]) -> Dict[str, Any]:
@@ -439,5 +445,5 @@ Always produce valid, runnable pytest code.
             "assigned_to": "Engineer_Backend",
             "description": failure.get("error", "Test assertion failed"),
             "reproduce_steps": ["Run pytest", f"Check {failure.get('test', 'test')}"],
-            "status": "Open"
+            "status": "Open",
         }

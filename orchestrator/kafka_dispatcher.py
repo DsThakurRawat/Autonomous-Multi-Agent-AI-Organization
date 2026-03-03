@@ -127,9 +127,7 @@ class KafkaDispatcher:
             if fut and not fut.done():
                 fut.set_result(result)
             else:
-                log.debug(
-                    "kafka_dispatcher.unmatched_result", task_id=result.task_id
-                )
+                log.debug("kafka_dispatcher.unmatched_result", task_id=result.task_id)
 
 
 class KafkaEventPublisher:

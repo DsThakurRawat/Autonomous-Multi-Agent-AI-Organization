@@ -8,7 +8,7 @@ import asyncio
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 import networkx as nx
 from pydantic import BaseModel, Field
 import structlog
@@ -36,13 +36,14 @@ class TaskPriority(int, Enum):
 
 class Task(BaseModel):
     """Represents a single unit of work in the task graph."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: str
-    agent_role: str                            # Which agent executes this
+    agent_role: str  # Which agent executes this
     status: TaskStatus = TaskStatus.PENDING
     priority: TaskPriority = TaskPriority.MEDIUM
-    dependencies: List[str] = []               # Task IDs this depends on
+    dependencies: List[str] = []  # Task IDs this depends on
     input_data: Dict[str, Any] = {}
     output_data: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
@@ -110,7 +111,9 @@ class TaskGraph:
         if not nx.is_directed_acyclic_graph(self.graph):
             self.graph.remove_node(task.id)
             del self.tasks[task.id]
-            raise ValueError(f"Adding task '{task.name}' creates a cycle in the task graph")
+            raise ValueError(
+                f"Adding task '{task.name}' creates a cycle in the task graph"
+            )
 
         logger.info("Task added to graph", task_id=task.id, task_name=task.name)
         return task.id
@@ -123,8 +126,7 @@ class TaskGraph:
                 continue
             deps = list(self.graph.predecessors(task_id))
             all_deps_complete = all(
-                self.tasks[dep].status == TaskStatus.COMPLETED
-                for dep in deps
+                self.tasks[dep].status == TaskStatus.COMPLETED for dep in deps
             )
             if all_deps_complete:
                 ready.append(task)
@@ -149,10 +151,7 @@ class TaskGraph:
         )
 
     def is_successful(self) -> bool:
-        return all(
-            t.status == TaskStatus.COMPLETED
-            for t in self.tasks.values()
-        )
+        return all(t.status == TaskStatus.COMPLETED for t in self.tasks.values())
 
     def get_critical_path(self) -> List[str]:
         """Returns the longest dependency chain (critical path)."""
@@ -173,7 +172,7 @@ class TaskGraph:
             "failed": counts[TaskStatus.FAILED],
             "in_progress": counts[TaskStatus.IN_PROGRESS],
             "pending": counts[TaskStatus.PENDING],
-            "progress_pct": round((completed / total) * 100, 1) if total > 0 else 0
+            "progress_pct": round((completed / total) * 100, 1) if total > 0 else 0,
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -182,15 +181,17 @@ class TaskGraph:
         edges = []
 
         for task_id, task in self.tasks.items():
-            nodes.append({
-                "id": task_id,
-                "name": task.name,
-                "agent_role": task.agent_role,
-                "status": task.status,
-                "priority": task.priority,
-                "duration": task.duration_seconds,
-                "error": task.error_message
-            })
+            nodes.append(
+                {
+                    "id": task_id,
+                    "name": task.name,
+                    "agent_role": task.agent_role,
+                    "status": task.status,
+                    "priority": task.priority,
+                    "duration": task.duration_seconds,
+                    "error": task.error_message,
+                }
+            )
 
         for src, dst in self.graph.edges():
             edges.append({"source": src, "target": dst})
@@ -200,11 +201,13 @@ class TaskGraph:
             "nodes": nodes,
             "edges": edges,
             "summary": self.get_status_summary(),
-            "critical_path": self.get_critical_path()
+            "critical_path": self.get_critical_path(),
         }
 
 
-def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> TaskGraph:
+def build_standard_task_graph(
+    project_id: str, architecture: Dict[str, Any]
+) -> TaskGraph:
     """
     Build the standard AI company task graph based on CTO architecture output.
     This is the default DAG for a full project lifecycle.
@@ -218,7 +221,7 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         agent_role="DevOps",
         priority=TaskPriority.CRITICAL,
         estimated_duration_seconds=30,
-        tags=["foundation"]
+        tags=["foundation"],
     )
     repo_id = graph.add_task(t_repo)
 
@@ -231,7 +234,7 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         dependencies=[repo_id],
         input_data={"architecture": architecture},
         estimated_duration_seconds=180,
-        tags=["backend", "code"]
+        tags=["backend", "code"],
     )
     backend_id = graph.add_task(t_backend)
 
@@ -244,7 +247,7 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         dependencies=[repo_id],
         input_data={"architecture": architecture},
         estimated_duration_seconds=180,
-        tags=["frontend", "code"]
+        tags=["frontend", "code"],
     )
     frontend_id = graph.add_task(t_frontend)
 
@@ -256,7 +259,7 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         priority=TaskPriority.HIGH,
         dependencies=[backend_id],
         estimated_duration_seconds=120,
-        tags=["testing", "quality"]
+        tags=["testing", "quality"],
     )
     tests_id = graph.add_task(t_tests)
 
@@ -268,7 +271,7 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         priority=TaskPriority.MEDIUM,
         dependencies=[backend_id, frontend_id],
         estimated_duration_seconds=90,
-        tags=["docker", "infrastructure"]
+        tags=["docker", "infrastructure"],
     )
     docker_id = graph.add_task(t_docker)
 
@@ -280,7 +283,7 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         priority=TaskPriority.CRITICAL,
         dependencies=[tests_id, docker_id],
         estimated_duration_seconds=300,
-        tags=["aws", "terraform", "infrastructure"]
+        tags=["aws", "terraform", "infrastructure"],
     )
     infra_id = graph.add_task(t_infra)
 
@@ -292,7 +295,7 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         priority=TaskPriority.CRITICAL,
         dependencies=[infra_id],
         estimated_duration_seconds=240,
-        tags=["deployment", "aws"]
+        tags=["deployment", "aws"],
     )
     deploy_id = graph.add_task(t_deploy)
 
@@ -304,13 +307,11 @@ def build_standard_task_graph(project_id: str, architecture: Dict[str, Any]) -> 
         priority=TaskPriority.MEDIUM,
         dependencies=[deploy_id],
         estimated_duration_seconds=60,
-        tags=["cost", "finance"]
+        tags=["cost", "finance"],
     )
     graph.add_task(t_finance)
 
     logger.info(
-        "Standard task graph built",
-        project_id=project_id,
-        total_tasks=len(graph.tasks)
+        "Standard task graph built", project_id=project_id, total_tasks=len(graph.tasks)
     )
     return graph

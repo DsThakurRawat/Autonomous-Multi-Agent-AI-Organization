@@ -5,16 +5,17 @@ Provides REST API + WebSocket for real-time agent event streaming.
 """
 
 import asyncio
-import json
-import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    WebSocketDisconnect,
+    HTTPException,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import structlog
 
@@ -30,6 +31,7 @@ logger = structlog.get_logger(__name__)
 
 # ── Global Orchestrator ────────────────────────────────────────────
 orchestrator = OrchestratorEngine(budget_usd=200.0, output_dir="./output")
+
 
 # ── WebSocket Connection Manager ───────────────────────────────────
 class ConnectionManager:
@@ -59,7 +61,9 @@ class ConnectionManager:
         for ws in dead:
             self.active_connections[project_id].remove(ws)
 
+
 manager = ConnectionManager()
+
 
 # ── App Lifecycle ──────────────────────────────────────────────────
 @asynccontextmanager
@@ -74,6 +78,7 @@ async def lifespan(app: FastAPI):
     orchestrator.register_agent("Finance", FinanceAgent())
     logger.info("All agents registered and ready")
     yield
+
 
 # ── FastAPI App ────────────────────────────────────────────────────
 app = FastAPI(
@@ -92,17 +97,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ── Request/Response Models ────────────────────────────────────────
 class StartProjectRequest(BaseModel):
     business_idea: str
     budget_usd: float = 200.0
     constraints: Optional[Dict[str, Any]] = None
 
+
 class ProjectResponse(BaseModel):
     project_id: str
     status: str
     message: str
     started_at: str
+
 
 # ── REST Endpoints ─────────────────────────────────────────────────
 @app.get("/")
@@ -112,8 +120,9 @@ async def root():
         "version": "1.0.0",
         "status": "operational",
         "docs": "/api/docs",
-        "dashboard": "/dashboard"
+        "dashboard": "/dashboard",
     }
+
 
 @app.get("/health")
 async def health():
@@ -121,8 +130,9 @@ async def health():
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "agents": list(orchestrator._agent_registry.keys()),
-        "active_projects": len(orchestrator._active_projects)
+        "active_projects": len(orchestrator._active_projects),
     }
+
 
 @app.post("/api/projects", response_model=ProjectResponse)
 async def start_project(request: StartProjectRequest):
@@ -131,15 +141,16 @@ async def start_project(request: StartProjectRequest):
     Returns a project_id for WebSocket streaming and status polling.
     """
     if len(request.business_idea.strip()) < 10:
-        raise HTTPException(status_code=400, detail="Business idea too short (min 10 chars)")
+        raise HTTPException(
+            status_code=400, detail="Business idea too short (min 10 chars)"
+        )
 
     # Wire up WebSocket event broadcasting
     async def broadcast_event(event: ExecutionEvent):
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
-        business_idea=request.business_idea,
-        user_constraints=request.constraints or {}
+        business_idea=request.business_idea, user_constraints=request.constraints or {}
     )
 
     # Subscribe the event broadcaster for this project
@@ -150,8 +161,9 @@ async def start_project(request: StartProjectRequest):
         project_id=project_id,
         status="started",
         message=f"AI company launched! Connect WebSocket to /ws/{project_id} for live updates.",
-        started_at=datetime.utcnow().isoformat()
+        started_at=datetime.utcnow().isoformat(),
     )
+
 
 @app.get("/api/projects/{project_id}")
 async def get_project_status(project_id: str):
@@ -161,6 +173,7 @@ async def get_project_status(project_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
     return status
 
+
 @app.get("/api/projects")
 async def list_projects():
     """List all active projects."""
@@ -169,12 +182,13 @@ async def list_projects():
             {
                 "project_id": pid,
                 "status": ctx["status"],
-                "started_at": ctx["started_at"].isoformat()
+                "started_at": ctx["started_at"].isoformat(),
             }
             for pid, ctx in orchestrator._active_projects.items()
         ],
-        "total": len(orchestrator._active_projects)
+        "total": len(orchestrator._active_projects),
     }
+
 
 @app.get("/api/projects/{project_id}/artifacts")
 async def get_artifacts(project_id: str):
@@ -183,12 +197,14 @@ async def get_artifacts(project_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
     return status.get("artifacts", {})
 
+
 @app.get("/api/projects/{project_id}/cost")
 async def get_cost_report(project_id: str):
     status = orchestrator.get_project_status(project_id)
     if not status:
         raise HTTPException(status_code=404, detail="Project not found")
     return status.get("cost_report", {})
+
 
 @app.get("/api/projects/{project_id}/decisions")
 async def get_decisions(project_id: str):
@@ -197,8 +213,9 @@ async def get_decisions(project_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
     return {
         "decisions": ctx["decision_log"].get_timeline(),
-        "summary": ctx["decision_log"].summary()
+        "summary": ctx["decision_log"].summary(),
     }
+
 
 @app.get("/api/agents")
 async def list_agents():
@@ -210,18 +227,19 @@ async def list_agents():
         "Engineer_Frontend": "Next.js UI, React components, API integration",
         "QA": "Test generation, security scanning, coverage analysis",
         "DevOps": "Terraform IaC, Docker, ECS deployment, CI/CD pipelines",
-        "Finance": "Cost tracking, budget governance, optimization recommendations"
+        "Finance": "Cost tracking, budget governance, optimization recommendations",
     }
     return {
         "agents": [
             {
                 "role": role,
                 "description": desc,
-                "registered": role in orchestrator._agent_registry
+                "registered": role in orchestrator._agent_registry,
             }
             for role, desc in agent_info.items()
         ]
     }
+
 
 # ── WebSocket Stream ───────────────────────────────────────────────
 @app.websocket("/ws/{project_id}")
@@ -232,11 +250,13 @@ async def websocket_events(websocket: WebSocket, project_id: str):
     """
     await manager.connect(websocket, project_id)
     try:
-        await websocket.send_json({
-            "type": "connected",
-            "message": f"Connected to project {project_id}",
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "message": f"Connected to project {project_id}",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
         # Keep alive with heartbeat
         while True:
@@ -245,7 +265,9 @@ async def websocket_events(websocket: WebSocket, project_id: str):
                 if data == "ping":
                     await websocket.send_json({"type": "pong"})
             except asyncio.TimeoutError:
-                await websocket.send_json({"type": "heartbeat", "timestamp": datetime.utcnow().isoformat()})
+                await websocket.send_json(
+                    {"type": "heartbeat", "timestamp": datetime.utcnow().isoformat()}
+                )
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, project_id)

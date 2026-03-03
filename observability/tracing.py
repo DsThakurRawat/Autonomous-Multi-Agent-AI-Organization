@@ -21,7 +21,7 @@ try:
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
     from opentelemetry.propagate import inject, extract
     from opentelemetry.trace import Status, StatusCode, SpanKind
-    from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -30,29 +30,56 @@ except ImportError:
 
 # ── No-Op Tracer Stubs ─────────────────────────────────────────────────────
 class _NoOpSpan:
-    def set_attribute(self, key, value): pass
-    def set_status(self, *args, **kwargs): pass
-    def record_exception(self, exc): pass
-    def add_event(self, name, attributes=None): pass
-    def get_span_context(self): return None
-    def __enter__(self): return self
-    def __exit__(self, *args): pass
+    def set_attribute(self, key, value):
+        pass
+
+    def set_status(self, *args, **kwargs):
+        pass
+
+    def record_exception(self, exc):
+        pass
+
+    def add_event(self, name, attributes=None):
+        pass
+
+    def get_span_context(self):
+        return None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
 
 class _NoOpTracer:
-    def start_span(self, name, **kwargs): return _NoOpSpan()
+    def start_span(self, name, **kwargs):
+        return _NoOpSpan()
+
     def start_as_current_span(self, name, **kwargs):
         return _NoOpContextManager()
 
+
 class _NoOpContextManager:
-    def __init__(self): self._span = _NoOpSpan()
-    def __enter__(self): return self._span
-    def __exit__(self, *args): pass
-    async def __aenter__(self): return self._span
-    async def __aexit__(self, *args): pass
+    def __init__(self):
+        self._span = _NoOpSpan()
+
+    def __enter__(self):
+        return self._span
+
+    def __exit__(self, *args):
+        pass
+
+    async def __aenter__(self):
+        return self._span
+
+    async def __aexit__(self, *args):
+        pass
 
 
 # ── Tracer Initialization ──────────────────────────────────────────────────
 _tracer = None
+
 
 def init_tracer(
     service_name: str = "ai-org",
@@ -76,11 +103,13 @@ def init_tracer(
         "OTEL_EXPORTER_OTLP_ENDPOINT", "http://jaeger:4317"
     )
 
-    resource = Resource(attributes={
-        "service.name":    service_name,
-        "service.version": "2.0.0",
-        "deployment.env":  os.getenv("ENVIRONMENT", "development"),
-    })
+    resource = Resource(
+        attributes={
+            "service.name": service_name,
+            "service.version": "2.0.0",
+            "deployment.env": os.getenv("ENVIRONMENT", "development"),
+        }
+    )
 
     provider = TracerProvider(resource=resource)
 
@@ -135,7 +164,7 @@ def create_span(
     name: str,
     attributes: Optional[Dict[str, Any]] = None,
     parent_context=None,
-    kind: str = "internal",   # "internal" | "server" | "client" | "producer" | "consumer"
+    kind: str = "internal",  # "internal" | "server" | "client" | "producer" | "consumer"
 ):
     """
     Context manager that creates a named span.
@@ -153,8 +182,8 @@ def create_span(
 
     span_kind_map = {
         "internal": SpanKind.INTERNAL,
-        "server":   SpanKind.SERVER,
-        "client":   SpanKind.CLIENT,
+        "server": SpanKind.SERVER,
+        "client": SpanKind.CLIENT,
         "producer": SpanKind.PRODUCER,
         "consumer": SpanKind.CONSUMER,
     }
@@ -165,7 +194,14 @@ def create_span(
     ) as span:
         if attributes:
             for key, value in attributes.items():
-                span.set_attribute(key, str(value) if not isinstance(value, (str, int, float, bool)) else value)
+                span.set_attribute(
+                    key,
+                    (
+                        str(value)
+                        if not isinstance(value, (str, int, float, bool))
+                        else value
+                    ),
+                )
         try:
             yield span
             span.set_status(Status(StatusCode.OK))
@@ -196,6 +232,7 @@ def traced(span_name: Optional[str] = None, attributes: Optional[Dict] = None):
         async def analyze_idea(self, idea: str):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         name = span_name or f"{func.__module__}.{func.__qualname__}"
 
@@ -210,6 +247,7 @@ def traced(span_name: Optional[str] = None, attributes: Optional[Dict] = None):
                 return func(*args, **kwargs)
 
         import asyncio as _asyncio
+
         if _asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

@@ -5,8 +5,11 @@ Tests cosine similarity, expert ranking, and routing score computation.
 
 import pytest
 from moe.scoring import (
-    cosine_similarity, task_type_to_vector,
-    compute_expert_score, rank_experts, should_use_ensemble
+    cosine_similarity,
+    task_type_to_vector,
+    compute_expert_score,
+    rank_experts,
+    should_use_ensemble,
 )
 
 
@@ -68,8 +71,10 @@ class TestTaskTypeToVector:
 
     def test_context_enrichment(self):
         """Context should boost relevant dimensions."""
-        v_no_ctx  = task_type_to_vector("code_review")
-        v_with_ctx = task_type_to_vector("code_review", context="python fastapi sqlalchemy")
+        v_no_ctx = task_type_to_vector("code_review")
+        v_with_ctx = task_type_to_vector(
+            "code_review", context="python fastapi sqlalchemy"
+        )
         # Backend dimension should be higher with context
         assert v_with_ctx[2] >= v_no_ctx[2]
 
@@ -77,11 +82,14 @@ class TestTaskTypeToVector:
 class TestComputeExpertScore:
     def test_perfect_match_idle_expert(self):
         """Expert with identical vector and no load should score high."""
-        task_v   = [0.9, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+        task_v = [0.9, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
         expert_v = [0.9, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
         score, breakdown = compute_expert_score(
-            task_vector=task_v, expert_vector=expert_v,
-            load_factor=0.0, success_rate=1.0, avg_cost_usd=0.01
+            task_vector=task_v,
+            expert_vector=expert_v,
+            load_factor=0.0,
+            success_rate=1.0,
+            avg_cost_usd=0.01,
         )
         assert score > 0.8
         assert breakdown["similarity"] == pytest.approx(1.0, abs=1e-4)
@@ -89,14 +97,14 @@ class TestComputeExpertScore:
 
     def test_overloaded_expert_penalized(self):
         """Expert at full capacity should score lower."""
-        task_v   = [0.9, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+        task_v = [0.9, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
         expert_v = [0.9, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
         score_idle, _ = compute_expert_score(task_v, expert_v, 0.0, 1.0, 0.01)
         score_full, _ = compute_expert_score(task_v, expert_v, 1.0, 1.0, 0.01)
         assert score_idle > score_full
 
     def test_score_in_range(self):
-        task_v   = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        task_v = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
         expert_v = [0.3, 0.7, 0.2, 0.8, 0.4, 0.6, 0.1, 0.9]
         score, _ = compute_expert_score(task_v, expert_v, 0.5, 0.8, 0.05)
         assert 0.0 <= score <= 1.0
@@ -116,7 +124,11 @@ class TestRankExperts:
         return {
             "CEO": {"load_factor": 0.0, "success_rate": 1.0, "avg_cost_usd": 0.03},
             "CTO": {"load_factor": 0.3, "success_rate": 0.95, "avg_cost_usd": 0.05},
-            "Engineer_Backend": {"load_factor": 0.8, "success_rate": 0.90, "avg_cost_usd": 0.08},
+            "Engineer_Backend": {
+                "load_factor": 0.8,
+                "success_rate": 0.90,
+                "avg_cost_usd": 0.08,
+            },
         }
 
     def test_strategy_task_selects_ceo(self, sample_experts, sample_stats):
@@ -130,7 +142,11 @@ class TestRankExperts:
         task_v = task_type_to_vector("backend_code")
         # Engineer_Backend is loaded (0.8) but should still be top for backend
         stats_low_load = {**sample_stats}
-        stats_low_load["Engineer_Backend"] = {"load_factor": 0.1, "success_rate": 0.95, "avg_cost_usd": 0.05}
+        stats_low_load["Engineer_Backend"] = {
+            "load_factor": 0.1,
+            "success_rate": 0.95,
+            "avg_cost_usd": 0.05,
+        }
         rankings = rank_experts(task_v, sample_experts, stats_low_load)
         assert rankings[0][0] == "Engineer_Backend"
 
@@ -139,11 +155,17 @@ class TestRankExperts:
         stats_full = {
             "CEO": {"load_factor": 0.0, "success_rate": 1.0, "avg_cost_usd": 0.03},
             "CTO": {"load_factor": 1.0, "success_rate": 0.95, "avg_cost_usd": 0.05},
-            "Engineer_Backend": {"load_factor": 1.0, "success_rate": 0.90, "avg_cost_usd": 0.08},
+            "Engineer_Backend": {
+                "load_factor": 1.0,
+                "success_rate": 0.90,
+                "avg_cost_usd": 0.08,
+            },
         }
         task_v = task_type_to_vector("backend_code")
-        rankings = rank_experts(task_v, sample_experts, stats_full, exclude_overloaded=True)
-        overloaded_roles = {r[0] for r in rankings if r[0] in ["CTO", "Engineer_Backend"]}
+        rankings = rank_experts(
+            task_v, sample_experts, stats_full, exclude_overloaded=True
+        )
+
         # These should be excluded
         assert "CTO" not in [r[0] for r in rankings]
         assert "Engineer_Backend" not in [r[0] for r in rankings]
@@ -157,10 +179,10 @@ class TestRankExperts:
 
 class TestEnsemble:
     def test_ensemble_triggered_close_scores(self):
-        assert should_use_ensemble(0.75, 0.72) is True    # Gap < 0.10
+        assert should_use_ensemble(0.75, 0.72) is True  # Gap < 0.10
 
     def test_ensemble_triggered_low_confidence(self):
-        assert should_use_ensemble(0.60, 0.40) is True    # Top < threshold
+        assert should_use_ensemble(0.60, 0.40) is True  # Top < threshold
 
     def test_no_ensemble_clear_winner(self):
-        assert should_use_ensemble(0.95, 0.60) is False   # Clear winner, high confidence
+        assert should_use_ensemble(0.95, 0.60) is False  # Clear winner, high confidence

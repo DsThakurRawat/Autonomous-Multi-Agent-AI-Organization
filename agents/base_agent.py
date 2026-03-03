@@ -16,6 +16,7 @@ logger = structlog.get_logger(__name__)
 
 class AgentToolCall:
     """Represents a tool invocation request from an agent."""
+
     def __init__(self, tool_name: str, parameters: Dict[str, Any]):
         self.tool_name = tool_name
         self.parameters = parameters
@@ -43,7 +44,7 @@ class BaseAgent(ABC):
         self,
         llm_client=None,
         tools: Dict[str, Callable] = None,
-        model_name: str = "gpt-4-turbo-preview"
+        model_name: str = "gpt-4-turbo-preview",
     ):
         self.llm_client = llm_client
         self.tools = tools or {}
@@ -74,7 +75,7 @@ class BaseAgent(ABC):
         messages: List[Dict[str, str]],
         temperature: float = 0.3,
         max_tokens: int = 4096,
-        response_format: Optional[str] = None   # "json_object" | None
+        response_format: Optional[str] = None,  # "json_object" | None
     ) -> str:
         """
         Unified LLM call with retry and fallback.
@@ -84,10 +85,7 @@ class BaseAgent(ABC):
             # Demo/mock mode
             return self._mock_llm_response(messages)
 
-        full_messages = [
-            {"role": "system", "content": self.system_prompt},
-            *messages
-        ]
+        full_messages = [{"role": "system", "content": self.system_prompt}, *messages]
 
         try:
             # Try primary LLM
@@ -97,7 +95,11 @@ class BaseAgent(ABC):
                 messages=full_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **({"response_format": {"type": response_format}} if response_format else {})
+                **(
+                    {"response_format": {"type": response_format}}
+                    if response_format
+                    else {}
+                ),
             )
             return response.choices[0].message.content
 
@@ -108,14 +110,15 @@ class BaseAgent(ABC):
     def _mock_llm_response(self, messages: List[Dict[str, str]]) -> str:
         """Deterministic mock response for demo mode."""
         last_user_msg = next(
-            (m["content"] for m in reversed(messages) if m["role"] == "user"),
-            ""
+            (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
         )
-        return json.dumps({
-            "status": "mock_response",
-            "agent": self.ROLE,
-            "response": f"[{self.ROLE}] Processed: {last_user_msg[:100]}"
-        })
+        return json.dumps(
+            {
+                "status": "mock_response",
+                "agent": self.ROLE,
+                "response": f"[{self.ROLE}] Processed: {last_user_msg[:100]}",
+            }
+        )
 
     # ── Tool Calling ───────────────────────────────────────────────
     async def use_tool(self, tool_name: str, **kwargs) -> Any:
@@ -140,11 +143,13 @@ class BaseAgent(ABC):
     # ── Memory Access ──────────────────────────────────────────────
     def add_to_scratchpad(self, role: str, content: str):
         """Add to agent's private reasoning scratchpad."""
-        self._scratchpad.append({
-            "role": role,
-            "content": content,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self._scratchpad.append(
+            {
+                "role": role,
+                "content": content,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     def get_scratchpad_messages(self) -> List[Dict[str, str]]:
         """Return scratchpad as LLM message format."""
@@ -176,7 +181,7 @@ Return JSON: {{"scores": {{}}, "issues": [], "improvements": [], "approved": tru
             raw = await self.call_llm(
                 [{"role": "user", "content": critique_prompt}],
                 temperature=0.1,
-                response_format="json_object"
+                response_format="json_object",
             )
             critique = json.loads(raw)
             output["_critique"] = critique

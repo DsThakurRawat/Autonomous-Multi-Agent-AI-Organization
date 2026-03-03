@@ -5,7 +5,7 @@ Finance agent reads/writes here; all agents can query budget availability.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -18,10 +18,10 @@ class CostEntry:
         operation: str,
         amount_usd: float,
         agent_role: str,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ):
-        self.service = service          # AWS service name
-        self.operation = operation      # e.g., "ECS RunTask", "S3 PutObject"
+        self.service = service  # AWS service name
+        self.operation = operation  # e.g., "ECS RunTask", "S3 PutObject"
         self.amount_usd = amount_usd
         self.agent_role = agent_role
         self.metadata = metadata or {}
@@ -34,7 +34,7 @@ class CostEntry:
             "amount_usd": self.amount_usd,
             "agent_role": self.agent_role,
             "metadata": self.metadata,
-            "timestamp": self.timestamp.isoformat()
+            "timestamp": self.timestamp.isoformat(),
         }
 
 
@@ -48,7 +48,7 @@ class CostLedger:
         self.project_id = project_id
         self.budget_usd = budget_usd
         self._entries: List[CostEntry] = []
-        self.alert_threshold_pct: float = 0.80    # Alert at 80% spend
+        self.alert_threshold_pct: float = 0.80  # Alert at 80% spend
         self._budget_exceeded_callbacks = []
         logger.info("CostLedger initialized", project_id=project_id, budget=budget_usd)
 
@@ -58,7 +58,7 @@ class CostLedger:
         operation: str,
         amount_usd: float,
         agent_role: str,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ):
         """Record a cost event."""
         entry = CostEntry(service, operation, amount_usd, agent_role, metadata)
@@ -70,7 +70,7 @@ class CostLedger:
             service=service,
             amount=amount_usd,
             total_spent=total,
-            budget=self.budget_usd
+            budget=self.budget_usd,
         )
 
         # Trigger alerts
@@ -78,8 +78,7 @@ class CostLedger:
             logger.warning("BUDGET EXCEEDED", total=total, budget=self.budget_usd)
         elif total / self.budget_usd >= self.alert_threshold_pct:
             logger.warning(
-                "Budget threshold reached",
-                pct=round(total / self.budget_usd * 100, 1)
+                "Budget threshold reached", pct=round(total / self.budget_usd * 100, 1)
             )
 
     def total_spent(self) -> float:
@@ -111,8 +110,7 @@ class CostLedger:
         if not self._entries:
             return 0.0
         elapsed_hours = max(
-            (datetime.utcnow() - self._entries[0].timestamp).total_seconds() / 3600,
-            0.1
+            (datetime.utcnow() - self._entries[0].timestamp).total_seconds() / 3600, 0.1
         )
         hourly_rate = self.total_spent() / elapsed_hours
         return round(hourly_rate * 24 * 30, 2)
@@ -147,5 +145,5 @@ class CostLedger:
             "by_service": self.by_service(),
             "by_agent": self.by_agent(),
             "optimization_hints": self.get_optimization_hints(),
-            "entry_count": len(self._entries)
+            "entry_count": len(self._entries),
         }

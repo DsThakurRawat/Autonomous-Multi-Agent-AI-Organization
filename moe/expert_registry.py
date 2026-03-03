@@ -5,8 +5,7 @@ for all registered agent experts.
 """
 
 import asyncio
-import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 import structlog
 
@@ -20,7 +19,13 @@ logger = structlog.get_logger(__name__)
 EXPERT_CAPABILITY_VECTORS = {
     "CEO": {
         "vector": [0.95, 0.40, 0.10, 0.10, 0.10, 0.10, 0.60, 0.40],
-        "skills": ["strategy", "vision", "planning", "risk_assessment", "product_definition"],
+        "skills": [
+            "strategy",
+            "vision",
+            "planning",
+            "risk_assessment",
+            "product_definition",
+        ],
         "description": "Business strategy, MVP scoping, market analysis",
         "preferred_models": ["gpt-4-turbo-preview", "claude-3-sonnet-20240229"],
         "avg_task_tokens": 3000,
@@ -28,7 +33,13 @@ EXPERT_CAPABILITY_VECTORS = {
     },
     "CTO": {
         "vector": [0.50, 0.95, 0.50, 0.30, 0.40, 0.60, 0.70, 0.80],
-        "skills": ["architecture", "tech_stack", "database_design", "api_contracts", "cost_estimation"],
+        "skills": [
+            "architecture",
+            "tech_stack",
+            "database_design",
+            "api_contracts",
+            "cost_estimation",
+        ],
         "description": "Technical architecture, stack decisions, cost modeling",
         "preferred_models": ["gpt-4-turbo-preview", "claude-3-sonnet-20240229"],
         "avg_task_tokens": 4000,
@@ -36,7 +47,15 @@ EXPERT_CAPABILITY_VECTORS = {
     },
     "Engineer_Backend": {
         "vector": [0.10, 0.40, 0.95, 0.10, 0.60, 0.40, 0.30, 0.50],
-        "skills": ["python", "fastapi", "sqlalchemy", "postgresql", "redis", "authentication", "api_design"],
+        "skills": [
+            "python",
+            "fastapi",
+            "sqlalchemy",
+            "postgresql",
+            "redis",
+            "authentication",
+            "api_design",
+        ],
         "description": "FastAPI backend, DB models, CRUD APIs, auth",
         "preferred_models": ["claude-3-sonnet-20240229", "gpt-4-turbo-preview"],
         "avg_task_tokens": 8000,
@@ -44,7 +63,14 @@ EXPERT_CAPABILITY_VECTORS = {
     },
     "Engineer_Frontend": {
         "vector": [0.10, 0.20, 0.10, 0.95, 0.50, 0.10, 0.20, 0.30],
-        "skills": ["react", "nextjs", "typescript", "tailwind", "ui_design", "api_integration"],
+        "skills": [
+            "react",
+            "nextjs",
+            "typescript",
+            "tailwind",
+            "ui_design",
+            "api_integration",
+        ],
         "description": "Next.js frontend, React components, mobile-responsive",
         "preferred_models": ["claude-3-sonnet-20240229", "gpt-4-turbo-preview"],
         "avg_task_tokens": 6000,
@@ -52,7 +78,14 @@ EXPERT_CAPABILITY_VECTORS = {
     },
     "QA": {
         "vector": [0.20, 0.30, 0.60, 0.60, 0.95, 0.30, 0.20, 0.75],
-        "skills": ["testing", "pytest", "security_scanning", "coverage", "api_testing", "validation"],
+        "skills": [
+            "testing",
+            "pytest",
+            "security_scanning",
+            "coverage",
+            "api_testing",
+            "validation",
+        ],
         "description": "Unit/integration tests, security scan, coverage analysis",
         "preferred_models": ["gpt-4-turbo-preview", "claude-3-sonnet-20240229"],
         "avg_task_tokens": 5000,
@@ -60,7 +93,15 @@ EXPERT_CAPABILITY_VECTORS = {
     },
     "DevOps": {
         "vector": [0.20, 0.60, 0.50, 0.20, 0.40, 0.95, 0.60, 0.70],
-        "skills": ["terraform", "aws", "docker", "kubernetes", "cicd", "monitoring", "deployment"],
+        "skills": [
+            "terraform",
+            "aws",
+            "docker",
+            "kubernetes",
+            "cicd",
+            "monitoring",
+            "deployment",
+        ],
         "description": "IaC, Docker, ECS/EKS deployment, CI/CD pipelines",
         "preferred_models": ["gpt-4-turbo-preview", "claude-3-sonnet-20240229"],
         "avg_task_tokens": 7000,
@@ -68,7 +109,13 @@ EXPERT_CAPABILITY_VECTORS = {
     },
     "Finance": {
         "vector": [0.40, 0.30, 0.10, 0.10, 0.10, 0.20, 0.95, 0.20],
-        "skills": ["cost_tracking", "budget_governance", "aws_pricing", "optimization", "reporting"],
+        "skills": [
+            "cost_tracking",
+            "budget_governance",
+            "aws_pricing",
+            "optimization",
+            "reporting",
+        ],
         "description": "Cost analysis, budget monitoring, optimization recommendations",
         "preferred_models": ["gpt-4-turbo-preview"],
         "avg_task_tokens": 2000,
@@ -78,23 +125,23 @@ EXPERT_CAPABILITY_VECTORS = {
 
 # Task type → expert mapping (direct routing)
 TASK_TYPE_TO_EXPERT = {
-    "strategy":         "CEO",
-    "vision":           "CEO",
-    "business_plan":    "CEO",
-    "architecture":     "CTO",
-    "tech_stack":       "CTO",
-    "database_design":  "CTO",
-    "backend_code":     "Engineer_Backend",
-    "api_generation":   "Engineer_Backend",
-    "frontend_code":    "Engineer_Frontend",
-    "ui_generation":    "Engineer_Frontend",
-    "testing":          "QA",
-    "security_scan":    "QA",
-    "deployment":       "DevOps",
-    "terraform":        "DevOps",
-    "infrastructure":   "DevOps",
-    "cost_analysis":    "Finance",
-    "budget_review":    "Finance",
+    "strategy": "CEO",
+    "vision": "CEO",
+    "business_plan": "CEO",
+    "architecture": "CTO",
+    "tech_stack": "CTO",
+    "database_design": "CTO",
+    "backend_code": "Engineer_Backend",
+    "api_generation": "Engineer_Backend",
+    "frontend_code": "Engineer_Frontend",
+    "ui_generation": "Engineer_Frontend",
+    "testing": "QA",
+    "security_scan": "QA",
+    "deployment": "DevOps",
+    "terraform": "DevOps",
+    "infrastructure": "DevOps",
+    "cost_analysis": "Finance",
+    "budget_review": "Finance",
 }
 
 
@@ -102,36 +149,36 @@ class ExpertStats:
     """Runtime statistics for an expert agent — updated in real-time."""
 
     def __init__(self, role: str, max_concurrent: int):
-        self.role            = role
-        self.max_concurrent  = max_concurrent
-        self.current_load:   int   = 0            # active tasks
-        self.total_tasks:    int   = 0
-        self.failed_tasks:   int   = 0
+        self.role = role
+        self.max_concurrent = max_concurrent
+        self.current_load: int = 0  # active tasks
+        self.total_tasks: int = 0
+        self.failed_tasks: int = 0
         self.total_cost_usd: float = 0.0
-        self.total_tokens:   int   = 0
-        self.latencies_ms:   List[float] = []     # rolling window (last 100)
-        self.last_active:    Optional[datetime] = None
+        self.total_tokens: int = 0
+        self.latencies_ms: List[float] = []  # rolling window (last 100)
+        self.last_active: Optional[datetime] = None
         self._lock = asyncio.Lock()
 
     async def record_start(self):
         async with self._lock:
-            self.current_load    += 1
-            self.total_tasks     += 1
-            self.last_active      = datetime.utcnow()
+            self.current_load += 1
+            self.total_tasks += 1
+            self.last_active = datetime.utcnow()
 
     async def record_complete(self, latency_ms: float, cost_usd: float, tokens: int):
         async with self._lock:
-            self.current_load    = max(0, self.current_load - 1)
+            self.current_load = max(0, self.current_load - 1)
             self.total_cost_usd += cost_usd
-            self.total_tokens   += tokens
+            self.total_tokens += tokens
             self.latencies_ms.append(latency_ms)
-            if len(self.latencies_ms) > 100:        # Rolling window
+            if len(self.latencies_ms) > 100:  # Rolling window
                 self.latencies_ms.pop(0)
 
     async def record_failure(self, latency_ms: float):
         async with self._lock:
-            self.current_load   = max(0, self.current_load - 1)
-            self.failed_tasks  += 1
+            self.current_load = max(0, self.current_load - 1)
+            self.failed_tasks += 1
             self.latencies_ms.append(latency_ms)
 
     @property
@@ -166,17 +213,17 @@ class ExpertStats:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "role":             self.role,
-            "current_load":     self.current_load,
-            "max_concurrent":   self.max_concurrent,
-            "load_factor":      round(self.load_factor, 3),
-            "success_rate":     round(self.success_rate, 3),
-            "p95_latency_ms":   round(self.p95_latency_ms, 1),
-            "total_tasks":      self.total_tasks,
-            "failed_tasks":     self.failed_tasks,
-            "total_cost_usd":   round(self.total_cost_usd, 4),
-            "avg_cost_usd":     round(self.avg_cost_per_task_usd, 4),
-            "last_active":      self.last_active.isoformat() if self.last_active else None,
+            "role": self.role,
+            "current_load": self.current_load,
+            "max_concurrent": self.max_concurrent,
+            "load_factor": round(self.load_factor, 3),
+            "success_rate": round(self.success_rate, 3),
+            "p95_latency_ms": round(self.p95_latency_ms, 1),
+            "total_tasks": self.total_tasks,
+            "failed_tasks": self.failed_tasks,
+            "total_cost_usd": round(self.total_cost_usd, 4),
+            "avg_cost_usd": round(self.avg_cost_per_task_usd, 4),
+            "last_active": self.last_active.isoformat() if self.last_active else None,
         }
 
 
@@ -210,17 +257,16 @@ class ExpertRegistry:
 
     def _register(self, role: str, config: Dict[str, Any]):
         self._experts[role] = {
-            "role":              role,
-            "vector":            config["vector"],
-            "skills":            config["skills"],
-            "description":       config["description"],
-            "preferred_models":  config["preferred_models"],
-            "avg_task_tokens":   config["avg_task_tokens"],
-            "max_concurrent":    config["max_concurrent"],
+            "role": role,
+            "vector": config["vector"],
+            "skills": config["skills"],
+            "description": config["description"],
+            "preferred_models": config["preferred_models"],
+            "avg_task_tokens": config["avg_task_tokens"],
+            "max_concurrent": config["max_concurrent"],
         }
         self._stats[role] = ExpertStats(
-            role=role,
-            max_concurrent=config["max_concurrent"]
+            role=role, max_concurrent=config["max_concurrent"]
         )
 
     def get_expert(self, role: str) -> Optional[Dict[str, Any]]:
@@ -239,7 +285,9 @@ class ExpertRegistry:
         if role in self._stats:
             await self._stats[role].record_start()
 
-    async def record_task_complete(self, role: str, latency_ms: float, cost_usd: float, tokens: int):
+    async def record_task_complete(
+        self, role: str, latency_ms: float, cost_usd: float, tokens: int
+    ):
         if role in self._stats:
             await self._stats[role].record_complete(latency_ms, cost_usd, tokens)
 

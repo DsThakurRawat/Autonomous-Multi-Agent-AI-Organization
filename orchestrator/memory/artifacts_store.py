@@ -16,12 +16,12 @@ logger = structlog.get_logger(__name__)
 class Artifact:
     def __init__(
         self,
-        artifact_type: str,     # code, docker_image, url, document, report
+        artifact_type: str,  # code, docker_image, url, document, report
         name: str,
         content: Any,
         agent_role: str,
         tags: List[str] = None,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ):
         self.id = f"{artifact_type}_{name}_{int(datetime.utcnow().timestamp())}"
         self.artifact_type = artifact_type
@@ -50,7 +50,7 @@ class Artifact:
             "created_at": self.created_at.isoformat(),
             "s3_uri": self.s3_uri,
             "local_path": self.local_path,
-            "content_preview": content_preview
+            "content_preview": content_preview,
         }
 
 
@@ -66,7 +66,11 @@ class ArtifactsStore:
         self._s3 = s3_client
         self._artifacts: Dict[str, Artifact] = {}
         os.makedirs(self.output_dir, exist_ok=True)
-        logger.info("ArtifactsStore initialized", project_id=project_id, output_dir=self.output_dir)
+        logger.info(
+            "ArtifactsStore initialized",
+            project_id=project_id,
+            output_dir=self.output_dir,
+        )
 
     def save(
         self,
@@ -76,14 +80,16 @@ class ArtifactsStore:
         agent_role: str,
         tags: List[str] = None,
         metadata: Dict[str, Any] = None,
-        file_extension: str = ".txt"
+        file_extension: str = ".txt",
     ) -> Artifact:
         """Save an artifact and persist to disk."""
         artifact = Artifact(artifact_type, name, content, agent_role, tags, metadata)
 
         # Persist to local filesystem
         safe_name = name.replace("/", "_").replace(" ", "_")
-        local_path = os.path.join(self.output_dir, artifact_type, f"{safe_name}{file_extension}")
+        local_path = os.path.join(
+            self.output_dir, artifact_type, f"{safe_name}{file_extension}"
+        )
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
         with open(local_path, "w", encoding="utf-8") as f:
@@ -100,7 +106,7 @@ class ArtifactsStore:
             artifact_id=artifact.id,
             type=artifact_type,
             name=name,
-            agent=agent_role
+            agent=agent_role,
         )
         return artifact
 
@@ -113,7 +119,7 @@ class ArtifactsStore:
             content=content,
             agent_role=agent_role,
             tags=["code", ext.lstrip(".")],
-            file_extension=ext
+            file_extension=ext,
         )
 
     def get_by_type(self, artifact_type: str) -> List[Artifact]:
@@ -131,10 +137,7 @@ class ArtifactsStore:
 
     def get_all_code_files(self) -> Dict[str, str]:
         """Returns {file_path: content} for all generated code."""
-        return {
-            a.name: a.content
-            for a in self.get_by_type("code")
-        }
+        return {a.name: a.content for a in self.get_by_type("code")}
 
     def manifest(self) -> Dict[str, Any]:
         """Full artifact index for display/download."""
@@ -145,5 +148,5 @@ class ArtifactsStore:
             "project_id": self.project_id,
             "total_artifacts": len(self._artifacts),
             "by_type": by_type,
-            "output_dir": self.output_dir
+            "output_dir": self.output_dir,
         }

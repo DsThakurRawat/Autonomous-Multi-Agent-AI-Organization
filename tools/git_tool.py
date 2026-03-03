@@ -12,9 +12,9 @@ logger = structlog.get_logger(__name__)
 
 
 class GitTool(BaseTool):
-    NAME        = "git_tool"
+    NAME = "git_tool"
     DESCRIPTION = "Git repository operations: init, clone, commit, push, branch"
-    TIMEOUT_S   = 60
+    TIMEOUT_S = 60
 
     def __init__(self, repo_path: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
@@ -22,18 +22,20 @@ class GitTool(BaseTool):
 
     async def run(self, action: str, **kwargs) -> ToolResult:
         actions = {
-            "init":     self._init,
-            "clone":    self._clone,
-            "add":      self._add,
-            "commit":   self._commit,
-            "push":     self._push,
-            "status":   self._status,
-            "diff":     self._diff,
-            "log":      self._log,
+            "init": self._init,
+            "clone": self._clone,
+            "add": self._add,
+            "commit": self._commit,
+            "push": self._push,
+            "status": self._status,
+            "diff": self._diff,
+            "log": self._log,
         }
         fn = actions.get(action)
         if not fn:
-            return ToolResult(success=False, output="", error=f"Unknown git action: {action}")
+            return ToolResult(
+                success=False, output="", error=f"Unknown git action: {action}"
+            )
         return await fn(**kwargs)
 
     async def _init(self, path: Optional[str] = None) -> ToolResult:
@@ -43,9 +45,11 @@ class GitTool(BaseTool):
         if result.success:
             # Configure git identity for automated commits
             await self._run_subprocess(
-                ["git", "config", "user.email", "ai-org@example.com"], cwd=target)
+                ["git", "config", "user.email", "ai-org@example.com"], cwd=target
+            )
             await self._run_subprocess(
-                ["git", "config", "user.name", "AI Organization Bot"], cwd=target)
+                ["git", "config", "user.name", "AI Organization Bot"], cwd=target
+            )
         return result
 
     async def _clone(self, url: str, target_dir: Optional[str] = None) -> ToolResult:
@@ -68,7 +72,9 @@ class GitTool(BaseTool):
         )
 
     async def _status(self) -> ToolResult:
-        return await self._run_subprocess(["git", "status", "--short"], cwd=self.repo_path)
+        return await self._run_subprocess(
+            ["git", "status", "--short"], cwd=self.repo_path
+        )
 
     async def _diff(self, staged: bool = False) -> ToolResult:
         cmd = ["git", "diff"]

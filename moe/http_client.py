@@ -6,7 +6,6 @@ Python router.py calls this when MOE_RUST_URL env var is set.
 Falls back to pure-Python scoring if the service is unavailable.
 """
 
-import asyncio
 import os
 import time
 from typing import Any, Dict, List, Optional
@@ -17,14 +16,18 @@ logger = structlog.get_logger(__name__)
 # Try aiohttp first (preferred), fall back to httpx
 try:
     import aiohttp
+
     _HTTP_LIB = "aiohttp"
 except ImportError:
     try:
         import httpx
+
         _HTTP_LIB = "httpx"
     except ImportError:
         _HTTP_LIB = None
-        logger.warning("No async HTTP library available (aiohttp or httpx). Install one for Rust MoE support.")
+        logger.warning(
+            "No async HTTP library available (aiohttp or httpx). Install one for Rust MoE support."
+        )
 
 
 class RustMoeClient:
@@ -39,10 +42,12 @@ class RustMoeClient:
     """
 
     def __init__(self, base_url: Optional[str] = None, timeout_sec: float = 2.0):
-        self.base_url   = (base_url or os.getenv("MOE_RUST_URL", "http://localhost:8090")).rstrip("/")
-        self.timeout    = timeout_sec
-        self._available: Optional[bool] = None   # None = not yet checked
-        self._session   = None
+        self.base_url = (
+            base_url or os.getenv("MOE_RUST_URL", "http://localhost:8090")
+        ).rstrip("/")
+        self.timeout = timeout_sec
+        self._available: Optional[bool] = None  # None = not yet checked
+        self._session = None
 
     async def _get_session(self):
         """Lazily create and reuse HTTP session."""
@@ -66,41 +71,44 @@ class RustMoeClient:
             return up
         except Exception:
             if self._available is not False:
-                logger.warning("Rust MoE service unreachable — falling back to Python scorer", url=self.base_url)
+                logger.warning(
+                    "Rust MoE service unreachable — falling back to Python scorer",
+                    url=self.base_url,
+                )
             self._available = False
             return False
 
     async def route(
         self,
-        task_id:         str,
-        task_type:       str,
-        task_name:       str,
-        project_id:      str,
-        input_context:   str = "",
+        task_id: str,
+        task_type: str,
+        task_name: str,
+        project_id: str,
+        input_context: str = "",
         required_skills: List[str] = None,
-        priority:        str = "medium",
-        force_ensemble:  bool = False,
-        trace_id:        str = "",
-        experts:         Optional[Dict[str, Any]] = None,
-        stats:           Optional[Dict[str, Any]] = None,
+        priority: str = "medium",
+        force_ensemble: bool = False,
+        trace_id: str = "",
+        experts: Optional[Dict[str, Any]] = None,
+        stats: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Route a task via the Rust service.
         Returns the RouteResponse dict or None if the service is unavailable.
         """
         if self._available is False:
-            return None   # Fast path: don't even try
+            return None  # Fast path: don't even try
 
         payload = {
-            "task_id":         task_id,
-            "task_type":       task_type,
-            "task_name":       task_name,
-            "project_id":      project_id,
-            "input_context":   input_context,
+            "task_id": task_id,
+            "task_type": task_type,
+            "task_name": task_name,
+            "project_id": project_id,
+            "input_context": input_context,
             "required_skills": required_skills or [],
-            "priority":        priority,
-            "force_ensemble":  force_ensemble,
-            "trace_id":        trace_id,
+            "priority": priority,
+            "force_ensemble": force_ensemble,
+            "trace_id": trace_id,
         }
         if experts:
             payload["experts"] = experts
@@ -114,9 +122,9 @@ class RustMoeClient:
             self._available = True
             logger.debug(
                 "Rust MoE routing complete",
-                expert    = result.get("selected_expert"),
-                score     = result.get("routing_score"),
-                latency_ms = round(latency, 2),
+                expert=result.get("selected_expert"),
+                score=result.get("routing_score"),
+                latency_ms=round(latency, 2),
             )
             return result
         except Exception as e:
@@ -126,17 +134,19 @@ class RustMoeClient:
 
     async def route_batch(
         self,
-        tasks:   List[Dict[str, Any]],
+        tasks: List[Dict[str, Any]],
         experts: Optional[Dict[str, Any]] = None,
-        stats:   Optional[Dict[str, Any]] = None,
+        stats: Optional[Dict[str, Any]] = None,
     ) -> Optional[List[Dict[str, Any]]]:
         """Route multiple tasks in a single HTTP call (much faster than N serial calls)."""
         if self._available is False:
             return None
         try:
             payload: Dict[str, Any] = {"tasks": tasks}
-            if experts: payload["experts"] = experts
-            if stats:   payload["stats"]   = stats
+            if experts:
+                payload["experts"] = experts
+            if stats:
+                payload["stats"] = stats
             result = await self._post("/route/batch", payload)
             return result.get("decisions", [])
         except Exception as e:
@@ -184,6 +194,7 @@ class RustMoeClient:
 # ── Module-level singleton ────────────────────────────────────────────────────
 # Shared client — reuses sessions for efficiency
 _client: Optional[RustMoeClient] = None
+
 
 def get_rust_client() -> Optional[RustMoeClient]:
     """

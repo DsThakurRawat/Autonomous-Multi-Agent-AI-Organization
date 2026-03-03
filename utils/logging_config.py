@@ -2,6 +2,7 @@
 Logging configuration for the AI Organization system.
 Structured JSON logging via structlog for CloudWatch compatibility.
 """
+
 import logging
 import structlog
 import sys
@@ -23,13 +24,11 @@ def configure_logging(level: str = "INFO", json_output: bool = False):
         # Production: JSON for CloudWatch
         processors = shared_processors + [
             structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer()
+            structlog.processors.JSONRenderer(),
         ]
     else:
         # Development: colored console
-        processors = shared_processors + [
-            structlog.dev.ConsoleRenderer(colors=True)
-        ]
+        processors = shared_processors + [structlog.dev.ConsoleRenderer(colors=True)]
 
     structlog.configure(
         processors=processors,
@@ -42,5 +41,5 @@ def configure_logging(level: str = "INFO", json_output: bool = False):
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
-        level=getattr(logging, level.upper(), logging.INFO)
+        level=getattr(logging, level.upper(), logging.INFO),
     )

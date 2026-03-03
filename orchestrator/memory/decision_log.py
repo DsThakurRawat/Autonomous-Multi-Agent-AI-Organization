@@ -18,14 +18,14 @@ class DecisionRecord:
     def __init__(
         self,
         agent_role: str,
-        decision_type: str,       # architecture, code, deploy, risk, cost
+        decision_type: str,  # architecture, code, deploy, risk, cost
         description: str,
         rationale: str,
         input_context: Dict[str, Any],
         output: Dict[str, Any],
         confidence: float = 1.0,
         alternatives_considered: List[str] = None,
-        tags: List[str] = None
+        tags: List[str] = None,
     ):
         self.id = str(uuid.uuid4())
         self.agent_role = agent_role
@@ -52,7 +52,7 @@ class DecisionRecord:
             "tags": self.tags,
             "timestamp": self.timestamp.isoformat(),
             "superseded_by": self.superseded_by,
-            "output_summary": {k: str(v)[:200] for k, v in self.output.items()}
+            "output_summary": {k: str(v)[:200] for k, v in self.output.items()},
         }
 
 
@@ -77,7 +77,7 @@ class DecisionLog:
         output: Dict[str, Any],
         confidence: float = 1.0,
         alternatives: List[str] = None,
-        tags: List[str] = None
+        tags: List[str] = None,
     ) -> str:
         """Log a new decision and return its ID."""
         record = DecisionRecord(
@@ -89,7 +89,7 @@ class DecisionLog:
             output=output,
             confidence=confidence,
             alternatives_considered=alternatives or [],
-            tags=tags or []
+            tags=tags or [],
         )
         self._records.append(record)
         logger.info(
@@ -97,7 +97,7 @@ class DecisionLog:
             decision_id=record.id,
             agent=agent_role,
             type=decision_type,
-            description=description[:80]
+            description=description[:80],
         )
         return record.id
 
@@ -111,10 +111,13 @@ class DecisionLog:
         """Return all decisions sorted by time."""
         return [r.to_dict() for r in sorted(self._records, key=lambda x: x.timestamp)]
 
-    def get_low_confidence_decisions(self, threshold: float = 0.7) -> List[Dict[str, Any]]:
+    def get_low_confidence_decisions(
+        self, threshold: float = 0.7
+    ) -> List[Dict[str, Any]]:
         """Surface decisions that might need human review."""
         return [
-            r.to_dict() for r in self._records
+            r.to_dict()
+            for r in self._records
             if r.confidence < threshold and not r.superseded_by
         ]
 
@@ -139,6 +142,7 @@ class DecisionLog:
             "low_confidence_count": len(self.get_low_confidence_decisions()),
             "avg_confidence": (
                 sum(r.confidence for r in self._records) / len(self._records)
-                if self._records else 0.0
-            )
+                if self._records
+                else 0.0
+            ),
         }

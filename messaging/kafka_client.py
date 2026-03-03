@@ -21,7 +21,8 @@ logger = structlog.get_logger(__name__)
 try:
     from kafka import KafkaProducer, KafkaConsumer
     from kafka.admin import KafkaAdminClient, NewTopic
-    from kafka.errors import KafkaError, TopicAlreadyExistsError
+    from kafka.errors import TopicAlreadyExistsError
+
     KAFKA_AVAILABLE = True
 except ImportError:
     KAFKA_AVAILABLE = False
@@ -34,6 +35,7 @@ class _InMemoryBus:
     Simple in-process pub/sub bus used when Kafka is not available.
     Enables full local development and testing without a real Kafka cluster.
     """
+
     def __init__(self):
         self._queues: Dict[str, asyncio.Queue] = {}
         self._subscribers: Dict[str, List[Callable]] = {}
@@ -83,14 +85,16 @@ class KafkaProducerClient:
     def __init__(
         self,
         bootstrap_servers: Optional[str] = None,
-        client_id: str = "ai-org-producer"
+        client_id: str = "ai-org-producer",
     ):
         self.bootstrap_servers = bootstrap_servers or os.getenv(
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
         self.client_id = client_id
         self._producer = None
-        self._use_mock = not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
+        self._use_mock = (
+            not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
+        )
 
         if not self._use_mock:
             self._init_real_producer()
@@ -98,7 +102,7 @@ class KafkaProducerClient:
         logger.info(
             "KafkaProducerClient initialized",
             mode="mock" if self._use_mock else "real",
-            servers=self.bootstrap_servers
+            servers=self.bootstrap_servers,
         )
 
     def _init_real_producer(self):
@@ -106,19 +110,23 @@ class KafkaProducerClient:
             self._producer = KafkaProducer(
                 bootstrap_servers=self.bootstrap_servers,
                 client_id=self.client_id,
-                value_serializer=lambda v: v if isinstance(v, bytes) else v.encode("utf-8"),
+                value_serializer=lambda v: (
+                    v if isinstance(v, bytes) else v.encode("utf-8")
+                ),
                 key_serializer=lambda k: k.encode("utf-8") if k else None,
-                acks="all",                          # Wait for all replicas
+                acks="all",  # Wait for all replicas
                 retries=5,
                 max_in_flight_requests_per_connection=1,  # Preserve ordering
-                enable_idempotence=True,             # Exactly-once semantics
+                enable_idempotence=True,  # Exactly-once semantics
                 compression_type="gzip",
-                linger_ms=5,                         # Small batching window
-                batch_size=32768,                    # 32KB batch
+                linger_ms=5,  # Small batching window
+                batch_size=32768,  # 32KB batch
             )
             logger.info("Kafka real producer connected", servers=self.bootstrap_servers)
         except Exception as e:
-            logger.warning("Kafka producer failed to connect, falling back to mock", error=str(e))
+            logger.warning(
+                "Kafka producer failed to connect, falling back to mock", error=str(e)
+            )
             self._use_mock = True
 
     async def publish(
@@ -142,11 +150,7 @@ class KafkaProducerClient:
                 kafka_headers = [(k, v.encode("utf-8")) for k, v in headers.items()]
 
             future = await asyncio.to_thread(
-                self._producer.send,
-                topic,
-                value=value,
-                key=key,
-                headers=kafka_headers
+                self._producer.send, topic, value=value, key=key, headers=kafka_headers
             )
             await asyncio.to_thread(future.get, timeout=10)
             logger.debug("Kafka message published", topic=topic, key=key)
@@ -191,7 +195,9 @@ class KafkaConsumerClient:
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
         self._consumer = None
-        self._use_mock = not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
+        self._use_mock = (
+            not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
+        )
         self._running = False
 
         if not self._use_mock:
@@ -199,8 +205,9 @@ class KafkaConsumerClient:
 
         logger.info(
             "KafkaConsumerClient initialized",
-            topics=topics, group_id=group_id,
-            mode="mock" if self._use_mock else "real"
+            topics=topics,
+            group_id=group_id,
+            mode="mock" if self._use_mock else "real",
         )
 
     def _init_real_consumer(self, auto_offset_reset: str):
@@ -210,11 +217,11 @@ class KafkaConsumerClient:
                 bootstrap_servers=self.bootstrap_servers,
                 group_id=self.group_id,
                 auto_offset_reset=auto_offset_reset,
-                enable_auto_commit=False,            # Manual commit for reliability
+                enable_auto_commit=False,  # Manual commit for reliability
                 max_poll_records=50,
                 session_timeout_ms=30000,
                 heartbeat_interval_ms=10000,
-                value_deserializer=lambda v: v,      # Return raw bytes
+                value_deserializer=lambda v: v,  # Return raw bytes
                 key_deserializer=lambda k: k.decode("utf-8") if k else None,
             )
             logger.info("Kafka real consumer connected", topics=self.topics)
@@ -229,7 +236,9 @@ class KafkaConsumerClient:
         """
         if self._use_mock:
             try:
-                messages = await _dev_bus.consume_batch(self.topics, self.group_id, timeout_ms)
+                messages = await _dev_bus.consume_batch(
+                    self.topics, self.group_id, timeout_ms
+                )
                 return messages[0] if messages else None
             except Exception:
                 return None
@@ -273,7 +282,9 @@ class KafkaConsumerClient:
         self._running = True
         dlq_producer = KafkaProducerClient() if dlq_topic else None
 
-        logger.info("Kafka consumer loop started", topics=self.topics, group=self.group_id)
+        logger.info(
+            "Kafka consumer loop started", topics=self.topics, group=self.group_id
+        )
 
         while self._running:
             msg = await self.consume_one(timeout_ms=1000)
@@ -287,12 +298,15 @@ class KafkaConsumerClient:
 
             while retry <= max_retries and not success:
                 try:
-                    await handler(msg["value"], {
-                        "topic": msg.get("topic"),
-                        "key": msg.get("key"),
-                        "headers": msg.get("headers", {}),
-                        "timestamp": msg.get("timestamp"),
-                    })
+                    await handler(
+                        msg["value"],
+                        {
+                            "topic": msg.get("topic"),
+                            "key": msg.get("key"),
+                            "headers": msg.get("headers", {}),
+                            "timestamp": msg.get("timestamp"),
+                        },
+                    )
                     success = True
 
                     # Commit offset after successful processing
@@ -305,21 +319,16 @@ class KafkaConsumerClient:
                         "Handler failed, retrying",
                         attempt=retry,
                         max=max_retries,
-                        error=str(e)
+                        error=str(e),
                     )
                     if retry <= max_retries:
-                        await asyncio.sleep(2 ** retry)  # Exponential backoff
+                        await asyncio.sleep(2**retry)  # Exponential backoff
 
             if not success and dlq_producer and dlq_topic:
                 logger.error(
-                    "Message sent to DLQ after max retries",
-                    dlq_topic=dlq_topic
+                    "Message sent to DLQ after max retries", dlq_topic=dlq_topic
                 )
-                await dlq_producer.publish(
-                    dlq_topic,
-                    msg["value"],
-                    key=msg.get("key")
-                )
+                await dlq_producer.publish(dlq_topic, msg["value"], key=msg.get("key"))
 
     def stop(self):
         """Gracefully stop the consumer loop."""
@@ -340,7 +349,9 @@ class KafkaAdminManager:
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
         self._admin = None
-        self._use_mock = not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
+        self._use_mock = (
+            not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
+        )
 
     def ensure_topics(self, topic_configs: Dict[str, Dict]) -> Dict[str, bool]:
         """
@@ -348,7 +359,9 @@ class KafkaAdminManager:
         Returns dict of {topic: created_bool}.
         """
         if self._use_mock:
-            logger.info("Mock mode: skipping topic creation", topics=list(topic_configs.keys()))
+            logger.info(
+                "Mock mode: skipping topic creation", topics=list(topic_configs.keys())
+            )
             return {t: True for t in topic_configs}
 
         try:

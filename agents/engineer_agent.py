@@ -53,14 +53,16 @@ class EngineerAgent(BaseAgent):
 
     @property
     def system_prompt(self) -> str:
-        return BACKEND_SYSTEM_PROMPT if self.mode == "backend" else FRONTEND_SYSTEM_PROMPT
+        return (
+            BACKEND_SYSTEM_PROMPT if self.mode == "backend" else FRONTEND_SYSTEM_PROMPT
+        )
 
     async def run(
         self,
         task: Any = None,
         context: Any = None,
         architecture: Dict[str, Any] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         arch = context.memory.architecture if context else (architecture or {})
         files = {}
@@ -556,7 +558,7 @@ class EngineerAgent(BaseAgent):
         ''').strip()
 
     def _generate_backend_dockerfile(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             FROM python:3.11-slim AS builder
             WORKDIR /app
             COPY requirements.txt .
@@ -578,10 +580,10 @@ class EngineerAgent(BaseAgent):
                 CMD curl -f http://localhost:8000/health || exit 1
 
             CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
-        ''').strip()
+        """).strip()
 
     def _generate_backend_requirements(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             fastapi==0.109.2
             uvicorn[standard]==0.27.1
             pydantic[email]==2.6.1
@@ -596,47 +598,50 @@ class EngineerAgent(BaseAgent):
             redis==5.0.2
             httpx==0.26.0
             structlog==24.1.0
-        ''').strip()
+        """).strip()
 
     def _generate_package_json(self) -> str:
-        return json.dumps({
-            "name": "ai-org-frontend",
-            "version": "1.0.0",
-            "private": True,
-            "scripts": {
-                "dev": "next dev",
-                "build": "next build",
-                "start": "next start -p 3000",
-                "lint": "next lint",
-                "type-check": "tsc --noEmit"
+        return json.dumps(
+            {
+                "name": "ai-org-frontend",
+                "version": "1.0.0",
+                "private": True,
+                "scripts": {
+                    "dev": "next dev",
+                    "build": "next build",
+                    "start": "next start -p 3000",
+                    "lint": "next lint",
+                    "type-check": "tsc --noEmit",
+                },
+                "dependencies": {
+                    "next": "14.1.0",
+                    "react": "^18.2.0",
+                    "react-dom": "^18.2.0",
+                    "@tanstack/react-query": "^5.17.19",
+                    "axios": "^1.6.7",
+                    "zod": "^3.22.4",
+                    "react-hook-form": "^7.49.3",
+                    "@hookform/resolvers": "^3.3.4",
+                    "lucide-react": "^0.323.0",
+                    "clsx": "^2.1.0",
+                },
+                "devDependencies": {
+                    "typescript": "^5",
+                    "@types/node": "^20",
+                    "@types/react": "^18",
+                    "@types/react-dom": "^18",
+                    "tailwindcss": "^3.4.1",
+                    "autoprefixer": "^10.0.1",
+                    "postcss": "^8",
+                    "eslint": "^8",
+                    "eslint-config-next": "14.1.0",
+                },
             },
-            "dependencies": {
-                "next": "14.1.0",
-                "react": "^18.2.0",
-                "react-dom": "^18.2.0",
-                "@tanstack/react-query": "^5.17.19",
-                "axios": "^1.6.7",
-                "zod": "^3.22.4",
-                "react-hook-form": "^7.49.3",
-                "@hookform/resolvers": "^3.3.4",
-                "lucide-react": "^0.323.0",
-                "clsx": "^2.1.0"
-            },
-            "devDependencies": {
-                "typescript": "^5",
-                "@types/node": "^20",
-                "@types/react": "^18",
-                "@types/react-dom": "^18",
-                "tailwindcss": "^3.4.1",
-                "autoprefixer": "^10.0.1",
-                "postcss": "^8",
-                "eslint": "^8",
-                "eslint-config-next": "14.1.0"
-            }
-        }, indent=2)
+            indent=2,
+        )
 
     def _generate_next_config(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             /** @type {import('next').NextConfig} */
             const nextConfig = {
               output: 'standalone',
@@ -645,33 +650,41 @@ class EngineerAgent(BaseAgent):
               },
             };
             module.exports = nextConfig;
-        ''').strip()
+        """).strip()
 
     def _generate_tsconfig(self) -> str:
-        return json.dumps({
-            "compilerOptions": {
-                "target": "ES2017",
-                "lib": ["dom", "dom.iterable", "esnext"],
-                "allowJs": True,
-                "skipLibCheck": True,
-                "strict": True,
-                "noEmit": True,
-                "esModuleInterop": True,
-                "module": "esnext",
-                "moduleResolution": "bundler",
-                "resolveJsonModule": True,
-                "isolatedModules": True,
-                "jsx": "preserve",
-                "incremental": True,
-                "plugins": [{"name": "next"}],
-                "paths": {"@/*": ["./*"]}
+        return json.dumps(
+            {
+                "compilerOptions": {
+                    "target": "ES2017",
+                    "lib": ["dom", "dom.iterable", "esnext"],
+                    "allowJs": True,
+                    "skipLibCheck": True,
+                    "strict": True,
+                    "noEmit": True,
+                    "esModuleInterop": True,
+                    "module": "esnext",
+                    "moduleResolution": "bundler",
+                    "resolveJsonModule": True,
+                    "isolatedModules": True,
+                    "jsx": "preserve",
+                    "incremental": True,
+                    "plugins": [{"name": "next"}],
+                    "paths": {"@/*": ["./*"]},
+                },
+                "include": [
+                    "next-env.d.ts",
+                    "**/*.ts",
+                    "**/*.tsx",
+                    ".next/types/**/*.ts",
+                ],
+                "exclude": ["node_modules"],
             },
-            "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-            "exclude": ["node_modules"]
-        }, indent=2)
+            indent=2,
+        )
 
     def _generate_home_page(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             import Link from 'next/link';
             export default function Home() {
               return (
@@ -695,10 +708,10 @@ class EngineerAgent(BaseAgent):
                 </main>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_layout(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             import type { Metadata } from 'next';
             import { Inter } from 'next/font/google';
             import './globals.css';
@@ -717,10 +730,10 @@ class EngineerAgent(BaseAgent):
                 </html>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_dashboard_page(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             import { useState, useEffect } from 'react';
             import Navbar from '@/components/Navbar';
@@ -762,10 +775,10 @@ class EngineerAgent(BaseAgent):
                 </div>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_login_page(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             import { useState } from 'react';
             import { useRouter } from 'next/navigation';
@@ -808,10 +821,10 @@ class EngineerAgent(BaseAgent):
                 </div>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_navbar(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             import Link from 'next/link';
             export default function Navbar() {
@@ -826,10 +839,10 @@ class EngineerAgent(BaseAgent):
                 </nav>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_data_table(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             interface Item { id: string; title: string; description?: string; status: string; created_at: string; }
             export default function DataTable({ items }: { items: Item[] }) {
@@ -867,10 +880,10 @@ class EngineerAgent(BaseAgent):
                 </div>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_api_client(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             import axios from 'axios';
             const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             export const api = axios.create({ baseURL: API_URL });
@@ -889,10 +902,10 @@ class EngineerAgent(BaseAgent):
                 return Promise.reject(err);
               }
             );
-        ''').strip()
+        """).strip()
 
     def _generate_frontend_dockerfile(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             FROM node:20-alpine AS builder
             WORKDIR /app
             COPY package*.json ./
@@ -915,4 +928,4 @@ class EngineerAgent(BaseAgent):
             HEALTHCHECK --interval=30s --timeout=5s \\
                 CMD wget -qO- http://localhost:3000/api/health || exit 1
             CMD ["node", "server.js"]
-        ''').strip()
+        """).strip()

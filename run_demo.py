@@ -4,16 +4,13 @@ Quick-start demo runner.
 Runs the full AI company pipeline locally without AWS — simulates all agent outputs.
 Usage: python run_demo.py "Your business idea here"
 """
+
 import asyncio
 import sys
-import json
 from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-from rich.live import Live
-from rich.layout import Layout
 from rich import box
 
 console = Console()
@@ -22,12 +19,14 @@ console = Console()
 async def run_full_demo(idea: str):
     """Simulate the full multi-agent pipeline with rich console output."""
 
-    console.print(Panel.fit(
-        f"[bold bright_magenta]🏢 Autonomous Multi-Agent AI Organization[/]\n"
-        f"[dim]AI Company in a Box — Demo Mode[/]\n\n"
-        f"[bold white]Business Idea:[/] {idea}",
-        border_style="bright_magenta"
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold bright_magenta]🏢 Autonomous Multi-Agent AI Organization[/]\n"
+            f"[dim]AI Company in a Box — Demo Mode[/]\n\n"
+            f"[bold white]Business Idea:[/] {idea}",
+            border_style="bright_magenta",
+        )
+    )
 
     # Import agents
     from agents.ceo_agent import CEOAgent
@@ -82,14 +81,15 @@ async def run_full_demo(idea: str):
             self.decision_log = decision_log
             self.cost_ledger = cost_ledger
             self.artifacts = artifacts
-        async def emit_event(self, e): pass
+
+        async def emit_event(self, e):
+            pass
 
     mock_ctx = MockCtx()
 
     with console.status("[cyan]Generating backend + frontend code in parallel...[/]"):
         results = await asyncio.gather(
-            eng_be.run(context=mock_ctx),
-            eng_fe.run(context=mock_ctx)
+            eng_be.run(context=mock_ctx), eng_fe.run(context=mock_ctx)
         )
         await asyncio.sleep(0.5)
 
@@ -106,8 +106,12 @@ async def run_full_demo(idea: str):
 
     tr = qa_result["test_results"]
     console.print(f"  ✅ Tests: [green]{tr['passed']}/{tr['total']} passed[/]")
-    console.print(f"  ✅ Security: [green]{qa_result['security_scan']['high_severity']} high-severity[/] issues")
-    console.print(f"  ✅ Coverage: [green]{qa_result['coverage']['line_coverage_pct']}%[/]")
+    console.print(
+        f"  ✅ Security: [green]{qa_result['security_scan']['high_severity']} high-severity[/] issues"
+    )
+    console.print(
+        f"  ✅ Coverage: [green]{qa_result['coverage']['line_coverage_pct']}%[/]"
+    )
 
     # ── Phase 5: DevOps ───────────────────────────────────────────
     console.print("\n[bold bright_cyan]🚀 DevOps Agent[/] — Deployment Phase")
@@ -117,9 +121,13 @@ async def run_full_demo(idea: str):
         deployment = devops_result["deployment"]
         await asyncio.sleep(0.5)
 
-    console.print(f"  ✅ Infra: [green]{len(devops_result['infrastructure_files'])} Terraform files[/]")
+    console.print(
+        f"  ✅ Infra: [green]{len(devops_result['infrastructure_files'])} Terraform files[/]"
+    )
     console.print(f"  ✅ Deployed: [bright_cyan link]{deployment['public_url']}[/]")
-    console.print(f"  ✅ HTTPS: [green]{'Enabled' if deployment['https_enabled'] else 'Disabled'}[/]")
+    console.print(
+        f"  ✅ HTTPS: [green]{'Enabled' if deployment['https_enabled'] else 'Disabled'}[/]"
+    )
 
     # ── Phase 6: Finance ──────────────────────────────────────────
     console.print("\n[bold magenta]💰 Finance Agent[/] — Cost Analysis")
@@ -131,7 +139,9 @@ async def run_full_demo(idea: str):
     bov = fin_result["budget_overview"]
     console.print(f"  💵 Spent: [yellow]${bov['current_spend_usd']:.2f}[/] of $200")
     console.print(f"  📊 Status: {bov['status']}")
-    console.print(f"  💡 {len(fin_result['optimizations'])} optimization opportunities found")
+    console.print(
+        f"  💡 {len(fin_result['optimizations'])} optimization opportunities found"
+    )
 
     # ── Final Summary ─────────────────────────────────────────────
     _print_summary(project_id, idea, deployment, fin_result, artifacts)
@@ -143,7 +153,7 @@ def _print_plan(plan):
     table.add_column("Priority", style="yellow")
     for f in plan.get("mvp_features", [])[:5]:
         if isinstance(f, dict):
-            table.add_row(f.get("name",""), f.get("priority","P1"))
+            table.add_row(f.get("name", ""), f.get("priority", "P1"))
         else:
             table.add_row(str(f), "P1")
     console.print(table)
@@ -153,31 +163,38 @@ def _print_arch(arch):
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold")
     table.add_column("Layer", style="cyan")
     table.add_column("Technology", style="white")
-    for k, v in [("Frontend", arch.get("frontend",{}).get("framework","Next.js")),
-                 ("Backend", arch.get("backend",{}).get("framework","FastAPI")),
-                 ("Database", arch.get("database",{}).get("type","PostgreSQL")),
-                 ("Cloud", "AWS ECS Fargate"),
-                 ("Est. Cost", f"${arch.get('estimated_monthly_cost_usd',95)}/mo")]:
+    for k, v in [
+        ("Frontend", arch.get("frontend", {}).get("framework", "Next.js")),
+        ("Backend", arch.get("backend", {}).get("framework", "FastAPI")),
+        ("Database", arch.get("database", {}).get("type", "PostgreSQL")),
+        ("Cloud", "AWS ECS Fargate"),
+        ("Est. Cost", f"${arch.get('estimated_monthly_cost_usd',95)}/mo"),
+    ]:
         table.add_row(k, str(v))
     console.print(table)
 
 
 def _print_summary(project_id, idea, deployment, fin_result, artifacts):
-    console.print(Panel(
-        f"[bold bright_green]🎉 PROJECT COMPLETE![/]\n\n"
-        f"[bold white]Idea:[/] {idea[:60]}\n"
-        f"[bold white]Project ID:[/] {project_id}\n\n"
-        f"[bold white]🌐 Public URL:[/] [bright_cyan]{deployment['public_url']}[/]\n"
-        f"[bold white]💰 Total Cost:[/] ${fin_result['budget_overview']['current_spend_usd']:.2f}/mo\n"
-        f"[bold white]📦 Artifacts:[/] {len(artifacts._artifacts)} files generated\n"
-        f"[bold white]⏱ Time:[/] ~19 seconds (production would be ~3-5 min)\n\n"
-        f"[dim]Output saved to: ./output/{project_id}/[/]",
-        border_style="bright_green",
-        title="[bold]AI Company in a Box — Results[/]"
-    ))
+    console.print(
+        Panel(
+            f"[bold bright_green]🎉 PROJECT COMPLETE![/]\n\n"
+            f"[bold white]Idea:[/] {idea[:60]}\n"
+            f"[bold white]Project ID:[/] {project_id}\n\n"
+            f"[bold white]🌐 Public URL:[/] [bright_cyan]{deployment['public_url']}[/]\n"
+            f"[bold white]💰 Total Cost:[/] ${fin_result['budget_overview']['current_spend_usd']:.2f}/mo\n"
+            f"[bold white]📦 Artifacts:[/] {len(artifacts._artifacts)} files generated\n"
+            f"[bold white]⏱ Time:[/] ~19 seconds (production would be ~3-5 min)\n\n"
+            f"[dim]Output saved to: ./output/{project_id}/[/]",
+            border_style="bright_green",
+            title="[bold]AI Company in a Box — Results[/]",
+        )
+    )
 
 
 if __name__ == "__main__":
-    idea = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else \
-        "Build a SaaS platform for student internship application tracking"
+    idea = (
+        " ".join(sys.argv[1:])
+        if len(sys.argv) > 1
+        else "Build a SaaS platform for student internship application tracking"
+    )
     asyncio.run(run_full_demo(idea))
