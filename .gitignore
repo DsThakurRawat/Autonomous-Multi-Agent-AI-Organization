@@ -1,5 +1,12 @@
-# Python
+# ═══════════════════════════════════════════════════════
+# Autonomous Multi-Agent AI Organization — .gitignore
+# Works for: Python, Node.js, Rust, TypeScript, Docker
+# ═══════════════════════════════════════════════════════
+
+# ── Python ──────────────────────────────────────────────
 venv/
+.venv/
+env/
 __pycache__/
 *.pyc
 *.pyo
@@ -9,26 +16,99 @@ __pycache__/
 dist/
 build/
 .eggs/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+*.log
 
-# Output (generated per-run artifacts - don't commit)
-output/
+# ── Node / TypeScript / Next.js ─────────────────────────
+node_modules/
+.next/
+.nuxt/
+out/
+dist/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
 
-# Environment variables (NEVER commit secrets)
+# ── Rust ────────────────────────────────────────────────
+target/
+Cargo.lock
+**/*.rs.bk
+
+# ── Environment / Secrets (NEVER commit these) ──────────
 .env
+.env.local
+.env.development
+.env.production
+.env.staging
+*.pem
+*.key
+*.cert
+*.p12
+secrets/
+credentials/
 
-# IDE
+# ── Output / Generated per-run (not source code) ────────
+output/
+generated/
+artifacts/
+
+# ── Docker ──────────────────────────────────────────────
+*.dockerignore
+docker-volumes/
+
+# ── IDE / Editor ────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
+.vim/
 
-# OS
+# ── OS ──────────────────────────────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Docker
+# ── Terraform ───────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ── K8s / Helm ──────────────────────────────────────────
+charts/*.tgz
+
+# ── Jupyter ─────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Logs ────────────────────────────────────────────────
+logs/
 *.log
-
-# Node (if frontend is ever generated locally)
-node_modules/
-.next/
+npm-debug.log*
