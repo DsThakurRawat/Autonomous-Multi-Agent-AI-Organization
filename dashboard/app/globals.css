@@ -1,0 +1,182 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --bg-primary:   #0a0a0f;
+  --bg-secondary: #111118;
+  --bg-card:      #16161f;
+  --bg-hover:     #1c1c28;
+  --bg-border:    #252535;
+
+  --accent-blue:   #4f8ef7;
+  --accent-purple: #8b5cf6;
+  --accent-cyan:   #22d3ee;
+  --accent-green:  #10b981;
+  --accent-amber:  #f59e0b;
+  --accent-red:    #ef4444;
+
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #4b5563;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23252535' fill-opacity='0.25'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a50; }
+
+/* ── Component Classes ──────────────────────────────────────── */
+@layer components {
+
+  /* Cards */
+  .card {
+    @apply bg-[#16161f] border border-[#252535] rounded-xl p-4;
+  }
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-[#3a3a55] hover:bg-[#1c1c28];
+  }
+
+  /* Glassmorphism */
+  .glass {
+    background: rgba(22, 22, 31, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(37, 37, 53, 0.8);
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-success  { @apply badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/20; }
+  .badge-warning  { @apply badge bg-amber-500/15 text-amber-400 border border-amber-500/20; }
+  .badge-error    { @apply badge bg-red-500/15 text-red-400 border border-red-500/20; }
+  .badge-info     { @apply badge bg-blue-500/15 text-blue-400 border border-blue-500/20; }
+  .badge-purple   { @apply badge bg-purple-500/15 text-purple-400 border border-purple-500/20; }
+  .badge-pending  { @apply badge bg-slate-500/15 text-slate-400 border border-slate-500/20; }
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500
+           text-white text-sm font-medium transition-all duration-150 active:scale-95;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#252535] hover:bg-[#2e2e42]
+           text-text-primary text-sm font-medium transition-all duration-150 active:scale-95;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-[#1c1c28]
+           text-text-secondary hover:text-text-primary text-sm transition-all duration-150;
+  }
+
+  /* Glow effects */
+  .glow-blue   { box-shadow: 0 0 20px rgba(79, 142, 247, 0.3); }
+  .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+  .glow-green  { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+
+  /* Metric card */
+  .metric-card {
+    @apply card flex flex-col gap-1;
+  }
+  .metric-value {
+    @apply text-2xl font-bold text-text-primary font-mono;
+  }
+  .metric-label {
+    @apply text-xs text-text-muted uppercase tracking-wider;
+  }
+  .metric-delta {
+    @apply text-xs font-medium;
+  }
+
+  /* Log line */
+  .log-line {
+    @apply flex gap-2 text-xs font-mono py-1 border-b border-[#1c1c28] last:border-0 animate-fade-in;
+  }
+
+  /* Agent avatar */
+  .agent-avatar {
+    @apply w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0;
+  }
+
+  /* Pulse dot */
+  .pulse-dot {
+    @apply w-2 h-2 rounded-full;
+    animation: pulse-ring 2s ease-out infinite;
+  }
+}
+
+@layer utilities {
+  .text-gradient-blue {
+    background: linear-gradient(135deg, #4f8ef7, #22d3ee);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-purple {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .border-gradient {
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+/* ── Custom Animations ──────────────────────────────────────── */
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 1; }
+  70%  { transform: scale(1.4); opacity: 0.3; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── React Flow Custom Styles ──────────────────────────────── */
+.react-flow__node {
+  font-family: var(--font-inter) !important;
+}
+.react-flow__background {
+  background-color: var(--bg-secondary) !important;
+}
+.react-flow__edge-path {
+  stroke: #4f8ef7 !important;
+  stroke-width: 2;
+}
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+@keyframes dashdraw {
+  to { stroke-dashoffset: -10; }
+}
