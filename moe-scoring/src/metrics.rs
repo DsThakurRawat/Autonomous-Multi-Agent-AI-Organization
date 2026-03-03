@@ -33,6 +33,7 @@ pub static ENSEMBLE_DECISIONS: Lazy<IntCounter> = Lazy::new(|| {
 });
 
 /// Total HTTP requests
+#[allow(dead_code)]
 pub static HTTP_REQUESTS: Lazy<CounterVec> = Lazy::new(|| {
     register_counter_vec!(
         "moe_http_requests_total",

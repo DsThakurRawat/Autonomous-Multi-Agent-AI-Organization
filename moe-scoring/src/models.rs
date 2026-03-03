@@ -6,6 +6,7 @@ use std::collections::HashMap;
 /// Capability vector dimensions:
 /// [strategy, architecture, backend_code, frontend_code,
 ///  testing, devops, cost_optimization, security]
+#[allow(dead_code)]
 pub const VECTOR_DIM: usize = 8;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +38,7 @@ pub struct Expert {
 
 // ── Route Request ─────────────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct RouteRequest {
     pub task_id:         String,
@@ -113,6 +115,7 @@ pub struct HealthResponse {
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
     pub error:   String,

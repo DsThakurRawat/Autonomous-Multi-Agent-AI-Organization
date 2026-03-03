@@ -1,5 +1,5 @@
 /// Scoring engine — direct port of moe/scoring.py with f64 SIMD-friendly ops.
-use crate::models::{Expert, ExpertScore, ExpertStats, VECTOR_DIM};
+use crate::models::{Expert, ExpertScore, ExpertStats};
 
 // ── Scoring Weights (must sum to 1.0) ─────────────────────────────────────────
 const WEIGHT_SIMILARITY: f64 = 0.40;
