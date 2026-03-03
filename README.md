@@ -224,13 +224,15 @@ terraform plan
 terraform apply
 ```
 
-## Upcoming Architectural Roadmap
+## Enterprise Features Integrated
 
-Based on recent deep analyses of leading open-source agent frameworks (`hive`, `moltbot`, `cli`), our roadmap includes:
+Based on deep architectural analyses of leading open-source frameworks, the following production-ready features are fully integrated into this organization:
 
-1. **Agent Rewinding & Checkpointing**: Implementing a shadow Git branch tracker (inspired by `cli`) to allow instant rollback of agent states if they spiral into a hallucination feedback loop. Checkpoints will allow engineers to resume from known-good compilation vectors.
-2. **Adaptive Self-Healing Loops**: Replacing static pipelines with a Goal-Driven Graph that automatically recalculates and retries on QA/DevOps compilation failures, dynamically altering implementation techniques (inspired by `hive`).
-3. **Unified Control Gateway**: Moving beyond the CLI and web interface to a WebSockets-based Gateway exposing agents to external client interfaces securely.
+1. **State Memory & Agent Rewinding**: Utilizing a shadow Git branch tracker (`ai-org/checkpoints/v1`), the Orchestrator instantly check-points the workspace and internal AI memory after every task completion. If an agent loops, the system allows for an instant rollback via the WebSockets gateway.
+2. **Adaptive Goal-Driven Graph Generation**: Pre-computed linear tasks are deprecated. The Orhestrator dynamically reads the Business idea and utilizes a master Core LLM to generate a customized, zero-cycle DAG graph JSON dynamically matching project requirements.
+3. **Omni-Channel Control Plane**: A fully bi-directional WebSockets gateway server replacing static REST APIs. Out of the box, it supports direct webhook integration for Slack, Discord, and Telegram to seamlessly pass chat and system commands into the API.
+4. **Execution Sandboxing**: By default, the Engineer and QA agents suffer execution boundaries. All generated bash/Python execution code is routed transparently into an ephemeral `python:3.11-slim` Docker container structurally mapped offline (`--network=none`).
+5. **Dynamic Skills Registry**: The QA and Engineer agents optionally load missing dependencies out of band via a simulated marketplace plugin resolver (`tools/skills_registry.py`).
 
 ## Contributing
 
@@ -245,6 +247,20 @@ We welcome contributions from the community to help build tools, integrations, a
 ## Security
 
 Please report vulnerabilities directly via issues instead of opening public exploit PRs. Maintainers will coordinate security patching.
+
+## Tech Stack & Observability
+
+This framework unifies multiple disciplines across Web Development, Orchestration, AI Integration, and Infrastructure Automation:
+
+- **AI Inference Engine**: Google Gemini 2.5 Flash
+- **Orchestration / Task DAG Backend**: Python 3.11+ / FastAPI
+- **Real-Time Mesh Event Bus**: Apache Kafka / ZooKeeper
+- **Dynamic Routing Server**: Rust / Cargo (MoE Engine)
+- **Deployment Control Plane**: Docker Compose, Kubernetes (Helm), Terraform
+- **Live Observability Interface**: Next.js 14, TailwindCSS, WebSockets Dashboard
+- **Telemetry & Monitoring Layer**: Prometheus Hooks (Port 8000), JSON Structured Logging (Structlog), Contextual Traces
+
+---
 
 ## License
 
