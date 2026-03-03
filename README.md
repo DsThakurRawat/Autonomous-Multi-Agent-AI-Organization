@@ -1,4 +1,4 @@
-# 🏢 Autonomous Multi-Agent AI Organization
+# Autonomous Multi-Agent AI Organization
 
 ## "AI Company in a Box"
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # 1. Clone and enter directory
@@ -29,7 +29,7 @@ open http://localhost:3000
 
 ---
 
-## 🏗 Architecture Overview
+## Architecture Overview
 
 ```
 User Idea Input
@@ -53,7 +53,7 @@ Monitoring + Self-Critique Loop
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 ├── orchestrator/          # Core orchestration engine
@@ -80,7 +80,7 @@ Monitoring + Self-Critique Loop
 
 ---
 
-## 🧠 Agent Roles
+## Agent Roles
 
 | Agent | Responsibility | Tools |
 |-------|---------------|-------|
@@ -94,7 +94,7 @@ Monitoring + Self-Critique Loop
 
 ---
 
-## ☁️ AWS Stack
+## AWS Stack
 
 | Component | Service |
 |-----------|---------|
@@ -112,7 +112,7 @@ Monitoring + Self-Critique Loop
 
 ---
 
-## 📊 Dashboard Features
+## Dashboard Features
 
 - Real-time agent collaboration view
 - Task graph visualization
@@ -123,7 +123,7 @@ Monitoring + Self-Critique Loop
 
 ---
 
-## 🔐 Security
+## Security
 
 - IAM least-privilege per agent
 - Sandboxed code execution
