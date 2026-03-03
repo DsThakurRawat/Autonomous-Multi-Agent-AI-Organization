@@ -89,19 +89,40 @@ class BaseAgent(ABC):
 
         try:
             # Try primary LLM
-            response = await asyncio.to_thread(
-                self.llm_client.chat.completions.create,
-                model=self.model_name,
-                messages=full_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **(
-                    {"response_format": {"type": response_format}}
-                    if response_format
-                    else {}
-                ),
-            )
-            return response.choices[0].message.content
+            if hasattr(self.llm_client, "messages"):
+                # Anthropic API
+                system_prompt = self.system_prompt
+                if response_format == "json_object":
+                    system_prompt += "\n\nYou must output valid JSON only."
+                ant_messages = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in messages
+                    if m["role"] != "system"
+                ]
+                response = await asyncio.to_thread(
+                    self.llm_client.messages.create,
+                    model=self.model_name,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    system=system_prompt,
+                    messages=ant_messages,
+                )
+                return response.content[0].text
+            else:
+                # OpenAI API
+                response = await asyncio.to_thread(
+                    self.llm_client.chat.completions.create,
+                    model=self.model_name,
+                    messages=full_messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    **(
+                        {"response_format": {"type": response_format}}
+                        if response_format
+                        else {}
+                    ),
+                )
+                return response.choices[0].message.content
 
         except Exception as e:
             logger.error("LLM call failed", error=str(e), agent=self.ROLE)

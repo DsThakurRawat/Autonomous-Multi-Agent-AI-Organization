@@ -7,7 +7,13 @@ Usage: python run_demo.py "Your business idea here"
 
 import asyncio
 import sys
+import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+from openai import OpenAI
+from anthropic import Anthropic
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -40,6 +46,26 @@ async def run_full_demo(idea: str):
     from orchestrator.memory.cost_ledger import CostLedger
     from orchestrator.memory.artifacts_store import ArtifactsStore
 
+    # Load environment variables
+    load_dotenv()
+
+    # Dynamic LLM Setup
+    llm_client = None
+    model_name = "gpt-4-turbo-preview"
+
+    if os.getenv("ANTHROPIC_API_KEY"):
+        llm_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        model_name = "claude-3-opus-20240229"
+        console.print("[dim]LLM initialized: Anthropics Claude[/]")
+    elif os.getenv("OPENAI_API_KEY"):
+        llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        model_name = "gpt-4-turbo-preview"
+        console.print("[dim]LLM initialized: OpenAI GPT-4[/]")
+    else:
+        console.print(
+            "[yellow bold]⚠️ No LLM API keys found. Agents will run in mock mode.[ /]"
+        )
+
     project_id = f"demo-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
     # Initialize shared memory
@@ -52,7 +78,7 @@ async def run_full_demo(idea: str):
 
     # ── Phase 1: CEO ───────────────────────────────────────────
     console.print("\n[bold yellow]👑 CEO Agent[/] — Strategy Phase")
-    ceo = CEOAgent()
+    ceo = CEOAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[yellow]Analyzing business idea...[/]"):
         plan = await ceo.run(business_idea=idea, budget_usd=200.0)
         memory.business_plan = plan
@@ -62,7 +88,7 @@ async def run_full_demo(idea: str):
 
     # ── Phase 2: CTO ───────────────────────────────────────────
     console.print("\n[bold blue]🏗 CTO Agent[/] — Architecture Phase")
-    cto = CTOAgent()
+    cto = CTOAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[blue]Designing system architecture...[/]"):
         arch = await cto.run(business_plan=plan, budget_usd=200.0)
         memory.architecture = arch
@@ -72,8 +98,10 @@ async def run_full_demo(idea: str):
 
     # ── Phase 3: Engineers ──────────────────────────────────────
     console.print("\n[bold cyan]⚙️ Engineer Agents[/] — Build Phase (parallel)")
-    eng_be = EngineerAgent(mode="backend")
-    eng_fe = EngineerAgent(mode="frontend")
+    eng_be = EngineerAgent(mode="backend", llm_client=llm_client, model_name=model_name)
+    eng_fe = EngineerAgent(
+        mode="frontend", llm_client=llm_client, model_name=model_name
+    )
 
     class MockCtx:
         def __init__(self):
@@ -99,7 +127,7 @@ async def run_full_demo(idea: str):
 
     # ── Phase 4: QA ─────────────────────────────────────────────
     console.print("\n[bold green]🧪 QA Agent[/] — Testing Phase")
-    qa = QAAgent()
+    qa = QAAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[green]Running tests and security scan...[/]"):
         qa_result = await qa.run(context=mock_ctx)
         await asyncio.sleep(0.5)
@@ -115,7 +143,7 @@ async def run_full_demo(idea: str):
 
     # ── Phase 5: DevOps ───────────────────────────────────────────
     console.print("\n[bold bright_cyan]🚀 DevOps Agent[/] — Deployment Phase")
-    devops = DevOpsAgent()
+    devops = DevOpsAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[bright_cyan]Provisioning AWS and deploying...[/]"):
         devops_result = await devops.run(context=mock_ctx, project_name="ai-org")
         deployment = devops_result["deployment"]
@@ -131,7 +159,7 @@ async def run_full_demo(idea: str):
 
     # ── Phase 6: Finance ──────────────────────────────────────────
     console.print("\n[bold magenta]💰 Finance Agent[/] — Cost Analysis")
-    finance = FinanceAgent()
+    finance = FinanceAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[magenta]Analyzing AWS costs...[/]"):
         fin_result = await finance.run(context=mock_ctx, budget_usd=200.0)
         await asyncio.sleep(0.3)

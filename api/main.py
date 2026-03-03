@@ -6,8 +6,13 @@ Provides REST API + WebSocket for real-time agent event streaming.
 
 import asyncio
 from datetime import datetime
+import os
 from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
+
+from dotenv import load_dotenv
+from openai import OpenAI
+from anthropic import Anthropic
 
 from fastapi import (
     FastAPI,
@@ -28,6 +33,24 @@ from agents.devops_agent import DevOpsAgent
 from agents.finance_agent import FinanceAgent
 
 logger = structlog.get_logger(__name__)
+
+# ── Dynamic LLM Setup ──────────────────────────────────────────────
+
+load_dotenv()
+
+llm_client = None
+model_name = "gpt-4-turbo-preview"
+
+if os.getenv("ANTHROPIC_API_KEY"):
+    llm_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    model_name = "claude-3-opus-20240229"
+    logger.info("Initializing agents with Anthropic LLM")
+elif os.getenv("OPENAI_API_KEY"):
+    llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    model_name = "gpt-4-turbo-preview"
+    logger.info("Initializing agents with OpenAI LLM")
+else:
+    logger.warning("No LLM API keys found. Agents will run in mock mode.")
 
 # ── Global Orchestrator ────────────────────────────────────────────
 orchestrator = OrchestratorEngine(budget_usd=200.0, output_dir="./output")
@@ -69,13 +92,29 @@ manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Register all agents on startup."""
-    orchestrator.register_agent("CEO", CEOAgent())
-    orchestrator.register_agent("CTO", CTOAgent())
-    orchestrator.register_agent("Engineer_Backend", EngineerAgent(mode="backend"))
-    orchestrator.register_agent("Engineer_Frontend", EngineerAgent(mode="frontend"))
-    orchestrator.register_agent("QA", QAAgent())
-    orchestrator.register_agent("DevOps", DevOpsAgent())
-    orchestrator.register_agent("Finance", FinanceAgent())
+    orchestrator.register_agent(
+        "CEO", CEOAgent(llm_client=llm_client, model_name=model_name)
+    )
+    orchestrator.register_agent(
+        "CTO", CTOAgent(llm_client=llm_client, model_name=model_name)
+    )
+    orchestrator.register_agent(
+        "Engineer_Backend",
+        EngineerAgent(mode="backend", llm_client=llm_client, model_name=model_name),
+    )
+    orchestrator.register_agent(
+        "Engineer_Frontend",
+        EngineerAgent(mode="frontend", llm_client=llm_client, model_name=model_name),
+    )
+    orchestrator.register_agent(
+        "QA", QAAgent(llm_client=llm_client, model_name=model_name)
+    )
+    orchestrator.register_agent(
+        "DevOps", DevOpsAgent(llm_client=llm_client, model_name=model_name)
+    )
+    orchestrator.register_agent(
+        "Finance", FinanceAgent(llm_client=llm_client, model_name=model_name)
+    )
     logger.info("All agents registered and ready")
     yield
 
