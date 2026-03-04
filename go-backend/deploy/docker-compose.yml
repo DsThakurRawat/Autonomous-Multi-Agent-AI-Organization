@@ -64,6 +64,55 @@ services:
     networks:
       - aiorg-net
 
+  # ── Python AI Agents ────────────────────────────────────────────────────────
+  agent-ceo:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.agent
+      args:
+        AGENT_ROLE: CEO
+    environment:
+      - AGENT_ROLE=CEO
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - aiorg-net
+
+  agent-cto:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.agent
+      args:
+        AGENT_ROLE: CTO
+    environment:
+      - AGENT_ROLE=CTO
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - aiorg-net
+
+  agent-engineer:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.agent
+      args:
+        AGENT_ROLE: Engineer_Backend
+    environment:
+      - AGENT_ROLE=Engineer_Backend
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - aiorg-net
+
   # ── Infrastructure ──────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine

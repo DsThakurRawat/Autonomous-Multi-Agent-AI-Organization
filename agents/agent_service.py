@@ -134,13 +134,35 @@ class AgentMicroservice:
             llm_mode     = "live" if llm_client else "mock",
         )
 
+        heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         await self._consume_loop()
+        heartbeat_task.cancel()
 
     def _shutdown(self):
         logger.info("Shutdown signal received", role=self.role)
         self.running = False
         if self.consumer:
             self.consumer.stop()
+            
+    async def _heartbeat_loop(self):
+        """Periodically ping the Go Health Monitor via Kafka."""
+        import socket
+        pod_id = socket.gethostname()
+        
+        while self.running:
+            try:
+                if self.producer:
+                    hb_topic = KafkaTopics.heartbeat_topic()
+                    payload = {
+                        "agent_role": self.role,
+                        "pod_id": pod_id,
+                        "status": "healthy"
+                    }
+                    await self.producer.publish_json(hb_topic, payload, key=f"{self.role}-{pod_id}")
+            except Exception as e:
+                logger.error("Heartbeat failed", error=str(e))
+                
+            await asyncio.sleep(10)
 
     async def _consume_loop(self):
         """Main consumer loop — pull TaskMessages, process, publish ResultMessage."""
@@ -154,6 +176,10 @@ class AgentMicroservice:
                 task_msg = TaskMessage(**raw_msg)
             except Exception as e:
                 logger.error("Failed to parse TaskMessage", error=str(e), raw=str(raw_msg)[:200])
+                continue
+
+            if task_msg.agent_role != self.role:
+                # In a shared topic architecture, ignore tasks meant for other expert agents
                 continue
 
             logger.info(
@@ -310,18 +336,22 @@ def _build_minimal_context(task_msg: TaskMessage):
             pass  # events are handled by AgentMicroservice._emit_event
 
         class memory:
-            project_config  = {}
-            business_plan   = {}
-            architecture    = {}
+            project_config  = task_msg.input_data.get("project_config", {})
+            business_plan   = task_msg.input_data.get("business_plan", {})
+            architecture    = task_msg.input_data.get("architecture", {})
 
             @staticmethod
             def snapshot():
-                return {}
+                return task_msg.input_data
 
         class decision_log:
             @staticmethod
             def summary():
                 return {}
+            
+            @staticmethod
+            def log(*args, **kwargs):
+                pass
 
         class cost_ledger:
             @staticmethod
@@ -338,6 +368,14 @@ def _build_minimal_context(task_msg: TaskMessage):
             @staticmethod
             def manifest():
                 return []
+            
+            @staticmethod
+            def save(*args, **kwargs):
+                pass
+                
+            @staticmethod
+            def save_code_file(*args, **kwargs):
+                pass
 
     return _MinimalContext()
 
