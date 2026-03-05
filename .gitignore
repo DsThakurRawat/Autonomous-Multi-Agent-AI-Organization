@@ -112,3 +112,13 @@ charts/*.tgz
 logs/
 *.log
 npm-debug.log*
+
+# ── Go Binaries (compiled outputs) ─────────────────────────────────────────
+go-backend/gateway
+go-backend/orchestrator
+go-backend/ws-hub
+
+# ── JWT RSA Key Files ────────────────────────────────────────────────────────
+# Never commit RSA private keys. Generate with: openssl genrsa -out keys/private.pem 2048
+keys/
+*.pem
