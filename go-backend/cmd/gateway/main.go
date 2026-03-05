@@ -74,6 +74,7 @@ func main() {
 
 	hdlr := handler.NewHandler(orchClient, pgPool)
 	settingsHdlr := handler.NewSettingsHandler(pgPool)
+	tasksHdlr := handler.NewTasksHandler(pgPool)
 	var oauthHdlr *handler.OAuthHandler
 	if authSvc != nil {
 		oauthHdlr = handler.NewOAuthHandler(authSvc, pgPool)
@@ -113,6 +114,8 @@ func main() {
 	projects.Get("/:id", hdlr.GetProject)
 	projects.Delete("/:id", hdlr.CancelProject)
 	projects.Get("/:id/cost", hdlr.GetCostReport)
+	projects.Get("/:id/tasks", tasksHdlr.GetProjectTasks)
+	projects.Get("/:id/events", tasksHdlr.GetProjectEvents)
 
 	// Settings — LLM key management + agent model prefs
 	settings := v1.Group("/settings")
