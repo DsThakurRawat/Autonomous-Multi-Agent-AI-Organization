@@ -72,7 +72,7 @@ func main() {
 	}
 	defer orchClient.Close()
 
-	hdlr := handler.NewHandler(orchClient)
+	hdlr := handler.NewHandler(orchClient, pgPool)
 	settingsHdlr := handler.NewSettingsHandler(pgPool)
 	var oauthHdlr *handler.OAuthHandler
 	if authSvc != nil {
