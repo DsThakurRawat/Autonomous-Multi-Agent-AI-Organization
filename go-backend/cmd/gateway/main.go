@@ -74,6 +74,10 @@ func main() {
 
 	hdlr := handler.NewHandler(orchClient)
 	settingsHdlr := handler.NewSettingsHandler(pgPool)
+	var oauthHdlr *handler.OAuthHandler
+	if authSvc != nil {
+		oauthHdlr = handler.NewOAuthHandler(authSvc, pgPool)
+	}
 
 	// ── Fiber App ───────────────────────────────────────────────────────────
 	app := fiber.New(fiber.Config{
@@ -86,13 +90,21 @@ func main() {
 	app.Use(compress.New())
 	app.Use(middleware.CORS())
 	app.Use(middleware.RequestLogger())
+
+	// ── Public routes (no auth required) ────────────────────────────────────
+	app.Get("/healthz", hdlr.HealthCheck)
+	app.Get("/readyz", hdlr.ReadyCheck)
+
+	// Google OAuth2 — must be registered BEFORE the JWTAuth middleware
+	if authSvc != nil && oauthHdlr != nil {
+		app.Get("/auth/google", oauthHdlr.GoogleLogin)
+		app.Get("/auth/google/callback", oauthHdlr.GoogleCallback)
+	}
+
+	// ── Protected routes (JWT required in production) ────────────────────────
 	if authSvc != nil {
 		app.Use(middleware.JWTAuth(authSvc))
 	}
-
-	// ── Routes ──────────────────────────────────────────────────────────────
-	app.Get("/healthz", hdlr.HealthCheck)
-	app.Get("/readyz", hdlr.ReadyCheck)
 
 	v1 := app.Group("/v1")
 	projects := v1.Group("/projects")

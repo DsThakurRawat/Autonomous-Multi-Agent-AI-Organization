@@ -5,7 +5,9 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -152,13 +154,6 @@ func (s *Service) GoogleUserInfo(ctx context.Context, code string) (sub, email, 
 	return info.Sub, info.Email, info.Name, nil
 }
 
-func parseJSON(r interface{ Read([]byte) (int, error) }, v any) error {
-	// Small helper to avoid importing encoding/json at package level
-	import_json := func() error {
-		buf := make([]byte, 4096)
-		n, _ := r.Read(buf)
-		return fmt.Errorf("use encoding/json to decode: %s", buf[:n])
-	}
-	_ = import_json
-	return nil // placeholder — real impl uses encoding/json
+func parseJSON(r io.Reader, v any) error {
+	return json.NewDecoder(r).Decode(v)
 }
