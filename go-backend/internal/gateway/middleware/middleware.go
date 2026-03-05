@@ -1,8 +1,12 @@
 // Package middleware contains Fiber middleware for the API Gateway.
-// Every incoming request passes through: Logger → TraceID → JWT Auth → RateLimit
+//
+// Auth modes:
+//   - SaaS  (AUTH_DISABLED unset / false): Google OAuth → RS256 JWT cookie
+//   - Local (AUTH_DISABLED=true):          No login — static local user injected
 package middleware
 
 import (
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +18,25 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/auth"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
 )
+
+// LocalMode returns true when AUTH_DISABLED=true is set in the environment.
+// Used by main.go to decide which auth middleware to install.
+func LocalMode() bool {
+	return strings.ToLower(os.Getenv("AUTH_DISABLED")) == "true"
+}
+
+// LocalAuth injects a fixed single-user identity into every request.
+// This is the local/self-hosted mode — no login required.
+// All projects go to user_id=local-user, tenant_id=local-tenant.
+func LocalAuth() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		c.Locals("user_id", "00000000-0000-0000-0000-000000000001") // stable UUID for DB FKs
+		c.Locals("tenant_id", "00000000-0000-0000-0000-000000000002")
+		c.Locals("email", os.Getenv("LOCAL_USER_EMAIL"))
+		c.Locals("role", "owner")
+		return c.Next()
+	}
+}
 
 // RequestLogger logs every HTTP request with method, path, status, latency, and trace ID.
 func RequestLogger() fiber.Handler {
@@ -51,9 +74,12 @@ func RequestLogger() fiber.Handler {
 	}
 }
 
-// JWTAuth validates the Bearer token in the Authorization header.
-// On success, injects user_id, tenant_id, email, and role into c.Locals.
-// Skip paths: /healthz, /readyz, /metrics, /v1/auth/*
+// JWTAuth validates the JWT from either:
+//
+//	a) Authorization: Bearer <token>  header (API clients / mobile)
+//	b) auth_token cookie              (browsers after Google OAuth redirect)
+//
+// Skip paths: /healthz, /readyz, /metrics, /auth/*
 func JWTAuth(authSvc *auth.Service) fiber.Handler {
 	skipPaths := map[string]bool{
 		"/healthz": true,
@@ -64,20 +90,29 @@ func JWTAuth(authSvc *auth.Service) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		path := c.Path()
 
-		// Skip auth for health/metrics and OAuth endpoints
-		if skipPaths[path] || strings.HasPrefix(path, "/v1/auth/") {
+		// Skip auth-less paths
+		if skipPaths[path] || strings.HasPrefix(path, "/auth/") {
 			return c.Next()
 		}
 
-		authHeader := c.Get("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
+		// 1. Try Authorization header (API / mobile clients)
+		tokenStr := ""
+		if authHeader := c.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+			tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+
+		// 2. Fall back to HttpOnly cookie (browsers after Google OAuth)
+		if tokenStr == "" {
+			tokenStr = c.Cookies("auth_token")
+		}
+
+		if tokenStr == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error":    "missing or malformed Authorization header",
+				"error":    "authentication required",
 				"trace_id": c.Locals("trace_id"),
 			})
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := authSvc.ValidateToken(tokenStr)
 		if err != nil {
 			logger.L().Warn("jwt validation failed",
@@ -90,7 +125,6 @@ func JWTAuth(authSvc *auth.Service) fiber.Handler {
 			})
 		}
 
-		// Inject claims into request context for handlers
 		c.Locals("user_id", claims.UserID)
 		c.Locals("tenant_id", claims.TenantID)
 		c.Locals("email", claims.Email)

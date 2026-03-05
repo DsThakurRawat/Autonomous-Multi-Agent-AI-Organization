@@ -9,17 +9,24 @@ export default function LandingPage() {
     const { data: session, status } = useSession()
     const router = useRouter()
 
+    const authDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === 'true'
+
     useEffect(() => {
-        // Automatically redirect logged-in users to the real dashboard
+        // Local mode: skip login, go straight to dashboard
+        if (authDisabled) {
+            router.push('/dashboard')
+            return
+        }
+        // SaaS mode: redirect logged-in users to dashboard
         if (status === 'authenticated') {
             router.push('/dashboard')
         }
-    }, [status, router])
+    }, [status, router, authDisabled])
 
     const handleLogin = () => {
-        // The mock provider is registered in our NextAuth route
         signIn('google', { callbackUrl: '/dashboard' })
     }
+
 
     // Google Icon SVG 
     const GoogleIcon = () => (

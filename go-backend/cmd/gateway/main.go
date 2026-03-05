@@ -92,19 +92,23 @@ func main() {
 	app.Use(middleware.CORS())
 	app.Use(middleware.RequestLogger())
 
-	// ── Public routes (no auth required) ────────────────────────────────────
-	app.Get("/healthz", hdlr.HealthCheck)
-	app.Get("/readyz", hdlr.ReadyCheck)
-
-	// Google OAuth2 — must be registered BEFORE the JWTAuth middleware
-	if authSvc != nil && oauthHdlr != nil {
-		app.Get("/auth/google", oauthHdlr.GoogleLogin)
-		app.Get("/auth/google/callback", oauthHdlr.GoogleCallback)
-	}
-
-	// ── Protected routes (JWT required in production) ────────────────────────
-	if authSvc != nil {
-		app.Use(middleware.JWTAuth(authSvc))
+	// ── Auth middleware — two modes ───────────────────────────────────────────
+	if middleware.LocalMode() {
+		// LOCAL MODE: AUTH_DISABLED=true
+		// No login required. Every request gets a fixed local-user identity injected.
+		// Perfect for self-hosted / personal use — just set API keys in .env.
+		log.Info("⚠️  AUTH_DISABLED=true — running in local mode (no login required)")
+		app.Use(middleware.LocalAuth())
+	} else {
+		// SAAS MODE: Google OAuth + RS256 JWT cookie
+		// Register OAuth endpoints BEFORE JWTAuth so they are accessible without a token.
+		if authSvc != nil && oauthHdlr != nil {
+			app.Get("/auth/google", oauthHdlr.GoogleLogin)
+			app.Get("/auth/google/callback", oauthHdlr.GoogleCallback)
+		}
+		if authSvc != nil {
+			app.Use(middleware.JWTAuth(authSvc))
+		}
 	}
 
 	v1 := app.Group("/v1")
