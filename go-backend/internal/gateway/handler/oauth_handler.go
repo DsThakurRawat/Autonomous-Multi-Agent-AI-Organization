@@ -121,19 +121,14 @@ func (h *OAuthHandler) GoogleCallback(c *fiber.Ctx) error {
 	return c.Redirect("/dashboard", fiber.StatusTemporaryRedirect)
 }
 
-// upsertUser creates the user row on first login, or returns the existing user.
-// Uses google_sub as the stable identity key (survives email changes).
+// upsertUser calls the upsert_google_user() Postgres function (migration 003).
+// It atomically creates a personal tenant if needed, then upserts the user row.
+// Returns (userID, tenantID) ready for JWT issuance.
 func (h *OAuthHandler) upsertUser(ctx context.Context, googleSub, email, displayName string) (userID, tenantID string, err error) {
-	query := `
-		INSERT INTO users (google_sub, email, display_name)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (google_sub) DO UPDATE
-			SET email        = EXCLUDED.email,
-			    display_name = EXCLUDED.display_name,
-			    updated_at   = NOW()
-		RETURNING id::text, tenant_id::text`
-
-	row := h.db.QueryRow(ctx, query, googleSub, email, displayName)
+	row := h.db.QueryRow(ctx,
+		`SELECT user_id::text, tenant_id::text FROM upsert_google_user($1, $2, $3)`,
+		googleSub, email, displayName,
+	)
 	err = row.Scan(&userID, &tenantID)
 	return userID, tenantID, err
 }
