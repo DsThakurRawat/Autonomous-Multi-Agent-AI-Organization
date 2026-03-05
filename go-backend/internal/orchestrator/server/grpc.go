@@ -10,6 +10,7 @@ import (
 
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/kafka"
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/keystore"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
 	pb "github.com/DsThakurRawat/autonomous-org/go-backend/proto/gen/orchestrator"
 )
@@ -20,12 +21,14 @@ type OrchestratorServer struct {
 
 	db       *db.Pool
 	producer *kafka.Producer
+	keys     *keystore.Resolver // resolves per-user LLM config at dispatch time
 }
 
 func NewOrchestratorServer(pool *db.Pool, prod *kafka.Producer) *OrchestratorServer {
 	return &OrchestratorServer{
 		db:       pool,
 		producer: prod,
+		keys:     keystore.NewResolver(pool),
 	}
 }
 
@@ -66,13 +69,29 @@ func (s *OrchestratorServer) CreateProject(ctx context.Context, req *pb.CreatePr
 		return nil, err
 	}
 
+	// Resolve the LLM config for this user+role before dispatching.
+	// This is where the per-user API key is decrypted in memory and packed
+	// into the Kafka message — the Python agent reads it from input_data.llm_config.
+	llmCfg := s.keys.ResolveForAgent(ctx, req.GetUserId(), "CEO")
+	llmConfigPayload := map[string]any{
+		"provider": llmCfg.Provider,
+		"api_key":  llmCfg.APIKey, // plaintext in RAM only, serialised to Kafka TLS channel
+		"model":    llmCfg.ModelName,
+	}
+
 	// Dispatch task to Kafka
 	taskPayload := map[string]any{
 		"task_id":    taskID,
-		"project_id": projectID,
-		"agent_role": "CEO",
+		"task_name":  "Requirement Analysis",
 		"task_type":  "plan",
-		"idea":       req.GetIdea(),
+		"agent_role": "CEO",
+		"project_id": projectID,
+		"trace_id":   uuid.NewString(),
+		"input_data": map[string]any{
+			"idea":       req.GetIdea(),
+			"budget_usd": budget,
+			"llm_config": llmConfigPayload,
+		},
 	}
 
 	_, _, err = s.producer.PublishJSON("ai-org-tasks", projectID, taskPayload)
