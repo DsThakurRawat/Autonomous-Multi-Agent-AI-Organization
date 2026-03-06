@@ -174,7 +174,7 @@ class KafkaProducerClient:
     async def publish_model(
         self,
         topic: str,
-        model: Any,   # Any Pydantic BaseModel
+        model: Any,  # Any Pydantic BaseModel
         key: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> bool:

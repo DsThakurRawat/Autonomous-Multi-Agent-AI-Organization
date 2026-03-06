@@ -16,8 +16,8 @@ from typing import TypedDict
 
 
 class ModelConfig(TypedDict):
-    provider: str    # "openai" | "anthropic" | "google"
-    model: str       # exact model ID for the provider's API
+    provider: str  # "openai" | "anthropic" | "google"
+    model: str  # exact model ID for the provider's API
 
 
 # ── Agent Defaults ────────────────────────────────────────────────────────────
@@ -26,49 +26,43 @@ AGENT_MODEL_DEFAULTS: dict[str, ModelConfig] = {
     # Best at: business plans, cost decisions, structured role delegation
     "CEO": {
         "provider": "openai",
-        "model":    "gpt-4o",
+        "model": "gpt-4o",
     },
-
     # CTO / Architect — Long-context system design
     # Best at: architecture blueprints, tech stack decisions, diagramming
     "CTO": {
         "provider": "google",
-        "model":    "gemini-2.5-pro-exp-03-25",
+        "model": "gemini-2.5-pro-exp-03-25",
     },
-
     # Engineer (Backend) — Real, runnable code with minimal hallucinations
     # Best at: Python/Go APIs, database schemas, tests
     "Engineer_Backend": {
         "provider": "anthropic",
-        "model":    "claude-3-5-sonnet-latest",
+        "model": "claude-3-5-sonnet-latest",
     },
-
     # Engineer (Frontend) — React/TypeScript/CSS code generation
     # Best at: component code, responsive layouts
     "Engineer_Frontend": {
         "provider": "anthropic",
-        "model":    "claude-3-5-sonnet-latest",
+        "model": "claude-3-5-sonnet-latest",
     },
-
     # QA — Test writing and bug analysis
     # Best at: test coverage, edge case detection, bug reports
     "QA": {
         "provider": "anthropic",
-        "model":    "claude-3-5-sonnet-latest",
+        "model": "claude-3-5-sonnet-latest",
     },
-
     # DevOps — YAML, Dockerfile, CI/CD generation
     # Use cheaper Haiku — tasks are mechanical and don't need full Sonnet
     "DevOps": {
         "provider": "anthropic",
-        "model":    "claude-3-haiku-20240307",
+        "model": "claude-3-haiku-20240307",
     },
-
     # Finance — Cost analysis and budget reporting
     # Use gpt-4o-mini — numeric reasoning at lower cost
     "Finance": {
         "provider": "openai",
-        "model":    "gpt-4o-mini",
+        "model": "gpt-4o-mini",
     },
 }
 
@@ -81,4 +75,3 @@ def get_default(agent_role: str) -> ModelConfig:
         agent_role,
         {"provider": "google", "model": "gemini-2.5-pro-exp-03-25"},
     )
-    

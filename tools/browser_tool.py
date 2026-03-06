@@ -3,7 +3,6 @@ Browser Tool — Gives agents Headless Chrome capabilities via CDP or requests f
 Allows agents to read documentation, debug UIs, and verify deployments.
 """
 
-from typing import Any, Dict, Optional
 import asyncio
 import structlog
 from bs4 import BeautifulSoup
@@ -15,7 +14,9 @@ logger = structlog.get_logger(__name__)
 
 class BrowserTool(BaseTool):
     NAME = "browser_tool"
-    DESCRIPTION = "Headless browser (Chrome) for fetching text, clicking, and testing UIs."
+    DESCRIPTION = (
+        "Headless browser (Chrome) for fetching text, clicking, and testing UIs."
+    )
     TIMEOUT_S = 120
 
     def __init__(self, **kwargs):
@@ -29,13 +30,13 @@ class BrowserTool(BaseTool):
             "take_screenshot": self._take_screenshot,
             "click_element": self._click_element,
         }
-        
+
         fn = actions.get(action)
         if not fn:
             return ToolResult(
                 success=False, output="", error=f"Unknown browser action: {action}"
             )
-            
+
         logger.info("Executing browser action", action=action, url=url)
         return await fn(url, **kwargs)
 
@@ -45,25 +46,26 @@ class BrowserTool(BaseTool):
         Falls back to `requests` + `BeautifulSoup` if Playwright is unavailable in current env.
         """
         import requests
+
         try:
             # Sync wrapper for demonstration of HTTP fallback
             resp = await asyncio.to_thread(requests.get, url, timeout=30)
             resp.raise_for_status()
-            
+
             soup = BeautifulSoup(resp.text, "html.parser")
             # Remove scripts and styles
             for script in soup(["script", "style"]):
                 script.extract()
-                
+
             text = soup.get_text(separator="\n")
             lines = (line.strip() for line in text.splitlines())
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             text = "\n".join(chunk for chunk in chunks if chunk)
-            
+
             return ToolResult(
                 success=True,
                 output=text[:10000],  # Limit size to prevent LLM context explosion
-                metadata={"url": url, "status": resp.status_code}
+                metadata={"url": url, "status": resp.status_code},
             )
         except Exception as e:
             return ToolResult(success=False, output="", error=str(e))
@@ -73,7 +75,9 @@ class BrowserTool(BaseTool):
         return ToolResult(
             success=True,
             output="Screenshot captured. Image data stored in artifacts.",
-            artifacts=[f"screenshot_{url.replace('https://', '').replace('/', '_')}.png"]
+            artifacts=[
+                f"screenshot_{url.replace('https://', '').replace('/', '_')}.png"
+            ],
         )
 
     async def _click_element(self, url: str, selector: str) -> ToolResult:

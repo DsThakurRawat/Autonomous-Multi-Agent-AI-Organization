@@ -132,7 +132,7 @@ export default function LandingPage() {
                                 <div className="w-2/3 pl-8 flex flex-col pt-4">
                                     <h3 className="text-2xl font-bold text-gray-900 mb-4">API Route Generation</h3>
                                     <p className="text-gray-600 leading-relaxed mb-6">
-                                        Perfect! I've analyzed your database schema and generated all required CRUD endpoints for the FastAPI backend layer. All endpoints have been successfully mocked and tested against our isolated Docker sandbox.
+                                        Perfect! I&apos;ve analyzed your database schema and generated all required CRUD endpoints for the FastAPI backend layer. All endpoints have been successfully mocked and tested against our isolated Docker sandbox.
                                     </p>
                                     <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 w-full flex-1">
                                         <div className="flex items-center gap-3 mb-4">

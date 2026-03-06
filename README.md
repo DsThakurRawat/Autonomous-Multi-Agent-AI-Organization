@@ -1,11 +1,14 @@
 # Autonomous Multi-Agent AI Organization
 
-[![Go](https://img.shields.io/badge/go-1.22-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/go-1.24.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
 [![Python](https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Kafka](https://img.shields.io/badge/Kafka-Event_Driven-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Go CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml)
+[![Frontend CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml)
+[![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
 > A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — with a real-time web dashboard and zero-friction local setup.
 
@@ -80,20 +83,20 @@ flowchart TB
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|---|---|
-| **API Gateway** | Go 1.22 · Fiber v2 |
-| **Orchestrator** | Go · gRPC · DAG engine |
-| **WebSocket Hub** | Go · Redis Pub/Sub |
-| **AI Agents** | Python 3.11 · OpenAI / Anthropic / Google |
-| **Event Bus** | Apache Kafka · ZooKeeper |
-| **Database** | PostgreSQL 15 · pgcrypto |
-| **Cache** | Redis 7 |
-| **Dashboard** | Next.js 14 · TypeScript |
-| **MoE Routing** | Rust (sub-ms expert scoring) |
-| **Auth (SaaS)** | Google OAuth2 · RS256 JWT |
-| **Auth (Local)** | None — straight to dashboard |
-| **Infra** | Docker Compose · Helm · Terraform |
+| Layer             | Technology                                |
+| ----------------- | ----------------------------------------- |
+| **API Gateway**   | Go 1.22 · Fiber v2                        |
+| **Orchestrator**  | Go · gRPC · DAG engine                    |
+| **WebSocket Hub** | Go · Redis Pub/Sub                        |
+| **AI Agents**     | Python 3.11 · OpenAI / Anthropic / Google |
+| **Event Bus**     | Apache Kafka · ZooKeeper                  |
+| **Database**      | PostgreSQL 15 · pgcrypto                  |
+| **Cache**         | Redis 7                                   |
+| **Dashboard**     | Next.js 14 · TypeScript                   |
+| **MoE Routing**   | Rust (sub-ms expert scoring)              |
+| **Auth (SaaS)**   | Google OAuth2 · RS256 JWT                 |
+| **Auth (Local)**  | None — straight to dashboard              |
+| **Infra**         | Docker Compose · Helm · Terraform         |
 
 ---
 
@@ -172,50 +175,50 @@ Users land on a login page → **Sign in with Google** → redirected to their d
 
 ### Local Mode (`.env.local`)
 
-| Variable | Required | Description |
-|---|---|---|
-| `AUTH_DISABLED` | ✅ | Set to `true` — skips all auth |
-| `KEY_ENCRYPTION_KEY` | ✅ | 64-char hex (32 bytes). `openssl rand -hex 32` |
-| `OPENAI_API_KEY` | one of these | Your OpenAI, Anthropic, or Google API key |
-| `ANTHROPIC_API_KEY` | one of these | |
-| `GOOGLE_API_KEY` | one of these | |
+| Variable             | Required     | Description                                    |
+| -------------------- | ------------ | ---------------------------------------------- |
+| `AUTH_DISABLED`      | ✅           | Set to `true` — skips all auth                 |
+| `KEY_ENCRYPTION_KEY` | ✅           | 64-char hex (32 bytes). `openssl rand -hex 32` |
+| `OPENAI_API_KEY`     | one of these | Your OpenAI, Anthropic, or Google API key      |
+| `ANTHROPIC_API_KEY`  | one of these |                                                |
+| `GOOGLE_API_KEY`     | one of these |                                                |
 
 ### SaaS Mode (`.env`)
 
 All local vars above, plus:
 
-| Variable | Required | Description |
-|---|---|---|
-| `AUTH_DISABLED` | ✅ | Set to `false` |
-| `GOOGLE_CLIENT_ID` | ✅ | From Google Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | ✅ | From Google Cloud Console |
-| `GOOGLE_REDIRECT_URL` | ✅ | `https://yourdomain.com/auth/google/callback` |
-| `JWT_PRIVATE_KEY_PATH` | ✅ | Path to `keys/private.pem` |
-| `JWT_PUBLIC_KEY_PATH` | ✅ | Path to `keys/public.pem` |
-| `JWT_EXPIRY` | | Default: `168h` (7 days) |
+| Variable               | Required | Description                                   |
+| ---------------------- | -------- | --------------------------------------------- |
+| `AUTH_DISABLED`        | ✅       | Set to `false`                                |
+| `GOOGLE_CLIENT_ID`     | ✅       | From Google Cloud Console                     |
+| `GOOGLE_CLIENT_SECRET` | ✅       | From Google Cloud Console                     |
+| `GOOGLE_REDIRECT_URL`  | ✅       | `https://yourdomain.com/auth/google/callback` |
+| `JWT_PRIVATE_KEY_PATH` | ✅       | Path to `keys/private.pem`                    |
+| `JWT_PUBLIC_KEY_PATH`  | ✅       | Path to `keys/public.pem`                     |
+| `JWT_EXPIRY`           |          | Default: `168h` (7 days)                      |
 
 ---
 
 ## 🌐 API Routes (Go Gateway — port 8080)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/healthz` | Health check |
-| `GET` | `/auth/google` | Initiate Google OAuth (SaaS mode) |
-| `GET` | `/auth/google/callback` | OAuth callback → JWT cookie |
-| `POST` | `/v1/projects` | Create a new project |
-| `GET` | `/v1/projects` | List your projects |
-| `GET` | `/v1/projects/:id` | Get project detail + task counts |
-| `DELETE` | `/v1/projects/:id` | Cancel a project |
-| `GET` | `/v1/projects/:id/tasks` | DAG task list (for DagViewer) |
-| `GET` | `/v1/projects/:id/events` | Recent agent event log |
-| `GET` | `/v1/projects/:id/cost` | Cost breakdown per agent |
-| `POST` | `/v1/settings/keys` | Add encrypted LLM API key |
-| `GET` | `/v1/settings/keys` | List stored key labels |
-| `DELETE` | `/v1/settings/keys/:id` | Delete a stored key |
-| `POST` | `/v1/settings/agent-prefs` | Set model preference per agent role |
-| `GET` | `/v1/settings/agent-prefs` | Get all agent model preferences |
-| `DELETE` | `/v1/settings/agent-prefs/:role` | Reset agent to default model |
+| Method   | Path                             | Description                         |
+| -------- | -------------------------------- | ----------------------------------- |
+| `GET`    | `/healthz`                       | Health check                        |
+| `GET`    | `/auth/google`                   | Initiate Google OAuth (SaaS mode)   |
+| `GET`    | `/auth/google/callback`          | OAuth callback → JWT cookie         |
+| `POST`   | `/v1/projects`                   | Create a new project                |
+| `GET`    | `/v1/projects`                   | List your projects                  |
+| `GET`    | `/v1/projects/:id`               | Get project detail + task counts    |
+| `DELETE` | `/v1/projects/:id`               | Cancel a project                    |
+| `GET`    | `/v1/projects/:id/tasks`         | DAG task list (for DagViewer)       |
+| `GET`    | `/v1/projects/:id/events`        | Recent agent event log              |
+| `GET`    | `/v1/projects/:id/cost`          | Cost breakdown per agent            |
+| `POST`   | `/v1/settings/keys`              | Add encrypted LLM API key           |
+| `GET`    | `/v1/settings/keys`              | List stored key labels              |
+| `DELETE` | `/v1/settings/keys/:id`          | Delete a stored key                 |
+| `POST`   | `/v1/settings/agent-prefs`       | Set model preference per agent role |
+| `GET`    | `/v1/settings/agent-prefs`       | Get all agent model preferences     |
+| `DELETE` | `/v1/settings/agent-prefs/:role` | Reset agent to default model        |
 
 ---
 
@@ -223,15 +226,15 @@ All local vars above, plus:
 
 ### Default Models (no configuration needed)
 
-| Agent | Provider | Model |
-|---|---|---|
-| CEO | OpenAI | `gpt-4o` |
-| CTO | Google | `gemini-2.5-pro-exp-03-25` |
+| Agent         | Provider  | Model                      |
+| ------------- | --------- | -------------------------- |
+| CEO           | OpenAI    | `gpt-4o`                   |
+| CTO           | Google    | `gemini-2.5-pro-exp-03-25` |
 | Engineer (BE) | Anthropic | `claude-3-5-sonnet-latest` |
 | Engineer (FE) | Anthropic | `claude-3-5-sonnet-latest` |
-| QA | Anthropic | `claude-3-5-sonnet-latest` |
-| DevOps | Anthropic | `claude-haiku-20240307` |
-| Finance | OpenAI | `gpt-4o-mini` |
+| QA            | Anthropic | `claude-3-5-sonnet-latest` |
+| DevOps        | Anthropic | `claude-haiku-20240307`    |
+| Finance       | OpenAI    | `gpt-4o-mini`              |
 
 ### Per-User Key Management
 
@@ -262,12 +265,12 @@ migrate -path go-backend/migrations -database "$DATABASE_URL" up
 migrate -path go-backend/migrations -database "$DATABASE_URL" down 1
 ```
 
-| Migration | Contents |
-|---|---|
-| `001_init` | Core schema: tenants, users, projects, tasks, cost_events, agent_heartbeats |
-| `002_user_llm_keys` | user_llm_keys + agent_model_prefs tables |
-| `003_user_auth` | users.updated_at + `upsert_google_user()` PG function (atomic OAuth login) |
-| `004_projects_name` | projects.name column (backfilled from idea) |
+| Migration           | Contents                                                                    |
+| ------------------- | --------------------------------------------------------------------------- |
+| `001_init`          | Core schema: tenants, users, projects, tasks, cost_events, agent_heartbeats |
+| `002_user_llm_keys` | user_llm_keys + agent_model_prefs tables                                    |
+| `003_user_auth`     | users.updated_at + `upsert_google_user()` PG function (atomic OAuth login)  |
+| `004_projects_name` | projects.name column (backfilled from idea)                                 |
 
 ---
 
@@ -275,11 +278,11 @@ migrate -path go-backend/migrations -database "$DATABASE_URL" down 1
 
 Access at `http://localhost:3000`
 
-| Page | What's there |
-|---|---|
-| `/` | Landing page / Google Sign-In (SaaS mode) |
+| Page         | What's there                                                        |
+| ------------ | ------------------------------------------------------------------- |
+| `/`          | Landing page / Google Sign-In (SaaS mode)                           |
 | `/dashboard` | Project list, create project, live agent feed, task DAG, cost meter |
-| `/settings` | Manage LLM API keys + per-agent model preferences |
+| `/settings`  | Manage LLM API keys + per-agent model preferences                   |
 
 ---
 

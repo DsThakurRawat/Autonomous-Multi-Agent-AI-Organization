@@ -11,7 +11,8 @@ pub static ROUTING_DECISIONS: Lazy<CounterVec> = Lazy::new(|| {
         "moe_routing_decisions_total",
         "Total MoE routing decisions made",
         &["routing_type", "selected_expert"]
-    ).expect("Failed to register moe_routing_decisions_total")
+    )
+    .expect("Failed to register moe_routing_decisions_total")
 });
 
 /// Routing latency histogram (milliseconds)
@@ -21,7 +22,8 @@ pub static ROUTING_LATENCY: Lazy<HistogramVec> = Lazy::new(|| {
         "MoE routing latency in milliseconds",
         &["routing_type"],
         vec![0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 25.0]
-    ).expect("Failed to register moe_routing_latency_ms")
+    )
+    .expect("Failed to register moe_routing_latency_ms")
 });
 
 /// Total ensemble decisions (when two experts are close)
@@ -29,7 +31,8 @@ pub static ENSEMBLE_DECISIONS: Lazy<IntCounter> = Lazy::new(|| {
     register_int_counter!(
         "moe_ensemble_decisions_total",
         "Total number of routing decisions that used ensemble mode"
-    ).expect("Failed to register moe_ensemble_decisions_total")
+    )
+    .expect("Failed to register moe_ensemble_decisions_total")
 });
 
 /// Total HTTP requests
@@ -39,7 +42,8 @@ pub static HTTP_REQUESTS: Lazy<CounterVec> = Lazy::new(|| {
         "moe_http_requests_total",
         "Total HTTP requests to the MoE service",
         &["method", "path", "status"]
-    ).expect("Failed to register moe_http_requests_total")
+    )
+    .expect("Failed to register moe_http_requests_total")
 });
 
 /// Record a routing decision into metrics.

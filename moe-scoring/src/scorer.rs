@@ -102,7 +102,11 @@ pub fn rank_experts(
         .collect();
 
     // Sort descending by composite score
-    scores.sort_by(|a, b| b.composite.partial_cmp(&a.composite).unwrap_or(std::cmp::Ordering::Equal));
+    scores.sort_by(|a, b| {
+        b.composite
+            .partial_cmp(&a.composite)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     scores
 }
 

@@ -1,0 +1,46 @@
+name: Go CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "go-backend/**"
+      - ".github/workflows/go-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "go-backend/**"
+      - ".github/workflows/go-ci.yml"
+
+jobs:
+  build-and-test:
+    name: Build and Test Go
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: go-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go-backend/go.mod
+          cache-dependency-path: go-backend/go.sum
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: go-backend
+
+      - name: Run tests
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      - name: Build
+        run: go build -v ./...
