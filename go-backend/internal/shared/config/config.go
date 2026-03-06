@@ -45,7 +45,7 @@ type PostgresConfig struct {
 }
 
 type RedisConfig struct {
-	Addr     string `mapstructure:"addr"`     // "localhost:6379" or cluster addrs comma-separated
+	Addr     string `mapstructure:"addr"` // "localhost:6379" or cluster addrs comma-separated
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
 	Cluster  bool   `mapstructure:"cluster"` // true → use cluster client
@@ -55,9 +55,9 @@ type KafkaConfig struct {
 	Brokers       []string `mapstructure:"brokers"`
 	ConsumerGroup string   `mapstructure:"consumer_group"`
 	// Topic names
-	TopicTasks   string `mapstructure:"topic_tasks"`   // ai-org-tasks
-	TopicResults string `mapstructure:"topic_results"` // ai-org-results
-	TopicEvents  string `mapstructure:"topic_events"`  // ai-org-events
+	TopicTasks   string `mapstructure:"topic_tasks"`      // ai-org-tasks
+	TopicResults string `mapstructure:"topic_results"`    // ai-org-results
+	TopicEvents  string `mapstructure:"topic_events"`     // ai-org-events
 	TopicHB      string `mapstructure:"topic_heartbeats"` // ai-org-heartbeats
 }
 
@@ -71,10 +71,10 @@ type AuthConfig struct {
 }
 
 type ObservConfig struct {
-	OTLPEndpoint    string  `mapstructure:"otlp_endpoint"`    // Jaeger / Honeycomb
+	OTLPEndpoint    string  `mapstructure:"otlp_endpoint"`     // Jaeger / Honeycomb
 	TraceSampleRate float64 `mapstructure:"trace_sample_rate"` // 0.0–1.0
-	LogLevel        string  `mapstructure:"log_level"`        // debug | info | warn | error
-	LogJSON         bool    `mapstructure:"log_json"`         // true in production
+	LogLevel        string  `mapstructure:"log_level"`         // debug | info | warn | error
+	LogJSON         bool    `mapstructure:"log_json"`          // true in production
 }
 
 type BudgetConfig struct {
@@ -100,12 +100,14 @@ func Load(serviceName string) (*Config, error) {
 	v.SetDefault("server.shutdown_timeout", "15s")
 	v.SetDefault("server.max_body_mb", 16)
 
+	v.SetDefault("postgres.dsn", "")
 	v.SetDefault("postgres.max_conns", 25)
 	v.SetDefault("postgres.min_conns", 5)
 	v.SetDefault("postgres.max_conn_lifetime", "1h")
 	v.SetDefault("postgres.max_conn_idle_time", "30m")
 
 	v.SetDefault("redis.addr", "localhost:6379")
+	v.SetDefault("redis.password", "")
 	v.SetDefault("redis.db", 0)
 	v.SetDefault("redis.cluster", false)
 
