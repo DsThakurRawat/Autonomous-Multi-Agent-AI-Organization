@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 import structlog
 
-from .task_graph import TaskGraph, Task, TaskStatus, build_standard_task_graph
+from .task_graph import TaskGraph, Task, TaskStatus
 from .memory.project_memory import ProjectMemory
 from .memory.decision_log import DecisionLog
 from .memory.cost_ledger import CostLedger

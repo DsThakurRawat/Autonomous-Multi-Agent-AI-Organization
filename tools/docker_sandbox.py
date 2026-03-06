@@ -4,7 +4,6 @@ Enforces military-grade sandboxing by wrapping agent code in ephemeral container
 No internet access by default unless explicitly allowed.
 """
 
-from typing import Dict, Any, List, Optional
 import os
 import uuid
 import structlog

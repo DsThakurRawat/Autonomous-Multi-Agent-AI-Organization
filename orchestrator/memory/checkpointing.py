@@ -1,6 +1,5 @@
 import os
 import json
-import asyncio
 import structlog
 from datetime import datetime
 from typing import Dict, Any, Optional

@@ -3,7 +3,6 @@ Browser Tool — Gives agents Headless Chrome capabilities via CDP or requests f
 Allows agents to read documentation, debug UIs, and verify deployments.
 """
 
-from typing import Any, Dict, Optional
 import asyncio
 import structlog
 from bs4 import BeautifulSoup
