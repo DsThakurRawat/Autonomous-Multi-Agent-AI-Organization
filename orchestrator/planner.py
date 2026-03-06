@@ -269,17 +269,19 @@ class OrchestratorEngine:
             ceo = self._agent_registry.get("CEO")
             if ceo and getattr(ceo, "llm_client", None):
                 from .task_graph import generate_dynamic_task_graph
+
                 task_graph = await generate_dynamic_task_graph(
                     project_id=project_id,
                     business_plan=memory.business_plan,
                     architecture=memory.architecture,
                     llm_client=ceo.llm_client,
-                    model_name=ceo.model_name
+                    model_name=ceo.model_name,
                 )
             else:
                 from .task_graph import build_standard_task_graph
+
                 task_graph = build_standard_task_graph(project_id, memory.architecture)
-                
+
             ctx["task_graph"] = task_graph
 
             await self._emit(
@@ -402,12 +404,12 @@ class OrchestratorEngine:
                     memory_state = {
                         "business_plan": ctx["memory"].business_plan,
                         "architecture": ctx["memory"].architecture,
-                        "project_config": ctx["memory"].project_config
+                        "project_config": ctx["memory"].project_config,
                     }
                     await checkpoint_manager.save_checkpoint(
                         task_name=task.name,
                         agent_role=task.agent_role,
-                        memory_state=memory_state
+                        memory_state=memory_state,
                     )
 
                 await self._emit(

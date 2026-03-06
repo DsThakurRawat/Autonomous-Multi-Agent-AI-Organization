@@ -26,7 +26,7 @@ class KafkaTopics:
     def events_topic(cls, project_id: str) -> str:
         """All events go to the single ai-org-events topic."""
         return cls.EVENTS
-        
+
     @classmethod
     def heartbeat_topic(cls) -> str:
         return cls.HEARTBEATS

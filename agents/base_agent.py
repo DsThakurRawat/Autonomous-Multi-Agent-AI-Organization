@@ -54,7 +54,9 @@ class BaseAgent(ABC):
         self.model_name = model_name
         self._scratchpad: List[Dict[str, str]] = []
         self._iteration_count = 0
-        logger.info("Agent initialized", role=self.ROLE, provider=provider, model=model_name)
+        logger.info(
+            "Agent initialized", role=self.ROLE, provider=provider, model=model_name
+        )
 
     @property
     @abstractmethod
@@ -122,10 +124,10 @@ class BaseAgent(ABC):
             # ── OpenAI ────────────────────────────────────────────────────
             elif self.provider == "openai":
                 kwargs = {
-                    "model":       self.model_name,
-                    "messages":    messages,
+                    "model": self.model_name,
+                    "messages": messages,
                     "temperature": temperature,
-                    "max_tokens":  max_tokens,
+                    "max_tokens": max_tokens,
                 }
                 if response_format == "json_object":
                     kwargs["response_format"] = {"type": "json_object"}
@@ -155,11 +157,15 @@ class BaseAgent(ABC):
                 return response.content[0].text
 
             else:
-                logger.warning("Unknown provider, falling back to mock", provider=self.provider)
+                logger.warning(
+                    "Unknown provider, falling back to mock", provider=self.provider
+                )
                 return self._mock_llm_response(messages)
 
         except Exception as e:
-            logger.error("LLM call failed", error=str(e), agent=self.ROLE, provider=self.provider)
+            logger.error(
+                "LLM call failed", error=str(e), agent=self.ROLE, provider=self.provider
+            )
             raise
 
     def _mock_llm_response(self, messages: List[Dict[str, str]]) -> str:
