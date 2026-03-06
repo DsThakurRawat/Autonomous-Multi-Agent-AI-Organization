@@ -3,9 +3,9 @@ use crate::models::{Expert, ExpertScore, ExpertStats};
 
 // ── Scoring Weights (must sum to 1.0) ─────────────────────────────────────────
 const WEIGHT_SIMILARITY: f64 = 0.40;
-const WEIGHT_LOAD:       f64 = 0.25;
-const WEIGHT_SUCCESS:    f64 = 0.20;
-const WEIGHT_COST:       f64 = 0.15;
+const WEIGHT_LOAD: f64 = 0.25;
+const WEIGHT_SUCCESS: f64 = 0.20;
+const WEIGHT_COST: f64 = 0.15;
 
 /// Confidence threshold — below this, trigger ensemble mode
 pub const ENSEMBLE_THRESHOLD: f64 = 0.70;
@@ -18,7 +18,7 @@ pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
     let len = a.len().min(b.len());
     let (a, b) = (&a[..len], &b[..len]);
 
-    let dot: f64   = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
     let mag_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
     let mag_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
 
@@ -33,49 +33,51 @@ pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
 
 /// Compute composite routing score for a single expert.
 pub fn compute_expert_score(
-    task_vector:   &[f64],
+    task_vector: &[f64],
     expert_vector: &[f64],
-    load_factor:    f64,
-    success_rate:   f64,
-    avg_cost_usd:   f64,
-    max_cost_usd:   f64,
+    load_factor: f64,
+    success_rate: f64,
+    avg_cost_usd: f64,
+    max_cost_usd: f64,
 ) -> ExpertScore {
-    let sim_score  = cosine_similarity(task_vector, expert_vector);
-    let load_score = 1.0 - load_factor;                                  // prefer idle
+    let sim_score = cosine_similarity(task_vector, expert_vector);
+    let load_score = 1.0 - load_factor; // prefer idle
     let cost_factor = (avg_cost_usd / max_cost_usd.max(1e-9)).min(1.0);
-    let cost_score  = 1.0 - cost_factor;                                 // prefer cheap
+    let cost_score = 1.0 - cost_factor; // prefer cheap
 
-    let composite =
-        WEIGHT_SIMILARITY * sim_score    +
-        WEIGHT_LOAD       * load_score   +
-        WEIGHT_SUCCESS    * success_rate +
-        WEIGHT_COST       * cost_score;
+    let composite = WEIGHT_SIMILARITY * sim_score
+        + WEIGHT_LOAD * load_score
+        + WEIGHT_SUCCESS * success_rate
+        + WEIGHT_COST * cost_score;
 
     ExpertScore {
-        role:       String::new(), // filled by caller
-        composite:  round4(composite),
+        role: String::new(), // filled by caller
+        composite: round4(composite),
         similarity: round4(sim_score),
-        load:       round4(load_score),
-        success:    round4(success_rate),
-        cost:       round4(cost_score),
+        load: round4(load_score),
+        success: round4(success_rate),
+        cost: round4(cost_score),
     }
 }
 
 /// Round to 4 decimal places.
 #[inline]
-fn round4(v: f64) -> f64 { (v * 10_000.0).round() / 10_000.0 }
+fn round4(v: f64) -> f64 {
+    (v * 10_000.0).round() / 10_000.0
+}
 
 // ── Rank All Experts ──────────────────────────────────────────────────────────
 
 /// Score and sort all experts for the given task vector.
 /// Returns list sorted by composite score descending.
 pub fn rank_experts(
-    task_vector:        &[f64],
-    experts:            &[(String, Expert)],
-    stats:              &std::collections::HashMap<String, ExpertStats>,
-    exclude_overloaded:  bool,
+    task_vector: &[f64],
+    experts: &[(String, Expert)],
+    stats: &std::collections::HashMap<String, ExpertStats>,
+    exclude_overloaded: bool,
 ) -> Vec<ExpertScore> {
-    let max_cost_usd: f64 = stats.values()
+    let max_cost_usd: f64 = stats
+        .values()
         .map(|s| s.avg_cost_usd)
         .fold(0.10_f64, f64::max);
 
@@ -146,13 +148,15 @@ mod tests {
 
     #[test]
     fn test_expert_score_weights_sum() {
-        assert!((WEIGHT_SIMILARITY + WEIGHT_LOAD + WEIGHT_SUCCESS + WEIGHT_COST - 1.0).abs() < 1e-9);
+        assert!(
+            (WEIGHT_SIMILARITY + WEIGHT_LOAD + WEIGHT_SUCCESS + WEIGHT_COST - 1.0).abs() < 1e-9
+        );
     }
 
     #[test]
     fn test_ensemble_trigger() {
-        assert!(should_use_ensemble(0.65, 0.60));   // below threshold
-        assert!(should_use_ensemble(0.80, 0.75));   // gap < 0.10
-        assert!(!should_use_ensemble(0.90, 0.75));  // high confidence, big gap
+        assert!(should_use_ensemble(0.65, 0.60)); // below threshold
+        assert!(should_use_ensemble(0.80, 0.75)); // gap < 0.10
+        assert!(!should_use_ensemble(0.90, 0.75)); // high confidence, big gap
     }
 }
