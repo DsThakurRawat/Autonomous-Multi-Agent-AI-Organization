@@ -5,10 +5,12 @@ on:
     branches: [main, develop]
     paths:
       - "go-backend/**"
+      - ".github/workflows/go-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "go-backend/**"
+      - ".github/workflows/go-ci.yml"
 
 jobs:
   build-and-test:
@@ -25,7 +27,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.24.0"
           cache-dependency-path: go-backend/go.sum
 
       - name: Install dependencies

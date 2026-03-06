@@ -6,9 +6,9 @@
 [![Kafka](https://img.shields.io/badge/Kafka-Event_Driven-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Go CI](https://github.com/ArshVermaGit/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml/badge.svg)](https://github.com/ArshVermaGit/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml)
-[![Frontend CI](https://github.com/ArshVermaGit/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/ArshVermaGit/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml)
-[![Rust CI](https://github.com/ArshVermaGit/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/ArshVermaGit/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
+[![Go CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml)
+[![Frontend CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml)
+[![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
 > A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — with a real-time web dashboard and zero-friction local setup.
 

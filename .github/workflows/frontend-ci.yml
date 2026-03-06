@@ -5,10 +5,12 @@ on:
     branches: [main, develop]
     paths:
       - "dashboard/**"
+      - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "dashboard/**"
+      - ".github/workflows/frontend-ci.yml"
 
 jobs:
   build-and-test:
