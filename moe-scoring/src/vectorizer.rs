@@ -100,36 +100,70 @@ use std::collections::HashMap;
 
 pub fn default_experts() -> HashMap<String, Expert> {
     let experts = vec![
-        ("CEO", vec![0.9, 0.3, 0.1, 0.1, 0.1, 0.2, 0.6, 0.3],
-         vec!["strategy", "vision", "decision_making", "risk_assessment"]),
-
-        ("CTO", vec![0.3, 0.95, 0.5, 0.4, 0.3, 0.5, 0.3, 0.5],
-         vec!["architecture", "tech_stack", "system_design", "api_design"]),
-
-        ("Engineer_Backend", vec![0.1, 0.4, 0.95, 0.1, 0.4, 0.3, 0.2, 0.4],
-         vec!["backend", "api", "database", "orm", "authentication", "fastapi"]),
-
-        ("Engineer_Frontend", vec![0.1, 0.3, 0.1, 0.95, 0.3, 0.1, 0.1, 0.2],
-         vec!["frontend", "react", "nextjs", "typescript", "ui", "css"]),
-
-        ("QA", vec![0.1, 0.2, 0.3, 0.3, 0.95, 0.2, 0.1, 0.6],
-         vec!["testing", "qa", "coverage", "security_scan", "validation"]),
-
-        ("DevOps", vec![0.2, 0.4, 0.3, 0.1, 0.3, 0.95, 0.4, 0.5],
-         vec!["devops", "terraform", "docker", "kubernetes", "ci_cd", "deploy"]),
-
-        ("Finance", vec![0.4, 0.1, 0.1, 0.1, 0.1, 0.2, 0.95, 0.3],
-         vec!["cost", "budget", "finance", "optimization", "pricing"]),
+        (
+            "CEO",
+            vec![0.9, 0.3, 0.1, 0.1, 0.1, 0.2, 0.6, 0.3],
+            vec!["strategy", "vision", "decision_making", "risk_assessment"],
+        ),
+        (
+            "CTO",
+            vec![0.3, 0.95, 0.5, 0.4, 0.3, 0.5, 0.3, 0.5],
+            vec!["architecture", "tech_stack", "system_design", "api_design"],
+        ),
+        (
+            "Engineer_Backend",
+            vec![0.1, 0.4, 0.95, 0.1, 0.4, 0.3, 0.2, 0.4],
+            vec![
+                "backend",
+                "api",
+                "database",
+                "orm",
+                "authentication",
+                "fastapi",
+            ],
+        ),
+        (
+            "Engineer_Frontend",
+            vec![0.1, 0.3, 0.1, 0.95, 0.3, 0.1, 0.1, 0.2],
+            vec!["frontend", "react", "nextjs", "typescript", "ui", "css"],
+        ),
+        (
+            "QA",
+            vec![0.1, 0.2, 0.3, 0.3, 0.95, 0.2, 0.1, 0.6],
+            vec!["testing", "qa", "coverage", "security_scan", "validation"],
+        ),
+        (
+            "DevOps",
+            vec![0.2, 0.4, 0.3, 0.1, 0.3, 0.95, 0.4, 0.5],
+            vec![
+                "devops",
+                "terraform",
+                "docker",
+                "kubernetes",
+                "ci_cd",
+                "deploy",
+            ],
+        ),
+        (
+            "Finance",
+            vec![0.4, 0.1, 0.1, 0.1, 0.1, 0.2, 0.95, 0.3],
+            vec!["cost", "budget", "finance", "optimization", "pricing"],
+        ),
     ];
 
-    experts.into_iter().map(|(role, vector, skills)| {
-        (role.to_string(), Expert {
-            role:   role.to_string(),
-            vector,
-            skills: skills.iter().map(|s| s.to_string()).collect(),
+    experts
+        .into_iter()
+        .map(|(role, vector, skills)| {
+            (
+                role.to_string(),
+                Expert {
+                    role: role.to_string(),
+                    vector,
+                    skills: skills.iter().map(|s| s.to_string()).collect(),
+                },
+            )
         })
-    })
-    .collect()
+        .collect()
 }
 
 // ── Direct Task-Type → Expert Mapping (O(1) lookup) ──────────────────────────
