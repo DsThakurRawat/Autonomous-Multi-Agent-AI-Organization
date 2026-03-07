@@ -76,13 +76,20 @@ export default function AgentFeed({ events, status, latency, onClear, maxVisible
     const visible = events.slice(0, maxVisible)
 
     return (
-        <div className="card flex flex-col h-[480px]">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                    <Radio size={14} className="text-blue-400" />
-                    <h2 className="text-sm font-semibold text-text-primary">Agent Feed</h2>
-                    <span className="text-xs text-text-muted bg-[#1c1c28] px-2 py-0.5 rounded-full">
+        <div className="card flex flex-col h-[480px] bg-[#09090b] border border-[#27272a] shadow-2xl relative overflow-hidden rounded-xl">
+            {/* Header (Terminal Window Style) */}
+            <div className="flex items-center justify-between mb-0 flex-shrink-0 bg-[#18181b] border-b border-[#27272a] px-3 py-2 rounded-t-xl z-10">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500/80 border border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 border border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 border border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    </div>
+                    <div className="flex items-center gap-2 border-l border-[#27272a] pl-4">
+                        <Radio size={12} className="text-blue-400" />
+                        <h2 className="text-xs font-mono text-zinc-400">bash — agent-feed</h2>
+                    </div>
+                    <span className="ml-3 text-[10px] text-zinc-600 font-mono bg-black/50 px-2 py-0.5 rounded-full border border-[#27272a]">
                         {events.length} events
                     </span>
                 </div>
@@ -97,7 +104,7 @@ export default function AgentFeed({ events, status, latency, onClear, maxVisible
             </div>
 
             {/* Feed */}
-            <div className="flex-1 overflow-y-auto space-y-0 font-mono text-xs">
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1 font-mono text-[11px] leading-relaxed custom-scrollbar">
                 {visible.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3 text-text-muted">
                         <div className="w-12 h-12 rounded-full bg-[#1c1c28] flex items-center justify-center text-2xl">
@@ -116,36 +123,29 @@ export default function AgentFeed({ events, status, latency, onClear, maxVisible
                         return (
                             <div
                                 key={event.id}
-                                className="log-line group hover:bg-[#1a1a25] px-1 rounded"
+                                className="flex items-start gap-4 hover:bg-[#18181b] px-2 py-1 -mx-2 rounded transition-colors"
                             >
                                 {/* Timestamp */}
                                 <span className="text-[10px] text-text-muted w-16 flex-shrink-0 pt-0.5">
                                     {new Date(event.timestamp).toLocaleTimeString('en', { hour12: false })}
                                 </span>
 
-                                {/* Agent avatar */}
-                                <span
-                                    className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center text-[11px]"
-                                    style={{ backgroundColor: `${color}25`, border: `1px solid ${color}40` }}
-                                    title={event.agent}
-                                >
-                                    {emoji}
-                                </span>
+                                {/* Agent text box */}
+                                <div className="flex items-start gap-2 w-full">
+                                    <span className="text-zinc-500 font-bold whitespace-nowrap pt-0.5">
+                                        {`[${event.agent.replace('Engineer_', 'Eng_').toUpperCase()}]`}
+                                    </span>
 
-                                {/* Agent name */}
-                                <span className="w-20 flex-shrink-0 truncate" style={{ color }}>
-                                    {event.agent.replace('Engineer_', 'Eng_')}
-                                </span>
+                                    {/* Type icon */}
+                                    <span className={clsx('w-4 flex-shrink-0 text-center pt-0.5', cls)}>
+                                        {icon}
+                                    </span>
 
-                                {/* Type icon */}
-                                <span className={clsx('w-4 flex-shrink-0 text-center', cls)}>
-                                    {icon}
-                                </span>
-
-                                {/* Message */}
-                                <span className="text-text-secondary flex-1 truncate group-hover:text-text-primary transition-colors">
-                                    {event.message}
-                                </span>
+                                    {/* Message content */}
+                                    <span className={clsx("flex-1 whitespace-pre-wrap break-words", cls)}>
+                                        {event.message}
+                                    </span>
+                                </div>
 
                                 {/* Trace ID (hover only) */}
                                 {event.trace_id && (

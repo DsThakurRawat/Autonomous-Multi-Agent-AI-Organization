@@ -62,11 +62,33 @@ class BrowserTool(BaseTool):
 
     def _mock_act(self, prompt: str, url: Optional[str]) -> ToolResult:
         """Fallback mock for UI testing when the Nova Act SDK is unavailable locally."""
+        output_text = ""
+        
+        if url:
+            try:
+                import requests
+                from bs4 import BeautifulSoup
+                
+                resp = requests.get(url, timeout=30)
+                resp.raise_for_status()
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for script_tags in soup(["script", "style"]):
+                    script_tags.extract()
+                
+                text = soup.get_text(separator="\\n")
+                lines = (line.strip() for line in text.splitlines())
+                chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                output_text = "\\n".join(chunk for chunk in chunks if chunk)[:5000]
+                output_text = f"\\nExtracted Web Content from {url}:\\n{output_text}\\n"
+            except Exception as e:
+                output_text = f"\\n(Failed to fetch URL locally: {str(e)})\\n"
+
         simulated_output = (
-            f"[Amazon Nova Act — Mock Execution]\n"
-            f"Target URL: {url or 'New Browser Window'}\n"
-            f"Action Prompt: '{prompt}'\n"
-            f"Result: Successfully navigated the UI, extracted required text, and verified elements."
+            f"[Amazon Nova Act — Mock Execution]\\n"
+            f"Target URL: {url or 'New Browser Window'}\\n"
+            f"Action Prompt: '{prompt}'\\n"
+            f"Result: Successfully navigated the UI and extracted required text."
+            f"{output_text}"
         )
         return ToolResult(
             success=True,

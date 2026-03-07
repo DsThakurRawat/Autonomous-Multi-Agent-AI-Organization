@@ -3,6 +3,8 @@ mod models;
 mod scorer;
 mod vectorizer;
 
+use aws_config::BehaviorVersion;
+use aws_sdk_bedrockruntime::Client as BedrockClient;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -16,14 +18,14 @@ use axum::{
 };
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
-use tracing::info;
+use tracing::{error, info};
 
 use models::{
     BatchRouteRequest, BatchRouteResponse, Expert, ExpertStats, HealthResponse, RouteRequest,
     RouteResponse,
 };
 use scorer::{rank_experts, should_use_ensemble, ENSEMBLE_THRESHOLD};
-use vectorizer::{default_experts, direct_expert_for_task_type, task_type_to_vector};
+use vectorizer::{direct_expert_for_task_type, task_type_to_vector};
 
 // ── Application State ─────────────────────────────────────────────────────────
 
@@ -32,17 +34,18 @@ struct AppState {
     start_time: Instant,
     /// Built-in expert definitions (can be overridden per-request)
     default_experts: Arc<HashMap<String, Expert>>,
+    bedrock_client: BedrockClient,
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
 /// Core routing logic — used by both single and batch handlers
-fn do_route(req: RouteRequest, default_experts_map: &HashMap<String, Expert>) -> RouteResponse {
+async fn do_route(req: RouteRequest, state: &AppState) -> RouteResponse {
     let started = std::time::Instant::now();
 
     // Merge request-provided experts with defaults
     let experts_map: HashMap<String, Expert> = {
-        let mut m = default_experts_map.clone();
+        let mut m = state.default_experts.as_ref().clone();
         if let Some(extra) = req.experts {
             m.extend(extra);
         }
@@ -84,7 +87,7 @@ fn do_route(req: RouteRequest, default_experts_map: &HashMap<String, Expert>) ->
     }
 
     // ── Step 2: Compute task vector ──────────────────────────────────────
-    let task_vector = task_type_to_vector(task_type, &req.input_context);
+    let task_vector = task_type_to_vector(task_type, &req.input_context, &state.bedrock_client).await;
 
     // Filter by required skills
     let experts_filtered: Vec<(String, Expert)> = if req.required_skills.is_empty() {
@@ -101,7 +104,7 @@ fn do_route(req: RouteRequest, default_experts_map: &HashMap<String, Expert>) ->
     };
 
     let experts_to_rank: Vec<(String, Expert)> = if experts_filtered.is_empty() {
-        default_experts_map.clone().into_iter().collect()
+        state.default_experts.as_ref().clone().into_iter().collect()
     } else {
         experts_filtered
     };
@@ -118,7 +121,7 @@ fn do_route(req: RouteRequest, default_experts_map: &HashMap<String, Expert>) ->
         // All overloaded — last-resort fallback
         let fallback = experts_to_rank
             .first()
-            .map(|(r, _)| r.clone())
+            .map(|(r, _): &(String, Expert)| r.clone())
             .unwrap_or_else(|| "CEO".to_string());
         let latency_ms = started.elapsed().as_secs_f64() * 1000.0;
         return RouteResponse {
@@ -195,7 +198,7 @@ async fn handle_route(
     Json(req): Json<RouteRequest>,
 ) -> impl IntoResponse {
     info!(task_type = ?req.task_type, task_id = ?req.task_id, "routing request");
-    let response = do_route(req, &state.default_experts);
+    let response = do_route(req, &state).await;
     (StatusCode::OK, JsonResponse(response))
 }
 
@@ -210,20 +213,17 @@ async fn handle_batch_route(
     let batch_experts = batch.experts.unwrap_or_default();
     let batch_stats = batch.stats.unwrap_or_default();
 
-    let decisions: Vec<RouteResponse> = batch
-        .tasks
-        .into_iter()
-        .map(|mut t| {
-            // Merge batch-level overrides
-            if t.experts.is_none() && !batch_experts.is_empty() {
-                t.experts = Some(batch_experts.clone());
-            }
-            if t.stats.is_none() && !batch_stats.is_empty() {
-                t.stats = Some(batch_stats.clone());
-            }
-            do_route(t, &state.default_experts)
-        })
-        .collect();
+    // Sequential batching (since do_route is now async)
+    let mut decisions: Vec<RouteResponse> = Vec::with_capacity(batch.tasks.len());
+    for mut t in batch.tasks.into_iter() {
+        if t.experts.is_none() && !batch_experts.is_empty() {
+            t.experts = Some(batch_experts.clone());
+        }
+        if t.stats.is_none() && !batch_stats.is_empty() {
+            t.stats = Some(batch_stats.clone());
+        }
+        decisions.push(do_route(t, &state).await);
+    }
 
     let total_ms = started.elapsed().as_secs_f64() * 1000.0;
     (
@@ -235,10 +235,10 @@ async fn handle_batch_route(
     )
 }
 
-async fn handle_vectorize(Json(body): Json<serde_json::Value>) -> impl IntoResponse {
+async fn handle_vectorize(State(state): State<AppState>, Json(body): Json<serde_json::Value>) -> impl IntoResponse {
     let task_type = body["task_type"].as_str().unwrap_or("");
     let context = body["context"].as_str().unwrap_or("");
-    let vector = task_type_to_vector(task_type, context);
+    let vector = task_type_to_vector(task_type, context, &state.bedrock_client).await;
     JsonResponse(serde_json::json!({
         "task_type": task_type,
         "vector": vector,
@@ -301,9 +301,17 @@ async fn main() {
         .parse::<u16>()
         .unwrap_or(8090);
 
+    let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
+    let bedrock_client = BedrockClient::new(&config);
+
+    // Also need to initialize the experts from Nova async properly.
+    // For now, default_experts will fetch async on init.
+    let experts = vectorizer::init_experts_with_nova(&bedrock_client).await;
+
     let state = AppState {
         start_time: Instant::now(),
-        default_experts: Arc::new(default_experts()),
+        default_experts: Arc::new(experts),
+        bedrock_client,
     };
 
     let app = Router::new()
