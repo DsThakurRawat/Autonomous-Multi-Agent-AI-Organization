@@ -130,6 +130,7 @@ func main() {
 	settings.Get("/agent-prefs", settingsHdlr.GetAgentPrefs)
 	settings.Delete("/agent-prefs/:role", settingsHdlr.DeleteAgentPref)
 
+	// ── Graceful Shutdown ──────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
@@ -141,7 +142,20 @@ func main() {
 	}()
 
 	<-quit
-	log.Info("gateway shutting down")
-	_ = app.Shutdown()
+	log.Info("gateway shutting down gracefully...")
+
+	// Create a context with timeout for shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
+
+	// Shutdown order: HTTP -> gRPC -> DB -> Redis
+	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+		log.Error("fiber shutdown failed", zap.Error(err))
+	} else {
+		log.Info("http server stopped")
+	}
+
+	// Dependencies will be closed via deferred calls when main() returns.
+
 	log.Info("gateway stopped cleanly")
 }

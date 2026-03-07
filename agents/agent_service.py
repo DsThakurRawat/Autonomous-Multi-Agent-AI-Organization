@@ -211,7 +211,14 @@ class AgentMicroservice:
                 task_msg = TaskMessage(**raw_msg)
             except Exception as e:
                 logger.error(
-                    "Failed to parse TaskMessage", error=str(e), raw=str(raw_msg)[:200]
+                    "Failed to parse TaskMessage",
+                    error=str(e),
+                    raw_preview=str(raw_msg)[:500],
+                )
+                await self._emit_error_event(
+                    project_id=raw_msg.get("project_id", "unknown"),
+                    message=f"Agent fallback: Failed to parse task message for {self.role}",
+                    error=str(e),
                 )
                 continue
 
@@ -378,6 +385,24 @@ class AgentMicroservice:
                 level="error",
                 trace_id=task_msg.trace_id,
             )
+
+    async def _emit_error_event(
+        self,
+        project_id: str,
+        message: str,
+        error: str,
+        data: Optional[Dict[str, Any]] = None,
+        trace_id: str = "",
+    ):
+        """Standardized error event emitter for parsing/system failures."""
+        await self._emit_event(
+            project_id=project_id,
+            event_type="agent_system_error",
+            message=message,
+            data={"error": error, **(data or {})},
+            level="error",
+            trace_id=trace_id,
+        )
 
     async def _emit_event(
         self,

@@ -5,7 +5,7 @@ and generates optimization recommendations.
 """
 
 from typing import Any, Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 from .base_agent import BaseAgent
 
@@ -61,7 +61,7 @@ You produce clear, actionable financial reports with specific dollar amounts.
         savings_plan = self._recommend_savings_plan(report)
 
         full_report = {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "budget_overview": {
                 "total_budget_usd": budget_usd,
                 "current_spend_usd": report.get("total_spent", 0),

@@ -105,9 +105,9 @@ func (h *Handler) CreateProject(c *fiber.Ctx) error {
 
 	if err != nil {
 		log.Error("failed to create project via gRPC", zap.Error(err))
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
-			Code:    500,
-			Error:   "internal logic failure: " + err.Error(),
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
+			Code:    503,
+			Error:   "orchestrator unavailable: please try again later",
 			TraceID: traceID(c),
 		})
 	}
@@ -132,7 +132,11 @@ func (h *Handler) ListProjects(c *fiber.Ctx) error {
 		SELECT
 			p.id,
 			p.idea,
-			p.status,
+			CASE 
+				WHEN p.status = 'active' THEN 'processing'
+				WHEN p.status = 'done' THEN 'completed'
+				ELSE p.status 
+			END AS status,
 			COALESCE(p.budget_usd, 0)                                                 AS budget_usd,
 			COALESCE((SELECT SUM(cost_usd) FROM cost_events ce WHERE ce.project_id = p.id), 0) AS spent_usd,
 			COUNT(t.id)                                                               AS tasks_total,
@@ -191,7 +195,12 @@ func (h *Handler) GetProject(c *fiber.Ctx) error {
 	var p ProjectListItem
 	err := h.db.QueryRow(context.Background(), `
 		SELECT
-			p.id, p.idea, p.status,
+			p.id, p.idea, 
+			CASE 
+				WHEN p.status = 'active' THEN 'processing'
+				WHEN p.status = 'done' THEN 'completed'
+				ELSE p.status 
+			END AS status,
 			COALESCE(p.budget_usd, 0) AS budget_usd,
 			COALESCE((SELECT SUM(cost_usd) FROM cost_events ce WHERE ce.project_id = p.id), 0) AS spent_usd,
 			COUNT(t.id) AS tasks_total,

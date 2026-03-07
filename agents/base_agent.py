@@ -7,7 +7,7 @@ Provides LLM invocation, memory access, tool calling, and event emission.
 import asyncio
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 from google.genai import types
 import structlog
@@ -23,7 +23,7 @@ class AgentToolCall:
         self.parameters = parameters
         self.result: Any = None
         self.error: Optional[str] = None
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
 
 
 class BaseAgent(ABC):
@@ -208,7 +208,7 @@ class BaseAgent(ABC):
             {
                 "role": role,
                 "content": content,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
