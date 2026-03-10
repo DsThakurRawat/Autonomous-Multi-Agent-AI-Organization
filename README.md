@@ -13,6 +13,7 @@
 > A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
 >
 > 🚀 **New Feature Updates:**
+>
 > - Complete default adoption of **Amazon Nova** for all specialized agents.
 > - **Proximus-Nova CLI** launcher for fast terminal setup, management and cleanup.
 > - Premium animated **Next.js** terminal-based dashboard UI.
@@ -108,38 +109,44 @@ flowchart TB
 
 ## ⚡ Quick Start
 
-### Option A — Local / Self-Hosted (No login required)
+The fastest way to run Proximus-Nova is using the unified **CLI Launcher**.
 
-Fastest way to run the full system on your own machine.
+### Prerequisites
 
-**Prerequisites:** Docker + Docker Compose, `openssl`
+- **Docker + Docker Compose**
+- **AWS Bedrock Access** (or fallback keys for OpenAI/Anthropic)
+
+### 1-Minute Setup
 
 ```bash
 # 1. Clone
 git clone https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization.git
 cd "Autonomous Multi-Agent AI Organization"
 
-# 2. Copy local env template
-cp .env.local.example .env.local
+# 2. Setup environment
+cp .env.example .env
+# Edit .env and add your AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION
 
-# 3. Generate an encryption key and add it to .env.local
-openssl rand -hex 32
-# Paste output as KEY_ENCRYPTION_KEY= in .env.local
-# Add your AWS Sandbox Credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION)
-# You can also add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY for fallback models.
-
-# 4. Start the full stack (Go services + all 7 agents + dashboard + infra)
-docker-compose -f go-backend/deploy/docker-compose.local.yml --env-file .env.local up --build
-
-# 5. Open the dashboard — no login prompt
-open http://localhost:3000
+# 3. Start the platform
+./proximus-nova start
 ```
 
-**That's it.** No Google Cloud Console. No JWT keys. No login screen.
+**That's it.** The CLI will verify your docker daemon, build the containers, and launch the dashboard locally at `http://localhost:3000`.
+
+### Common CLI Operations
+
+| Command | Description |
+| :--- | :--- |
+| `./proximus-nova start` | Launches the full platform (detached) |
+| `./proximus-nova stop` | Gracefully stops all services |
+| `./proximus-nova clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
+| `./proximus-nova tui` | Launches the interactive Terminal UI |
 
 ---
 
-### Option B — SaaS / Hosted (Google OAuth login)
+## 🔒 Advanced Settings
+
+### SaaS / Hosted Mode (Google OAuth)
 
 For deploying on a server where multiple users sign in with Google accounts.
 
@@ -238,15 +245,15 @@ All local vars above, plus:
 
 By default, the entire system is powered by Amazon Nova models. However, the orchestrator and agent layers are designed to be provider-agnostic. Later on, specific agents can be dynamically swapped via the UI to use specialized models (e.g., using Gemini for a highly visual Frontend Engineer task, or Claude for complex Backend QA).
 
-| Agent         | Default Provider | Default Model              | Supported Alternatives |
-| ------------- | ---------------- | -------------------------- | ---------------------- |
-| CEO           | Bedrock          | `amazon.nova-pro-v1:0`     | OpenAI, Anthropic, Google |
-| CTO           | Bedrock          | `amazon.nova-pro-v1:0`     | OpenAI, Anthropic, Google |
-| Engineer (BE) | Bedrock          | `amazon.nova-lite-v1:0`    | Anthropic, OpenAI      |
-| Engineer (FE) | Bedrock          | `amazon.nova-lite-v1:0`    | Google (Gemini)        |
-| QA            | Bedrock          | `amazon.nova-lite-v1:0`    | Anthropic, OpenAI      |
-| DevOps        | Bedrock          | `amazon.nova-lite-v1:0`    | Anthropic              |
-| Finance       | Bedrock          | `amazon.nova-micro-v1:0`   | OpenAI, Google         |
+| Agent         | Default Provider | Default Model            | Supported Alternatives    |
+| :------------ | :--------------- | :----------------------- | :------------------------ |
+| CEO           | Bedrock          | `amazon.nova-pro-v1:0`   | OpenAI, Anthropic, Google |
+| CTO           | Bedrock          | `amazon.nova-pro-v1:0`   | OpenAI, Anthropic, Google |
+| Engineer (BE) | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
+| Engineer (FE) | Bedrock          | `amazon.nova-lite-v1:0`  | Google (Gemini)           |
+| QA            | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
+| DevOps        | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic                 |
+| Finance       | Bedrock          | `amazon.nova-micro-v1:0` | OpenAI, Google            |
 
 ### Per-User Key Management
 
@@ -301,6 +308,8 @@ Access at `http://localhost:3000`
 ## 📁 Project Structure
 
 ```text
+├── proximus-nova             Main CLI Launcher (Python/Bash)
+├── tui.py                    Interactive Terminal UI (Textual)
 ├── go-backend/               Go microservices
 │   ├── cmd/
 │   │   ├── gateway/          HTTP API (Fiber) — auth, routing, websockets
