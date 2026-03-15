@@ -1,7 +1,9 @@
 import json
 import httpx
 import websockets
+import asyncio
 from datetime import datetime
+from collections.abc import Generator
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Input, RichLog
 from textual.binding import Binding
@@ -45,7 +47,7 @@ class ProximusNovaTUI(App):
     TITLE = "Proximus-Nova Orchestrator"
     SUB_TITLE = "Live Control Plane"
 
-    def compose(self) -> ComposeResult:
+    def compose(self) -> Generator[ComposeResult, None, None]:
         yield Header(show_clock=True)
         yield RichLog(id="log", highlight=True, wrap=True, markup=True)
         yield Input(
@@ -140,20 +142,20 @@ class ProximusNovaTUI(App):
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         idea = event.value.strip()
-        if not idea: return
+        if not idea:
+            return
         
         input_widget = self.query_one(Input)
         log = self.query_one(RichLog)
 
         input_widget.value = ""
 
-        if command.lower() in ("exit", "quit"):
+        if idea.lower() in ("exit", "quit"):
             self.exit()
             return
 
-        log.write(f"\n[bold white]➜ {command}[/]")
-        self.run_worker(self.simulate_execution(command), exclusive=True)
-        input_widget.value = ""
+        log.write(f"\n[bold white]➜ {idea}[/]")
+        self.run_worker(self.simulate_execution(idea), exclusive=True)
         
         log.write(f"\n[bold white]🚀 Launching Goal:[/] {idea}")
         
