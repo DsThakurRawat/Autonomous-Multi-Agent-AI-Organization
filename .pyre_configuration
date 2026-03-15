@@ -1,0 +1,21 @@
+{
+  "site_package_search_strategy": "pep561",
+  "source_directories": [
+    "."
+  ],
+  "search_path": [
+    ".venv/lib/python3.12/site-packages",
+    "."
+  ],
+  "exclude": [
+    ".venv",
+    "node_modules",
+    "dashboard",
+    "go-backend",
+    "moe-scoring",
+    "**/__pycache__"
+  ],
+  "strict": false,
+  "taint_models_path": "",
+  "python_version": "3.12"
+}
