@@ -4,6 +4,7 @@ Handles: init, clone, add, commit, push, branch, status, diff.
 """
 
 import os
+import re
 from typing import Optional
 import structlog
 from .base_tool import BaseTool, ToolResult
@@ -30,6 +31,7 @@ class GitTool(BaseTool):
             "status": self._status,
             "diff": self._diff,
             "log": self._log,
+            "rewind": self._rewind,
         }
         fn = actions.get(action)
         if not fn:
@@ -86,6 +88,20 @@ class GitTool(BaseTool):
         return await self._run_subprocess(
             ["git", "log", f"-{n}", "--oneline"], cwd=self.repo_path
         )
+
+    async def _rewind(self, block_hash: str, force: bool = False) -> ToolResult:
+        """Issue #28: Ensure strict regex check on hash to prevent bash injections."""
+        if not re.match(r"^[a-f0-9]{40}$", block_hash):
+            return ToolResult(success=False, output="", error="Invalid git hash format. Must be 40 hex characters.")
+            
+        cmd = ["git", "reset"]
+        if force:
+            cmd.append("--hard")
+        else:
+            cmd.append("--soft")
+            
+        cmd.append(block_hash)
+        return await self._run_subprocess(cmd, cwd=self.repo_path)
 
     async def commit_all(self, message: str) -> ToolResult:
         """Convenience: add all + commit."""

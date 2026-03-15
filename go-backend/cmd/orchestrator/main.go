@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -29,11 +30,11 @@ func main() {
 
 	cfg, err := config.Load("orchestrator")
 	if err != nil {
-		panic(err)
+		log.Fatalf("config load failed: %v", err)
 	}
 
 	if err := logger.Init(cfg.ServiceName, cfg.Observ.LogLevel, cfg.Observ.LogJSON); err != nil {
-		panic(err)
+		log.Fatalf("logger init failed: %v", err)
 	}
 	defer logger.Sync()
 	log := logger.L()

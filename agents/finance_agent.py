@@ -4,9 +4,11 @@ Tracks AWS costs in real time, enforces budget limits,
 and generates optimization recommendations.
 """
 
-from typing import Any, Dict, List
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
+
 import structlog
+
 from .base_agent import BaseAgent
 
 logger = structlog.get_logger(__name__)
@@ -39,8 +41,8 @@ You produce clear, actionable financial reports with specific dollar amounts.
 """
 
     async def run(
-        self, task: Any = None, context: Any = None, budget_usd: float = 200.0, **kwargs
-    ) -> Dict[str, Any]:
+        self, task: Any | None = None, context: Any | None = None, budget_usd: float = 200.0, **kwargs
+    ) -> dict[str, Any]:
         """Analyze costs and produce financial report."""
         logger.info("Finance Agent: Starting cost analysis")
 
@@ -61,7 +63,7 @@ You produce clear, actionable financial reports with specific dollar amounts.
         savings_plan = self._recommend_savings_plan(report)
 
         full_report = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "budget_overview": {
                 "total_budget_usd": budget_usd,
                 "current_spend_usd": report.get("total_spent", 0),
@@ -104,7 +106,7 @@ You produce clear, actionable financial reports with specific dollar amounts.
         )
         return full_report
 
-    async def execute_task(self, task: Any, context: Any) -> Dict[str, Any]:
+    async def execute_task(self, task: Any, context: Any) -> dict[str, Any]:
         return await self.run(task=task, context=context)
 
     def _budget_status(self, utilization_pct: float) -> str:
@@ -117,7 +119,7 @@ You produce clear, actionable financial reports with specific dollar amounts.
         else:
             return "🚨 CRITICAL — Non-critical services should be paused"
 
-    def _generate_optimizations(self, report: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _generate_optimizations(self, report: dict[str, Any]) -> list[dict[str, Any]]:
         """Generate specific, actionable cost optimizations."""
         optimizations = []
         by_service = report.get("by_service", {})
@@ -174,9 +176,9 @@ You produce clear, actionable financial reports with specific dollar amounts.
 
         return optimizations
 
-    def _calculate_roi(self, report: Dict[str, Any], budget: float) -> Dict[str, Any]:
+    def _calculate_roi(self, report: dict[str, Any], budget: float) -> dict[str, Any]:
         """Calculate return on investment metrics."""
-        spend = report.get("total_spent", 0) or budget * 0.47
+        spend = report.get("total_spent", 0)
         return {
             "infrastructure_spend_usd": spend,
             "estimated_developer_time_saved_hours": 120,
@@ -188,7 +190,7 @@ You produce clear, actionable financial reports with specific dollar amounts.
             "speed_multiplier": f"{14 * 8 / 2:.0f}x faster",
         }
 
-    def _recommend_savings_plan(self, report: Dict[str, Any]) -> Dict[str, Any]:
+    def _recommend_savings_plan(self, report: dict[str, Any]) -> dict[str, Any]:
         return {
             "recommended": "Compute Savings Plan — 1 Year, No Upfront",
             "commitment_per_hour_usd": 0.15,
@@ -199,8 +201,8 @@ You produce clear, actionable financial reports with specific dollar amounts.
         }
 
     def _generate_alerts(
-        self, report: Dict[str, Any], budget: float
-    ) -> List[Dict[str, Any]]:
+        self, report: dict[str, Any], budget: float
+    ) -> list[dict[str, Any]]:
         alerts = []
         utilization = report.get("utilization_pct", 0)
         projection = report.get("monthly_projection", 0)
@@ -225,9 +227,9 @@ You produce clear, actionable financial reports with specific dollar amounts.
 
         return alerts
 
-    def _simulate_cost_report(self, budget: float) -> Dict[str, Any]:
-        """Simulate a realistic cost report for demo mode."""
-        spend = budget * 0.47
+    def _simulate_cost_report(self, budget: float) -> dict[str, Any]:
+        """Return an empty realistic cost report baseline for demo setups."""
+        spend = 0.0
         return {
             "total_spent": spend,
             "remaining": budget - spend,

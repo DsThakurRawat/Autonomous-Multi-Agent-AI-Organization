@@ -18,13 +18,14 @@ import os
 import signal
 import time
 import traceback
-from typing import Dict, Any, Optional
+from typing import Any
 
 import structlog
 
 from agents.model_registry import get_default
-from messaging.kafka_client import KafkaProducerClient, KafkaConsumerClient
-from messaging.schemas import TaskMessage, ResultMessage, EventMessage
+from agents.roles import AgentRole
+from messaging.kafka_client import KafkaConsumerClient, KafkaProducerClient
+from messaging.schemas import EventMessage, ResultMessage, TaskMessage
 from messaging.topics import KafkaTopics
 from utils.logging_config import setup_logging
 
@@ -32,14 +33,14 @@ logger = structlog.get_logger(__name__)
 
 
 # ── Agent Role → (Module, Class) Mapping ─────────────────────────────────────
-AGENT_REGISTRY: Dict[str, tuple] = {
-    "CEO": ("agents.ceo_agent", "CEOAgent"),
-    "CTO": ("agents.cto_agent", "CTOAgent"),
-    "Engineer_Backend": ("agents.engineer_agent", "EngineerAgent"),
-    "Engineer_Frontend": ("agents.engineer_agent", "EngineerAgent"),
-    "QA": ("agents.qa_agent", "QAAgent"),
-    "DevOps": ("agents.devops_agent", "DevOpsAgent"),
-    "Finance": ("agents.finance_agent", "FinanceAgent"),
+AGENT_REGISTRY: dict[str, tuple] = {
+    AgentRole.CEO: ("agents.ceo_agent", "CEOAgent"),
+    AgentRole.CTO: ("agents.cto_agent", "CTOAgent"),
+    AgentRole.ENGINEER_BACKEND: ("agents.engineer_agent", "EngineerAgent"),
+    AgentRole.ENGINEER_FRONTEND: ("agents.engineer_agent", "EngineerAgent"),
+    AgentRole.QA: ("agents.qa_agent", "QAAgent"),
+    AgentRole.DEVOPS: ("agents.devops_agent", "DevOpsAgent"),
+    AgentRole.FINANCE: ("agents.finance_agent", "FinanceAgent"),
 }
 
 
@@ -95,14 +96,19 @@ def _build_llm_client(llm_config: dict, agent_role: str):
             return client, model, provider
 
         elif provider == "bedrock":
-            import boto3
             import os
+
+            import boto3
 
             # boto3 automatically uses AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from the environment
             region = os.getenv("AWS_REGION", "us-east-1")
-            client = boto3.client("bedrock-runtime", region_name=region)
-            logger.info("Bedrock client built", model=model, region=region)
-            return client, model, provider
+            try:
+                client = boto3.client("bedrock-runtime", region_name=region)
+                logger.info("Bedrock client built", model=model, region=region)
+                return client, model, provider
+            except Exception as e:
+                logger.warning("Failed to initialize Bedrock client, falling back to mock mode", error=str(e))
+                return None, model, provider
 
         else:
             logger.warning("Unknown provider, mock mode", provider=provider)
@@ -143,7 +149,7 @@ class AgentMicroservice:
     """
 
     def __init__(self):
-        self.role = os.getenv("AGENT_ROLE", "CEO")
+        self.role = os.getenv("AGENT_ROLE", AgentRole.CEO)
         self.topic = os.getenv(
             "KAFKA_CONSUMER_TOPIC"
         ) or KafkaTopics.task_topic_for_role(self.role)
@@ -177,8 +183,12 @@ class AgentMicroservice:
         )
 
         heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        health_task = asyncio.create_task(self._health_server())
+
         await self._consume_loop()
+
         heartbeat_task.cancel()
+        health_task.cancel()
 
     def _shutdown(self):
         logger.info("Shutdown signal received", role=self.role)
@@ -209,6 +219,23 @@ class AgentMicroservice:
 
             await asyncio.sleep(10)
 
+    async def _health_server(self, port: int = 8000):
+        """Native asyncio HTTP server to reply to Docker healthchecks."""
+        async def handle_request(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+            import contextlib
+            with contextlib.suppress(Exception):
+                # Read just enough to clear the buffer loosely
+                await asyncio.wait_for(reader.read(1024), timeout=1.0)
+            response = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+            writer.write(response)
+            await writer.drain()
+            writer.close()
+
+        server = await asyncio.start_server(handle_request, '0.0.0.0', port)
+        logger.info("Health check server listening", port=port)
+        async with server:
+            await server.serve_forever()
+
     async def _consume_loop(self):
         """Main consumer loop — pull TaskMessages, process, publish ResultMessage."""
         logger.info("Consumer loop started", role=self.role)
@@ -230,6 +257,18 @@ class AgentMicroservice:
                     message=f"Agent fallback: Failed to parse task message for {self.role}",
                     error=str(e),
                 )
+
+                # Send bad payload to Dead Letter Queue (DLQ)
+                if self.producer:
+                    dlq_payload = {
+                        "original_topic": self.topic,
+                        "error": str(e),
+                        "raw_message": raw_msg,
+                    }
+                    try:
+                        await self.producer.publish_json("ai-org.dlq", dlq_payload, key="parse-error")
+                    except Exception as pub_err:
+                        logger.error("Failed to publish to DLQ", error=str(pub_err))
                 continue
 
             if task_msg.agent_role != self.role:
@@ -263,11 +302,11 @@ class AgentMicroservice:
         llm_config = task_msg.input_data.get("llm_config", {})
         llm_client, model_name, provider = _build_llm_client(llm_config, self.role)
 
-        # Patch the resolved client onto the agent instance for this task only.
-        # This is safe — agent pods process tasks sequentially per role.
-        self.agent.llm_client = llm_client
-        self.agent.model_name = model_name
-        self.agent.provider = provider
+        # Instantiate a fresh task-scoped agent to prevent race conditions
+        # if tasks were ever processed concurrently in the event loop.
+        agent_instance = _load_agent(self.role, llm_client=llm_client)
+        agent_instance.model_name = model_name
+        agent_instance.provider = provider
 
         logger.info(
             "Task LLM resolved",
@@ -305,7 +344,7 @@ class AgentMicroservice:
                 max_retries = task_msg.max_retries
                 status = "running"
 
-            output = await self.agent.execute_task(
+            output = await agent_instance.execute_task(
                 task=_TaskProxy(),
                 context=_build_minimal_context(task_msg),
             )
@@ -401,7 +440,7 @@ class AgentMicroservice:
         project_id: str,
         message: str,
         error: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
         trace_id: str = "",
     ):
         """Standardized error event emitter for parsing/system failures."""
@@ -419,7 +458,7 @@ class AgentMicroservice:
         project_id: str,
         event_type: str,
         message: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
         level: str = "info",
         trace_id: str = "",
     ):
@@ -450,7 +489,7 @@ def _build_minimal_context(task_msg: TaskMessage):
         async def emit_event(self, event):
             pass  # events are handled by AgentMicroservice._emit_event
 
-        class memory:
+        class Memory:
             project_config = task_msg.input_data.get("project_config", {})
             business_plan = task_msg.input_data.get("business_plan", {})
             architecture = task_msg.input_data.get("architecture", {})
@@ -459,7 +498,7 @@ def _build_minimal_context(task_msg: TaskMessage):
             def snapshot():
                 return task_msg.input_data
 
-        class decision_log:
+        class DecisionLog:
             @staticmethod
             def summary():
                 return {}
@@ -468,13 +507,13 @@ def _build_minimal_context(task_msg: TaskMessage):
             def log(*args, **kwargs):
                 pass
 
-        class cost_ledger:
+        class CostLedger:
             @staticmethod
             def report():
                 return {}
 
-        class artifacts:
-            _artifacts = []
+        class Artifacts:
+            _artifacts = []  # noqa: RUF012
 
             @staticmethod
             def get_deployment_url():
@@ -491,6 +530,11 @@ def _build_minimal_context(task_msg: TaskMessage):
             @staticmethod
             def save_code_file(*args, **kwargs):
                 pass
+
+        memory = Memory
+        decision_log = DecisionLog
+        cost_ledger = CostLedger
+        artifacts = Artifacts
 
     return _MinimalContext()
 

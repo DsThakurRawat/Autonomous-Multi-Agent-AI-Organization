@@ -5,17 +5,21 @@ event broadcasting, and the self-critique feedback loop.
 """
 
 import asyncio
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 import uuid
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+
 import structlog
 
-from .task_graph import TaskGraph, Task, TaskStatus
-from .memory.project_memory import ProjectMemory
-from .memory.decision_log import DecisionLog
-from .memory.cost_ledger import CostLedger
+from agents.roles import AgentRole
+
 from .memory.artifacts_store import ArtifactsStore
 from .memory.checkpointing import CheckpointManager
+from .memory.cost_ledger import CostLedger
+from .memory.decision_log import DecisionLog
+from .memory.project_memory import ProjectMemory
+from .task_graph import Task, TaskGraph, TaskStatus
 
 logger = structlog.get_logger(__name__)
 
@@ -50,7 +54,7 @@ class ExecutionEvent:
         event_type: str,  # task_started, agent_message, task_completed, error
         agent_role: str,
         message: str,
-        data: Dict[str, Any] = None,
+        data: dict[str, Any] | None = None,
         level: str = "info",  # info, warning, error, success
     ):
         self.id = str(uuid.uuid4())
@@ -59,9 +63,9 @@ class ExecutionEvent:
         self.message = message
         self.data = data or {}
         self.level = level
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(UTC)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "type": self.event_type,
@@ -89,9 +93,9 @@ class OrchestratorEngine:
     def __init__(self, budget_usd: float = 200.0, output_dir: str = "./output"):
         self.budget_usd = budget_usd
         self.output_dir = output_dir
-        self._agent_registry: Dict[str, Any] = {}
-        self._event_subscribers: List[Callable] = []
-        self._active_projects: Dict[str, Dict[str, Any]] = {}
+        self._agent_registry: dict[str, Any] = {}
+        self._event_subscribers: list[Callable] = []
+        self._active_projects: dict[str, dict[str, Any]] = {}
         logger.info("OrchestratorEngine initialized")
 
     def register_agent(self, role: str, agent_instance: Any):
@@ -116,7 +120,7 @@ class OrchestratorEngine:
 
     # ── Project Bootstrap ──────────────────────────────────────────
     async def start_project(
-        self, business_idea: str, user_constraints: Dict[str, Any] = None
+        self, business_idea: str, user_constraints: dict[str, Any] | None = None
     ) -> str:
         """
         Entry point: Given a business idea, spin up the entire AI company.
@@ -137,7 +141,7 @@ class OrchestratorEngine:
             "business_idea": business_idea,
             "budget_usd": self.budget_usd,
             "cloud_provider": "AWS",
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
             **(user_constraints or {}),
         }
 
@@ -149,14 +153,14 @@ class OrchestratorEngine:
             "checkpoint_manager": CheckpointManager(project_id, self.output_dir),
             "task_graph": None,
             "status": "bootstrapping",
-            "started_at": datetime.utcnow(),
+            "started_at": datetime.now(UTC),
             "kafka_dispatcher": None,
         }
 
         await self._emit(
             ExecutionEvent(
                 event_type="system",
-                agent_role="Orchestrator",
+                agent_role=AgentRole.ORCHESTRATOR,
                 message=f"Project started: {business_idea[:60]}",
                 data={"project_id": project_id},
                 level="success",
@@ -164,7 +168,7 @@ class OrchestratorEngine:
         )
 
         # Run in background
-        asyncio.create_task(self._run_project_lifecycle(project_id))
+        _bg_task = asyncio.create_task(self._run_project_lifecycle(project_id))  # noqa: RUF006
         return project_id
 
     # ── Main Lifecycle ─────────────────────────────────────────────
@@ -181,10 +185,10 @@ class OrchestratorEngine:
             ctx["status"] = "strategy"
             await self._emit(
                 ExecutionEvent(
-                    "phase_change", "CEO", "CEO analyzing business idea..."
+                    "phase_change", AgentRole.CEO, "CEO analyzing business idea..."
                 )
             )
-            ceo_agent = self._agent_registry.get("CEO")
+            ceo_agent = self._agent_registry.get(AgentRole.CEO)
             if ceo_agent:
                 exec_ctx = AgentExecutionContext(
                     project_id,
@@ -195,22 +199,24 @@ class OrchestratorEngine:
                     artifacts,
                     self._emit,
                 )
-                business_plan = await ceo_agent.run(
-                    business_idea=memory.project_config["business_idea"],
-                    context=exec_ctx,
-                )
-                memory.business_plan = business_plan
-                # Professional fallback in case LLM is unavailable
-                logger.warning("LLM Strategy generation failed, using safety fallback model")
-                business_plan = self._generate_fallback_business_plan(
-                    memory.project_config["business_idea"]
-                )
-                memory.business_plan = business_plan
+                try:
+                    business_plan = await ceo_agent.run(
+                        business_idea=memory.project_config["business_idea"],
+                        context=exec_ctx,
+                    )
+                    memory.business_plan = business_plan
+                except Exception as e:
+                    # Professional fallback in case LLM is unavailable
+                    logger.warning("LLM Strategy generation failed, using safety fallback model", error=str(e))
+                    business_plan = self._generate_fallback_business_plan(
+                        memory.project_config["business_idea"]
+                    )
+                    memory.business_plan = business_plan
 
             await self._emit(
                 ExecutionEvent(
                     "phase_change",
-                    "CEO",
+                    AgentRole.CEO,
                     f"Business plan created: {len(memory.business_plan.get('mvp_features', []))} features",
                     data=memory.business_plan,
                     level="success",
@@ -221,10 +227,10 @@ class OrchestratorEngine:
             ctx["status"] = "architecture"
             await self._emit(
                 ExecutionEvent(
-                    "phase_change", "CTO", "CTO designing system architecture..."
+                    "phase_change", AgentRole.CTO, "CTO designing system architecture..."
                 )
             )
-            cto_agent = self._agent_registry.get("CTO")
+            cto_agent = self._agent_registry.get(AgentRole.CTO)
             if cto_agent:
                 exec_ctx = AgentExecutionContext(
                     project_id,
@@ -251,7 +257,7 @@ class OrchestratorEngine:
                 await self._emit(
                     ExecutionEvent(
                         "warning",
-                        "CTO",
+                        AgentRole.CTO,
                         f"⚠️ Estimated cost ${estimated_cost} exceeds budget ${self.budget_usd}. Optimizing...",
                         level="warning",
                     )
@@ -260,7 +266,7 @@ class OrchestratorEngine:
             await self._emit(
                 ExecutionEvent(
                     "phase_change",
-                    "CTO",
+                    AgentRole.CTO,
                     "Architecture designed",
                     data=memory.architecture,
                     level="success",
@@ -268,7 +274,7 @@ class OrchestratorEngine:
             )
 
             # ── Phase 3: Build Task Graph ──────────────────────────
-            ceo = self._agent_registry.get("CEO")
+            ceo = self._agent_registry.get(AgentRole.CEO)
             if ceo and getattr(ceo, "llm_client", None):
                 from .task_graph import generate_dynamic_task_graph
 
@@ -290,7 +296,7 @@ class OrchestratorEngine:
             await self._emit(
                 ExecutionEvent(
                     "system",
-                    "Orchestrator",
+                    AgentRole.ORCHESTRATOR,
                     f"Task graph built: {len(task_graph.tasks)} tasks queued",
                     data=task_graph.to_dict(),
                 )
@@ -310,7 +316,7 @@ class OrchestratorEngine:
             await self._emit(
                 ExecutionEvent(
                     "task_complete",
-                    "Orchestrator",
+                    AgentRole.ORCHESTRATOR,
                     f"Project complete! (Simulated local deployment at: {deployment_url})",
                     data={
                         "deployment_url": deployment_url,
@@ -330,8 +336,8 @@ class OrchestratorEngine:
             await self._emit(
                 ExecutionEvent(
                     "task_failed",
-                    "Orchestrator",
-                    f"Project failed: {str(e)}",
+                    AgentRole.ORCHESTRATOR,
+                    f"Project failed: {e!s}",
                     data={"error": str(e)},
                     level="error",
                 )
@@ -437,7 +443,7 @@ class OrchestratorEngine:
                     await self._emit(
                         ExecutionEvent(
                             "system",
-                            "Orchestrator",
+                            AgentRole.ORCHESTRATOR,
                             f"Retrying ({task.retry_count}/{task.max_retries}): {task.name}",
                             level="warning",
                         )
@@ -455,40 +461,72 @@ class OrchestratorEngine:
                     )
                     break
 
-    # ── Self-Critique Loop ─────────────────────────────────────────
     async def _run_self_critique(self, project_id: str):
         """Post-deployment autonomous evaluation using cost and decision metrics."""
         ctx = self._active_projects[project_id]
         cost_ledger = ctx["cost_ledger"]
-        
+        task_graph = ctx.get("task_graph")
+
         await self._emit(
             ExecutionEvent(
                 "system",
-                "Orchestrator",
-                "Running self-critique evaluation...",
+                AgentRole.ORCHESTRATOR,
+                "Running self-critique evaluation across all completed tasks...",
             )
         )
-        
-        # Analyze results
+
+        # Invoke agent.self_critique on all completed task outputs
+        critiques_collected = 0
+        if task_graph:
+            for task in task_graph.tasks.values():
+                if task.status == TaskStatus.COMPLETED and task.output:
+                    agent = self._agent_registry.get(task.agent_role)
+                    if agent and hasattr(agent, "self_critique"):
+                        try:
+                            # Safely attempt self_critique reflection
+                            critique_result = await agent.self_critique(task.output)
+
+                            # Log the critique
+                            ctx["decision_log"].log(
+                                agent_role=task.agent_role,
+                                decision_type="reflection",
+                                description=f"Self-critique on task: {task.name}",
+                                rationale="Continuous improvement loop",
+                                input_context={"task_output": str(task.output)[:500]},
+                                output=critique_result,
+                                confidence=0.85,
+                                tags=["reflection", "critique"],
+                            )
+                            critiques_collected += 1
+                        except Exception as e:
+                            logger.warning(
+                                "Agent failed self-critique",
+                                role=task.agent_role,
+                                task_id=task.id,
+                                error=str(e)
+                            )
+
+        # Analyze macro results
         total_cost = cost_ledger.get_total_cost()
-        task_count = len(ctx["task_graph"].tasks) if ctx["task_graph"] else 0
-        
-        critique_msg = f"Evaluation complete: {task_count} tasks analyzed. "
+        task_count = len(task_graph.tasks) if task_graph else 0
+
+        critique_msg = f"Evaluation complete: {task_count} tasks analyzed, {critiques_collected} reflections gathered. "
         if total_cost > self.budget_usd:
-            critique_msg += "Budget exceeded — optimization recommended."
+            critique_msg += f"Budget exceeded (${total_cost:.2f} / ${self.budget_usd:.2f}) — optimization recommended."
             level = "warning"
         else:
-            critique_msg += "System operating within efficiency bounds."
+            critique_msg += f"System operating within efficiency bounds (${total_cost:.2f} / ${self.budget_usd:.2f})."
             level = "success"
 
         await self._emit(
             ExecutionEvent(
                 "system",
-                "Orchestrator",
+                AgentRole.ORCHESTRATOR,
                 critique_msg,
                 data={
                     "total_cost": total_cost,
                     "budget": self.budget_usd,
+                    "reflections_gathered": critiques_collected,
                     "task_efficiency": "High"
                 },
                 level=level,
@@ -496,7 +534,7 @@ class OrchestratorEngine:
         )
 
     # ── Status API ─────────────────────────────────────────────────
-    def get_project_status(self, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_project_status(self, project_id: str) -> dict[str, Any] | None:
         if project_id not in self._active_projects:
             return None
         ctx = self._active_projects[project_id]
@@ -513,19 +551,20 @@ class OrchestratorEngine:
         }
 
     # ── Safety Fallbacks ───────────────────────────────────────────
-    def _generate_fallback_business_plan(self, idea: str) -> Dict[str, Any]:
-        """Safety baseline for strategy phase."""
+    def _generate_fallback_business_plan(self, idea: str) -> dict[str, Any]:
+        """Safety baseline for strategy phase, using the original idea as context."""
+        keywords = " ".join([word for word in idea.split() if len(word) > 3])
         return {
-            "vision": idea,
-            "mvp_features": ["Core Authentication", "Basic Storage", "API Gateway"],
+            "vision": f"A scalable platform for: {idea}",
+            "mvp_features": ["Core Authentication", "Basic Storage", f"API Endpoints for {keywords[:30]}..."],
             "milestones": ["Infra Bootstrap", "MVP Implementation", "QA Audit"],
-            "risk_assessment": ["Vendor lock-in", "Latency threshold"],
-            "target_users": "General Professionals",
-            "revenue_model": "Usage-based",
+            "risk_assessment": ["Vendor lock-in", "Latency threshold", "Data privacy"],
+            "target_users": f"Users interested in {keywords[:40]}...",
+            "revenue_model": "Usage-based or Freemium",
             "success_metrics": ["99.9% availability", "< 500ms p95"],
         }
 
-    def _generate_fallback_architecture(self) -> Dict[str, Any]:
+    def _generate_fallback_architecture(self) -> dict[str, Any]:
         """Safety baseline for architecture phase."""
         return {
             "frontend": "React/Vite",

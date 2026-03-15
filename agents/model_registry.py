@@ -21,9 +21,9 @@ class ModelConfig(TypedDict):
 
 
 # ── Agent Defaults ────────────────────────────────────────────────────────────
-# NOTE: As part of the Amazon Nova integration, all default models are routed 
-# to Amazon Bedrock. The system orchestration still supports switching individual 
-# agents to Google (Gemini), Anthropic (Claude), or OpenAI (GPT) for specific tasks 
+# NOTE: As part of the Amazon Nova integration, all default models are routed
+# to Amazon Bedrock. The system orchestration still supports switching individual
+# agents to Google (Gemini), Anthropic (Claude), or OpenAI (GPT) for specific tasks
 # dynamically via the settings API.
 AGENT_MODEL_DEFAULTS: dict[str, ModelConfig] = {
     # CEO — Strategic reasoning, structured JSON output

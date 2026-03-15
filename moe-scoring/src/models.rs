@@ -115,6 +115,16 @@ pub struct HealthResponse {
     pub uptime_seconds: u64,
 }
 
+// ── Vectorize ─────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct VectorizeRequest {
+    #[serde(default)]
+    pub task_type: String,
+    #[serde(default)]
+    pub context: String,
+}
+
 // ── Error ─────────────────────────────────────────────────────────────────────
 
 #[allow(dead_code)]

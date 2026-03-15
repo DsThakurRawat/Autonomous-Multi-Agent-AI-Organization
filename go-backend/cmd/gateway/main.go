@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,12 +31,12 @@ func main() {
 	// ── Config ─────────────────────────────────────────────────────────────
 	cfg, err := config.Load("gateway")
 	if err != nil {
-		panic("config load failed: " + err.Error())
+		log.Fatalf("config load failed: %v", err)
 	}
 
 	// ── Logger ─────────────────────────────────────────────────────────────
 	if err := logger.Init(cfg.ServiceName, cfg.Observ.LogLevel, cfg.Observ.LogJSON); err != nil {
-		panic("logger init failed: " + err.Error())
+		log.Fatalf("logger init failed: %v", err)
 	}
 	defer logger.Sync()
 	log := logger.L()

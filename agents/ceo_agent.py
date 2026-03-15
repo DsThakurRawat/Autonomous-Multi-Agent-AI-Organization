@@ -5,8 +5,10 @@ vision, MVP scope, milestones, risk assessment, and success metrics.
 """
 
 import json
-from typing import Any, Dict
+from typing import Any
+
 import structlog
+
 from .base_agent import BaseAgent
 
 logger = structlog.get_logger(__name__)
@@ -42,9 +44,9 @@ Never over-engineer. Ship fast, iterate.
         self,
         business_idea: str = "",
         budget_usd: float = 200.0,
-        context: Any = None,
+        context: Any | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze business idea and produce a structured business plan.
         """
@@ -131,7 +133,7 @@ Return a JSON object with EXACTLY this structure:
         )
         return plan
 
-    def _extract_plan_fallback(self, idea: str) -> Dict[str, Any]:
+    def _extract_plan_fallback(self, idea: str) -> dict[str, Any]:
         return {
             "vision": f"A platform to {idea}",
             "target_users": "Professionals and SMBs",

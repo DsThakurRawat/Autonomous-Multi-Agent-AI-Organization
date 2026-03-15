@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -67,10 +68,10 @@ func main() {
 
 	cfg, err := config.Load("ws-hub")
 	if err != nil {
-		panic(err)
+		log.Fatalf("config load failed: %v", err)
 	}
 	if err := logger.Init(cfg.ServiceName, cfg.Observ.LogLevel, cfg.Observ.LogJSON); err != nil {
-		panic(err)
+		log.Fatalf("logger init failed: %v", err)
 	}
 	defer logger.Sync()
 	log := logger.L()

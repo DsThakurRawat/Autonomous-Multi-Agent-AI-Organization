@@ -7,14 +7,16 @@ Falls back gracefully when Kafka is not available.
 from __future__ import annotations
 
 import asyncio
+import contextlib
+from datetime import UTC, datetime
+from typing import Any
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
 
 import structlog
 
-from messaging.kafka_client import KafkaProducerClient, KafkaConsumerClient
-from messaging.schemas import TaskMessage, ResultMessage, EventMessage
+from agents.roles import AgentRole
+from messaging.kafka_client import KafkaConsumerClient, KafkaProducerClient
+from messaging.schemas import EventMessage, ResultMessage, TaskMessage
 from messaging.topics import KafkaTopics
 
 log = structlog.get_logger(__name__)
@@ -33,10 +35,10 @@ class KafkaDispatcher:
     """
 
     def __init__(self) -> None:
-        self._producer: Optional[KafkaProducerClient] = None
-        self._consumer: Optional[KafkaConsumerClient] = None
+        self._producer: KafkaProducerClient | None = None
+        self._consumer: KafkaConsumerClient | None = None
         self._pending: dict[str, asyncio.Future] = {}
-        self._consumer_task: Optional[asyncio.Task] = None
+        self._consumer_task: asyncio.Task | None = None
 
     # ------------------------------------------------------------------ #
     #  Lifecycle                                                           #
@@ -59,10 +61,8 @@ class KafkaDispatcher:
         """Graceful shutdown."""
         if self._consumer_task:
             self._consumer_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._consumer_task
-            except asyncio.CancelledError:
-                pass
         if self._consumer:
             await self._consumer.close()
         if self._producer:
@@ -137,7 +137,7 @@ class KafkaEventPublisher:
     """
 
     def __init__(self) -> None:
-        self._producer: Optional[KafkaProducerClient] = None
+        self._producer: KafkaProducerClient | None = None
 
     async def start(self) -> None:
         self._producer = KafkaProducerClient()
@@ -158,7 +158,7 @@ class KafkaEventPublisher:
         project_id: str,
         event_type: str,
         data: dict[str, Any],
-        agent_role: str = "orchestrator",
+        agent_role: str = AgentRole.ORCHESTRATOR,
     ) -> EventMessage:
         return EventMessage(
             event_id=str(uuid.uuid4()),
@@ -166,5 +166,5 @@ class KafkaEventPublisher:
             agent_role=agent_role,
             event_type=event_type,
             data=data,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )

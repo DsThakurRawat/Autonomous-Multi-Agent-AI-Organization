@@ -4,9 +4,10 @@ Immutable audit trail of every agent decision.
 Used for explainability, rollback, and continuous improvement.
 """
 
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 import uuid
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -21,11 +22,11 @@ class DecisionRecord:
         decision_type: str,  # architecture, code, deploy, risk, cost
         description: str,
         rationale: str,
-        input_context: Dict[str, Any],
-        output: Dict[str, Any],
+        input_context: dict[str, Any],
+        output: dict[str, Any],
         confidence: float = 1.0,
-        alternatives_considered: List[str] = None,
-        tags: List[str] = None,
+        alternatives_considered: list[str] | None = None,
+        tags: list[str] | None = None,
     ):
         self.id = str(uuid.uuid4())
         self.agent_role = agent_role
@@ -37,10 +38,10 @@ class DecisionRecord:
         self.confidence = confidence
         self.alternatives_considered = alternatives_considered or []
         self.tags = tags or []
-        self.timestamp = datetime.utcnow()
-        self.superseded_by: Optional[str] = None  # ID of newer decision
+        self.timestamp = datetime.now(UTC)
+        self.superseded_by: str | None = None  # ID of newer decision
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "agent_role": self.agent_role,
@@ -64,7 +65,7 @@ class DecisionLog:
 
     def __init__(self, project_id: str):
         self.project_id = project_id
-        self._records: List[DecisionRecord] = []
+        self._records: list[DecisionRecord] = []
         logger.info("DecisionLog initialized", project_id=project_id)
 
     def log(
@@ -73,11 +74,11 @@ class DecisionLog:
         decision_type: str,
         description: str,
         rationale: str,
-        input_context: Dict[str, Any],
-        output: Dict[str, Any],
+        input_context: dict[str, Any],
+        output: dict[str, Any],
         confidence: float = 1.0,
-        alternatives: List[str] = None,
-        tags: List[str] = None,
+        alternatives: list[str] | None = None,
+        tags: list[str] | None = None,
     ) -> str:
         """Log a new decision and return its ID."""
         record = DecisionRecord(
@@ -101,19 +102,19 @@ class DecisionLog:
         )
         return record.id
 
-    def get_by_agent(self, agent_role: str) -> List[Dict[str, Any]]:
+    def get_by_agent(self, agent_role: str) -> list[dict[str, Any]]:
         return [r.to_dict() for r in self._records if r.agent_role == agent_role]
 
-    def get_by_type(self, decision_type: str) -> List[Dict[str, Any]]:
+    def get_by_type(self, decision_type: str) -> list[dict[str, Any]]:
         return [r.to_dict() for r in self._records if r.decision_type == decision_type]
 
-    def get_timeline(self) -> List[Dict[str, Any]]:
+    def get_timeline(self) -> list[dict[str, Any]]:
         """Return all decisions sorted by time."""
         return [r.to_dict() for r in sorted(self._records, key=lambda x: x.timestamp)]
 
     def get_low_confidence_decisions(
         self, threshold: float = 0.7
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Surface decisions that might need human review."""
         return [
             r.to_dict()
@@ -128,9 +129,9 @@ class DecisionLog:
                 r.superseded_by = new_id
                 break
 
-    def summary(self) -> Dict[str, Any]:
-        agent_counts: Dict[str, int] = {}
-        type_counts: Dict[str, int] = {}
+    def summary(self) -> dict[str, Any]:
+        agent_counts: dict[str, int] = {}
+        type_counts: dict[str, int] = {}
         for r in self._records:
             agent_counts[r.agent_role] = agent_counts.get(r.agent_role, 0) + 1
             type_counts[r.decision_type] = type_counts.get(r.decision_type, 0) + 1

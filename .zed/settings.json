@@ -1,0 +1,491 @@
+// Zed Settings — Autonomous Multi-Agent AI Organization
+// Polyglot ML/AI environment: Python 3.12 · Go 1.26 · Rust 1.93 · TypeScript/Next.js 14
+// Last updated: auto-generated from live repo analysis
+{
+  // ─── Theme & Appearance ─────────────────────────────────────────────────────
+  "theme": {
+    "mode": "dark",
+    "dark": "One Dark",
+    "light": "Solarized Light"
+  },
+  "icon_theme": "Zed (Default)",
+  "buffer_font_family": "Zed Mono",
+  "buffer_font_size": 14,
+  "buffer_font_features": {
+    "calt": true,
+    "liga": true
+  },
+  "ui_font_size": 14,
+  "ui_font_family": "Zed Sans",
+
+  // ─── Editor Behaviour ───────────────────────────────────────────────────────
+  "tab_size": 4,
+  "hard_tabs": false,
+  "soft_wrap": "preferred_line_length",
+  "preferred_line_length": 88,
+  "show_whitespaces": "selection",
+  "cursor_blink": false,
+  "relative_line_numbers": false,
+  "scrollbar": {
+    "show": "auto",
+    "cursors": true,
+    "git_diff": true,
+    "search_results": true,
+    "selected_symbol": true,
+    "diagnostics": "all"
+  },
+  "indent_guides": {
+    "enabled": true,
+    "line_width": 1,
+    "active_line_width": 2,
+    "coloring": "indent_aware"
+  },
+  "use_autoclose": true,
+  "use_on_type_format": true,
+  "show_completions_on_input": true,
+  "show_completion_documentation": true,
+  "auto_signature_help": true,
+  "show_wrap_guides": true,
+  "wrap_guides": [88, 120],
+
+  // ─── Inlay Hints (types, params, chaining) ──────────────────────────────────
+  "inlay_hints": {
+    "enabled": true,
+    "show_type_hints": true,
+    "show_parameter_hints": true,
+    "show_other_hints": true,
+    "edit_debounce_ms": 700,
+    "scroll_debounce_ms": 50
+  },
+
+  // ─── Git Integration ────────────────────────────────────────────────────────
+  "git": {
+    "inline_blame": {
+      "enabled": true,
+      "delay_ms": 750,
+      "show_commit_summary": true
+    },
+    "git_gutter": "tracked_files"
+  },
+
+  // ─── File Panel / Project ───────────────────────────────────────────────────
+  "file_scan_exclusions": [
+    "**/.git",
+    "**/venv",
+    "**/.venv",
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/*.pyo",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    "**/.mypy_cache",
+    "**/htmlcov",
+    "**/node_modules",
+    "**/.next",
+    "**/out",
+    "**/dist",
+    "**/build",
+    "**/target",
+    "**/.cargo",
+    "**/tmp_repos",
+    "**/output",
+    "**/*.log",
+    "**/uvicorn.log",
+    "**/.DS_Store"
+  ],
+
+  // ─── Search ─────────────────────────────────────────────────────────────────
+  "search": {
+    "whole_word": false,
+    "case_sensitive": false,
+    "include_ignored": false,
+    "regex": false
+  },
+
+  // ─── Terminal ───────────────────────────────────────────────────────────────
+  // Activates the project venv and puts all toolchain bins on PATH
+  "terminal": {
+    "shell": {
+      "program": "bash"
+    },
+    "font_size": 13,
+    "font_family": "Zed Mono",
+    "line_height": "comfortable",
+    "working_directory": "current_project_directory",
+    "env": {
+      "VIRTUAL_ENV": "/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/venv",
+      "PATH": "/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/venv/bin:/home/divyansh-rawat/.cargo/bin:/snap/bin:/usr/local/go/bin:$PATH",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTHONUNBUFFERED": "1"
+    },
+    "toolbar": {
+      "title": true
+    }
+  },
+
+  // ─── Per-Language Settings ──────────────────────────────────────────────────
+  "languages": {
+
+    // ── Python (FastAPI · Pydantic v2 · LLM clients · Kafka · SQLAlchemy) ────
+    "Python": {
+      "tab_size": 4,
+      "hard_tabs": false,
+      "preferred_line_length": 88,
+      "soft_wrap": "preferred_line_length",
+      // ruff handles linting + formatting; pyright handles type-aware intellisense
+      "language_servers": ["pyright", "ruff"],
+      "formatter": [
+        {
+          "language_server": { "name": "ruff" }
+        }
+      ],
+      "format_on_save": "on",
+      // Run ruff auto-fix + import organiser on every save
+      "code_actions_on_format": {
+        "source.fixAll.ruff": true,
+        "source.organizeImports.ruff": true
+      }
+    },
+
+    // ── Go (Fiber · gRPC · Kafka · pgx · Redis · Zap) ────────────────────────
+    "Go": {
+      "tab_size": 4,
+      "hard_tabs": true,
+      "language_servers": ["gopls"],
+      "formatter": {
+        "language_server": { "name": "gopls" }
+      },
+      "format_on_save": "on"
+    },
+
+    // ── Rust (Axum · Tokio · AWS Bedrock · Prometheus · Serde) ───────────────
+    "Rust": {
+      "tab_size": 4,
+      "hard_tabs": false,
+      "language_servers": ["rust-analyzer"],
+      "formatter": {
+        "language_server": { "name": "rust-analyzer" }
+      },
+      "format_on_save": "on"
+    },
+
+    // ── TypeScript / TSX (Next.js 14 · React 18 · Tailwind · reactflow) ──────
+    "TypeScript": {
+      "tab_size": 2,
+      "hard_tabs": false,
+      "preferred_line_length": 100,
+      "language_servers": ["typescript-language-server", "eslint"],
+      "formatter": {
+        "language_server": { "name": "prettier" }
+      },
+      "format_on_save": "on",
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "TSX": {
+      "tab_size": 2,
+      "hard_tabs": false,
+      "preferred_line_length": 100,
+      "language_servers": ["typescript-language-server", "eslint"],
+      "formatter": {
+        "language_server": { "name": "prettier" }
+      },
+      "format_on_save": "on",
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "JavaScript": {
+      "tab_size": 2,
+      "hard_tabs": false,
+      "language_servers": ["typescript-language-server", "eslint"],
+      "formatter": {
+        "language_server": { "name": "prettier" }
+      },
+      "format_on_save": "on"
+    },
+
+    // ── YAML (K8s manifests · Helm · Docker Compose · GitHub Actions) ─────────
+    "YAML": {
+      "tab_size": 2,
+      "hard_tabs": false,
+      "language_servers": ["yaml-language-server"],
+      "formatter": {
+        "language_server": { "name": "yaml-language-server" }
+      },
+      "format_on_save": "on"
+    },
+
+    // ── JSON ──────────────────────────────────────────────────────────────────
+    "JSON": {
+      "tab_size": 2,
+      "hard_tabs": false,
+      "formatter": "prettier",
+      "format_on_save": "on"
+    },
+    "JSONC": {
+      "tab_size": 2,
+      "formatter": "prettier",
+      "format_on_save": "on"
+    },
+
+    // ── TOML (Cargo.toml) ─────────────────────────────────────────────────────
+    "TOML": {
+      "tab_size": 2,
+      "hard_tabs": false
+    },
+
+    // ── Dockerfile ────────────────────────────────────────────────────────────
+    "Dockerfile": {
+      "tab_size": 2,
+      "hard_tabs": false
+    },
+
+    // ── SQL (PostgreSQL 15) ───────────────────────────────────────────────────
+    "SQL": {
+      "tab_size": 2,
+      "hard_tabs": false
+    },
+
+    // ── Markdown ──────────────────────────────────────────────────────────────
+    "Markdown": {
+      "soft_wrap": "preferred_line_length",
+      "preferred_line_length": 100,
+      "format_on_save": "off"
+    },
+
+    // ── Bash / Shell ──────────────────────────────────────────────────────────
+    "Shell Script": {
+      "tab_size": 2,
+      "hard_tabs": false
+    },
+
+    // ── Protocol Buffers (gRPC stubs in go-backend/proto/) ────────────────────
+    "Proto": {
+      "tab_size": 2,
+      "hard_tabs": false
+    }
+  },
+
+  // ─── LSP Configuration ──────────────────────────────────────────────────────
+  "lsp": {
+
+    // ── Pyright — type-aware intellisense for Python 3.12 ────────────────────
+    // Points at the project venv so all installed packages are resolved
+    "pyright": {
+      "settings": {
+        "python": {
+          "pythonPath": "/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/venv/bin/python"
+        },
+        "pyright": {
+          "typeCheckingMode": "basic",
+          "reportMissingImports": "warning",
+          "reportMissingTypeStubs": "none",
+          "reportOptionalMemberAccess": "warning",
+          "reportAttributeAccessIssue": "warning",
+          "reportArgumentType": "warning"
+        },
+        "pythonVersion": "3.12"
+      }
+    },
+
+    // ── Ruff — fast linter + formatter (replaces flake8 + isort + black) ─────
+    // Mirrors the project's Makefile: `ruff check .` & `black .`
+    "ruff": {
+      "initialization_options": {
+        "settings": {
+          "lineLength": 88,
+          "lint": {
+            "select": [
+              "E",    // pycodestyle errors
+              "W",    // pycodestyle warnings
+              "F",    // pyflakes
+              "I",    // isort
+              "N",    // pep8-naming
+              "UP",   // pyupgrade
+              "B",    // flake8-bugbear
+              "SIM",  // flake8-simplify
+              "C4",   // flake8-comprehensions
+              "DTZ",  // flake8-datetimez
+              "PT",   // flake8-pytest-style
+              "RUF"   // ruff-specific
+            ],
+            "ignore": [
+              "E501",   // line-too-long (handled by formatter)
+              "B008",   // function-call-in-default-arg (FastAPI depends on this)
+              "N803",   // argument name should be lowercase (ML conventions)
+              "N806",   // variable in function should be lowercase (ML conventions)
+              "PT011"   // pytest.raises too broad (common in this codebase)
+            ],
+            "unfixable": ["F841"]
+          },
+          "format": {
+            "quoteStyle": "double",
+            "indentStyle": "space",
+            "lineEnding": "lf"
+          }
+        }
+      }
+    },
+
+    // ── rust-analyzer — Rust LSP with Clippy as check command ─────────────────
+    // moe-scoring uses axum 0.7, tokio full, aws-sdk-bedrockruntime, prometheus
+    "rust-analyzer": {
+      "initialization_options": {
+        "check": {
+          "command": "clippy",
+          "extraArgs": [
+            "--",
+            "-W", "clippy::all",
+            "-W", "clippy::pedantic",
+            "-A", "clippy::too_many_arguments",
+            "-A", "clippy::must_use_candidate",
+            "-A", "clippy::missing_errors_doc",
+            "-A", "clippy::missing_panics_doc"
+          ]
+        },
+        "cargo": {
+          "features": "all",
+          "buildScripts": {
+            "enable": true
+          }
+        },
+        "procMacro": {
+          "enable": true
+        },
+        "inlayHints": {
+          "bindingModeHints": { "enable": true },
+          "chainingHints": { "enable": true },
+          "closingBraceHints": { "enable": true, "minLines": 15 },
+          "closureReturnTypeHints": { "enable": "with_block" },
+          "parameterHints": { "enable": true },
+          "reborrowHints": { "enable": "mutable" },
+          "typeHints": { "enable": true, "hideNamedConstructor": false }
+        },
+        "diagnostics": {
+          "enable": true,
+          "experimental": { "enable": true }
+        }
+      }
+    },
+
+    // ── gopls — Go LSP for go-backend/ (Fiber · gRPC · Kafka · pgx) ──────────
+    // Module: github.com/DsThakurRawat/autonomous-org/go-backend (Go 1.26)
+    "gopls": {
+      "initialization_options": {
+        "usePlaceholders": true,
+        "completeUnimported": true,
+        "deepCompletion": true,
+        "staticcheck": true,
+        "gofumpt": false,
+        "analyses": {
+          "unusedparams": true,
+          "unusedvariable": true,
+          "shadow": true,
+          "nilness": true,
+          "useany": true,
+          "fieldalignment": false,
+          "httpresponse": true,
+          "loopclosure": true
+        },
+        "hints": {
+          "assignVariableTypes": true,
+          "compositeLiteralFields": true,
+          "compositeLiteralTypes": true,
+          "constantValues": true,
+          "functionTypeParameters": true,
+          "parameterNames": true,
+          "rangeVariableTypes": true
+        },
+        "codelenses": {
+          "gc_details": true,
+          "generate": true,
+          "run_govulncheck": false,
+          "test": true,
+          "tidy": true,
+          "upgrade_dependency": true,
+          "vendor": false
+        }
+      }
+    },
+
+    // ── yaml-language-server — K8s · Helm · Docker Compose · GH Actions ──────
+    "yaml-language-server": {
+      "settings": {
+        "yaml": {
+          "validate": true,
+          "completion": true,
+          "hover": true,
+          "format": {
+            "enable": true,
+            "singleQuote": false,
+            "bracketSpacing": true,
+            "proseWrap": "preserve"
+          },
+          "schemas": {
+            // Kubernetes 1.28 manifests (k8s/ directory)
+            "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.28.0-standalone-strict/all.json": [
+              "k8s/**/*.yaml",
+              "k8s/**/*.yml"
+            ],
+            // GitHub Actions workflows
+            "https://json.schemastore.org/github-workflow.json": [
+              ".github/workflows/*.yml",
+              ".github/workflows/*.yaml"
+            ],
+            // Docker Compose spec
+            "https://raw.githubusercontent.com/docker/compose/master/compose/config/compose_spec.json": [
+              "docker-compose.yml",
+              "docker-compose.yaml",
+              "docker-compose.local.yml",
+              "docker-compose.observability.yml"
+            ],
+            // Helm values
+            "https://json.schemastore.org/helm-values.json": [
+              "infra/helm/**/values.yaml",
+              "infra/helm/**/values.yml"
+            ],
+            // Prometheus scrape config
+            "https://json.schemastore.org/prometheus.json": [
+              "monitoring/prometheus/prometheus.yml",
+              "monitoring/prometheus/*.yml"
+            ]
+          },
+          "customTags": [
+            "!reference sequence",
+            "!reset sequence"
+          ]
+        }
+      }
+    },
+
+    // ── ESLint — Next.js 14 / TypeScript (dashboard/) ─────────────────────────
+    "eslint": {
+      "settings": {
+        "codeActionOnSave": {
+          "rules": ["import/order"]
+        },
+        "workingDirectory": {
+          "mode": "location"
+        }
+      }
+    },
+
+    // ── typescript-language-server — strict mode, path alias @/* ──────────────
+    "typescript-language-server": {
+      "initialization_options": {
+        "preferences": {
+          "importModuleSpecifier": "relative",
+          "includeInlayParameterNameHints": "literals",
+          "includeInlayParameterNameHintsWhenArgumentMatchesName": false,
+          "includeInlayFunctionParameterTypeHints": true,
+          "includeInlayVariableTypeHints": true,
+          "includeInlayPropertyDeclarationTypeHints": true,
+          "includeInlayFunctionLikeReturnTypeHints": true,
+          "includeInlayEnumMemberValueHints": true
+        }
+      }
+    }
+  }
+}

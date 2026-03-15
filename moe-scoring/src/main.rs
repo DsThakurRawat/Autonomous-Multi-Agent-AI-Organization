@@ -235,12 +235,10 @@ async fn handle_batch_route(
     )
 }
 
-async fn handle_vectorize(State(state): State<AppState>, Json(body): Json<serde_json::Value>) -> impl IntoResponse {
-    let task_type = body["task_type"].as_str().unwrap_or("");
-    let context = body["context"].as_str().unwrap_or("");
-    let vector = task_type_to_vector(task_type, context, &state.bedrock_client).await;
+async fn handle_vectorize(State(state): State<AppState>, Json(req): Json<models::VectorizeRequest>) -> impl IntoResponse {
+    let vector = task_type_to_vector(&req.task_type, &req.context, &state.bedrock_client).await;
     JsonResponse(serde_json::json!({
-        "task_type": task_type,
+        "task_type": req.task_type,
         "vector": vector,
         "dim": vector.len(),
     }))

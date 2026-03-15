@@ -82,6 +82,11 @@ class MoERouter:
         """
         start_time = time.monotonic()
 
+        # ── Step -1: Early exit if no experts ─────────────────────────────
+        if not self._registry.all_experts():
+            logger.error("No experts registered in the system.")
+            return await self._queue_for_retry(task_id, task_type, task_name, project_id, trace_id)
+
         # ── Step 0: Try Rust Service (Fast Path) ───────────────────────────
         rust_client = get_rust_client()
         if rust_client:
@@ -159,6 +164,12 @@ class MoERouter:
                 skills=required_skills,
             )
 
+        if not experts:
+            logger.error("No experts registered in the system.")
+            return await self._queue_for_retry(
+                task_id, task_type, task_name, project_id, trace_id
+            )
+
         # ── Step 4: Score and Rank ─────────────────────────────────────────
         rankings = rank_experts(
             task_vector=task_vector,
@@ -224,12 +235,20 @@ class MoERouter:
     # ── Batch Routing ──────────────────────────────────────────────────────
     async def route_batch(self, tasks: List[Dict[str, Any]]) -> List[MoERouteDecision]:
         """Route multiple tasks in parallel."""
+        experts_map = {
+            role: info for role, info in self._registry.all_experts().items()
+        }
+        if not experts_map:
+            logger.error("No experts registered for batch routing.")
+            return [
+                await self._queue_for_retry(
+                    t.get("task_id", ""), t.get("task_type", ""), t.get("task_name", ""), t.get("project_id", ""), t.get("trace_id", "")
+                )
+                for t in tasks
+            ]
+
         # Fast path: Rust batch route
-        rust_client = get_rust_client()
         if rust_client:
-            experts_map = {
-                role: info for role, info in self._registry.all_experts().items()
-            }
             stats_map = {
                 role: s.to_dict() for role, s in self._registry.all_stats().items()
             }
@@ -272,7 +291,18 @@ class MoERouter:
         trace_id: str,
     ) -> MoERouteDecision:
         """Queue task when all experts are overloaded."""
-        expert = list(self._registry.all_experts().keys())[0]  # Last resort
+        expert_keys = list(self._registry.all_experts().keys())
+        if not expert_keys:
+            return MoERouteDecision(
+                request_id=task_id,
+                selected_expert="NoExpertAvailable",
+                fallback_experts=[],
+                routing_score=0.0,
+                routing_reason="No experts registered in system",
+                ensemble_mode=False,
+                confidence=0.0,
+            )
+        expert = expert_keys[0]  # Last resort
         decision = MoERouteDecision(
             request_id=task_id,
             selected_expert=expert,

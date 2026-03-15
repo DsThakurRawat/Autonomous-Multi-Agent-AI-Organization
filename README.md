@@ -322,7 +322,7 @@ Access at `http://localhost:3000`
 ├── moe-scoring/              Rust — sub-ms expert routing engine
 ├── infra/
 │   ├── helm/                 Kubernetes Helm charts
-│   └── terraform/            AWS infrastructure (ECS, RDS, Route53)
+│   └── terraform/            AWS infrastructure (Mocked by DevOps Agent)
 ├── api/                      API definitions and specs
 ├── infrastructure/           IaC files and definitions
 ├── k8s/                      Additional Kubernetes manifests
@@ -363,7 +363,9 @@ terraform plan
 terraform apply
 ```
 
-Provisions: ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, ALB.
+> **Note**: These files are currently managed and simulated by the DevOps agent locally. Real AWS deployment bindings will be fully integrated post-hackathon.
+
+Provisions (Planned): ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, ALB.
 
 ---
 

@@ -4,13 +4,16 @@ Abstract base class for all AI agents in the organization.
 Provides LLM invocation, memory access, tool calling, and event emission.
 """
 
-import asyncio
-import json
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+import asyncio
+from collections.abc import Callable
+from datetime import UTC, datetime
+import json
+from typing import Any
+
 from google.genai import types
 import structlog
+
 from tools.collaboration_tool import CollaborationTool
 
 logger = structlog.get_logger(__name__)
@@ -31,12 +34,12 @@ def _clean_json_response(text: str) -> str:
 class AgentToolCall:
     """Represents a tool invocation request from an agent."""
 
-    def __init__(self, tool_name: str, parameters: Dict[str, Any]):
+    def __init__(self, tool_name: str, parameters: dict[str, Any]):
         self.tool_name = tool_name
         self.parameters = parameters
         self.result: Any = None
-        self.error: Optional[str] = None
-        self.timestamp = datetime.now(timezone.utc)
+        self.error: str | None = None
+        self.timestamp = datetime.now(UTC)
 
 
 class BaseAgent(ABC):
@@ -57,8 +60,8 @@ class BaseAgent(ABC):
     def __init__(
         self,
         llm_client=None,
-        tools: Dict[str, Callable] = None,
-        model_name: str = None,
+        tools: dict[str, Callable] | None = None,
+        model_name: str | None = None,
         provider: str = "google",
     ):
         self.llm_client = llm_client
@@ -67,7 +70,7 @@ class BaseAgent(ABC):
             self.tools["collaboration"] = CollaborationTool().run
         self.provider = provider
         self.model_name = model_name
-        self._scratchpad: List[Dict[str, str]] = []
+        self._scratchpad: list[dict[str, str]] = []
         self._iteration_count = 0
         logger.info(
             "Agent initialized", role=self.ROLE, provider=provider, model=model_name
@@ -80,11 +83,11 @@ class BaseAgent(ABC):
         ...
 
     @abstractmethod
-    async def run(self, **kwargs) -> Dict[str, Any]:
+    async def run(self, **kwargs) -> dict[str, Any]:
         """Main entry point — each agent implements its specific logic."""
         ...
 
-    async def execute_task(self, task: Any, context: Any) -> Dict[str, Any]:
+    async def execute_task(self, task: Any, context: Any) -> dict[str, Any]:
         """Generic task executor called by the orchestrator."""
         logger.info("Executing task", agent=self.ROLE, task=task.name)
         return await self.run(task=task, context=context)
@@ -92,10 +95,10 @@ class BaseAgent(ABC):
     # ── LLM Interface ──────────────────────────────────────────────
     async def call_llm(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         temperature: float = 0.3,
         max_tokens: int = 4096,
-        response_format: Optional[str] = None,  # "json_object" | None
+        response_format: str | None = None,  # "json_object" | None
     ) -> str:
         """
         Unified LLM call that dispatches to OpenAI, Anthropic, or Google
@@ -128,11 +131,14 @@ class BaseAgent(ABC):
                         )
                     )
 
-                response = await asyncio.to_thread(
-                    self.llm_client.models.generate_content,
-                    model=self.model_name,
-                    contents=gemini_messages,
-                    config=config,
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.llm_client.models.generate_content,
+                        model=self.model_name,
+                        contents=gemini_messages,
+                        config=config,
+                    ),
+                    timeout=60.0
                 )
                 return response.text
 
@@ -147,8 +153,11 @@ class BaseAgent(ABC):
                 if response_format == "json_object":
                     kwargs["response_format"] = {"type": "json_object"}
 
-                response = await asyncio.to_thread(
-                    self.llm_client.chat.completions.create, **kwargs
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.llm_client.chat.completions.create, **kwargs
+                    ),
+                    timeout=60.0
                 )
                 return response.choices[0].message.content
 
@@ -165,12 +174,15 @@ class BaseAgent(ABC):
                     if m["role"] != "system"
                 ]
 
-                response = await asyncio.to_thread(
-                    self.llm_client.messages.create,
-                    model=self.model_name,
-                    max_tokens=max_tokens,
-                    system=system_content,
-                    messages=anthropic_messages,
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.llm_client.messages.create,
+                        model=self.model_name,
+                        max_tokens=max_tokens,
+                        system=system_content,
+                        messages=anthropic_messages,
+                    ),
+                    timeout=60.0
                 )
                 text = response.content[0].text
                 if response_format == "json_object":
@@ -189,7 +201,7 @@ class BaseAgent(ABC):
                     for m in messages
                     if m["role"] != "system"
                 ]
-                
+
                 kwargs = {
                     "modelId": self.model_name,
                     "messages": bedrock_messages,
@@ -200,8 +212,11 @@ class BaseAgent(ABC):
                     }
                 }
 
-                response = await asyncio.to_thread(
-                    self.llm_client.converse, **kwargs
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.llm_client.converse, **kwargs
+                    ),
+                    timeout=60.0
                 )
                 text = response['output']['message']['content'][0]['text']
                 if response_format == "json_object":
@@ -220,7 +235,7 @@ class BaseAgent(ABC):
             )
             raise
 
-    def _mock_llm_response(self, messages: List[Dict[str, str]]) -> str:
+    def _mock_llm_response(self, messages: list[dict[str, str]]) -> str:
         """Deterministic mock response for demo mode."""
         last_user_msg = next(
             (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
@@ -260,11 +275,11 @@ class BaseAgent(ABC):
             {
                 "role": role,
                 "content": content,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
-    def get_scratchpad_messages(self) -> List[Dict[str, str]]:
+    def get_scratchpad_messages(self) -> list[dict[str, str]]:
         """Return scratchpad as LLM message format."""
         return [{"role": m["role"], "content": m["content"]} for m in self._scratchpad]
 
@@ -273,7 +288,7 @@ class BaseAgent(ABC):
         self._iteration_count = 0
 
     # ── Self-Critique ──────────────────────────────────────────────
-    async def self_critique(self, output: Dict[str, Any]) -> Dict[str, Any]:
+    async def self_critique(self, output: dict[str, Any]) -> dict[str, Any]:
         """
         Reflection loop: Agent reviews its own output and scores it.
         Returns the original output plus a critique score and suggestions.

@@ -1,0 +1,403 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# pyproject.toml — Autonomous Multi-Agent AI Organization
+# Single source of truth for all Python tooling:
+#   ruff (lint + format) · black (format) · pytest · pyright
+#
+# Mirrors the rules enforced in:
+#   Makefile   → make lint / make lint-fix / make test / make security
+#   .github/workflows/deploy.yaml → ruff · black · pytest · bandit
+#   .zed/settings.json → ruff LSP + pyright LSP
+# ══════════════════════════════════════════════════════════════════════════════
+
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name        = "autonomous-multi-agent-ai-org"
+version     = "1.0.0"
+description = "Autonomous Multi-Agent AI Organization — polyglot microservices platform"
+readme      = "README.md"
+license     = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+    { name = "AI Org Team" },
+]
+keywords = [
+    "ai", "agents", "llm", "multi-agent", "fastapi",
+    "kafka", "bedrock", "gemini", "orchestration",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []   # real deps live in requirements.txt
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Ruff — linter + formatter  (replaces flake8, isort, pyupgrade, pep8-naming)
+# CLI:  ruff check .            (lint)
+#       ruff check . --fix      (auto-fix)
+#       ruff format .           (format, black-compatible)
+# ──────────────────────────────────────────────────────────────────────────────
+[tool.ruff]
+# Match black's default line length
+line-length    = 88
+indent-width   = 4
+target-version = "py311"     # lowest supported runtime (Docker image)
+
+# Directories to lint
+src = ["agents", "orchestrator", "api", "moe", "moe_scoring", "messaging", "tools", "utils"]
+
+# Never lint these
+exclude = [
+    ".git",
+    ".github",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "node_modules",
+    "build",
+    "dist",
+    "output",
+    "tmp_repos",
+    "htmlcov",
+    "migrations",
+    "*.egg-info",
+    "infra",
+    "k8s",
+    "dashboard",
+    "go-backend",
+    "moe-scoring",
+]
+
+[tool.ruff.lint]
+# Rule sets enabled — mirrors what the CI workflow enforces
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (unused imports, undefined names, etc.)
+    "I",    # isort (import ordering)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade (modernise syntax for target Python version)
+    "B",    # flake8-bugbear (likely bugs + design issues)
+    "SIM",  # flake8-simplify
+    "C4",   # flake8-comprehensions (better list/dict/set comprehensions)
+    "DTZ",  # flake8-datetimez (naive datetimes → use timezone-aware)
+    "PT",   # flake8-pytest-style
+    "RUF",  # ruff-specific rules
+    "TID",  # flake8-tidy-imports
+    "PIE",  # flake8-pie (misc. linting)
+    "ERA",  # eradicate (commented-out code)
+    "PL",   # pylint subset
+    "PERF", # perflint (performance anti-patterns)
+]
+
+ignore = [
+    # ── Line length ────────────────────────────────────────────────────────
+    "E501",    # line-too-long (handled by the formatter)
+
+    # ── FastAPI patterns ────────────────────────────────────────────────────
+    "B008",    # function-call-in-default-arg: FastAPI uses Depends() in defaults
+
+    # ── ML / data-science naming conventions ───────────────────────────────
+    "N803",    # argument name should be lowercase  (X, y, T are idiomatic in ML)
+    "N806",    # variable in function should be lowercase
+
+    # ── Pydantic v2 patterns ────────────────────────────────────────────────
+    "UP007",   # Use X | Y for union types: Pydantic v2 still has edge cases
+    "UP006",   # Use `type` instead of `Type`: breaks some Pydantic validators
+
+    # ── Test patterns ───────────────────────────────────────────────────────
+    "PT011",   # pytest.raises() too broad: common in integration tests
+
+    # ── Commented-out code (intentional during active development) ──────────
+    "ERA001",  # commented-out code
+
+    # ── Pylint — noisy in async microservice code ───────────────────────────
+    "PLR0913", # too-many-arguments: agent constructors legitimately need many params
+    "PLR2004", # magic-value-comparison: acceptable in tests / config parsing
+    "PLR0911", # too-many-return-statements
+    "PLR0912", # too-many-branches
+    "PLC0415", # import-outside-toplevel: used for optional lazy imports of LLM SDKs
+]
+
+# Rules that ruff should NOT auto-fix (too risky to apply blindly)
+unfixable = [
+    "F841",   # local variable assigned but never used (may be intentional)
+    "ERA001", # don't silently delete commented code
+]
+
+# Allow these "magic" numbers throughout the codebase
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Cookie",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Security",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "agents",
+    "orchestrator",
+    "api",
+    "moe",
+    "messaging",
+    "tools",
+    "utils",
+]
+known-third-party = [
+    "fastapi",
+    "pydantic",
+    "sqlalchemy",
+    "httpx",
+    "kafka",
+    "structlog",
+    "prometheus_client",
+    "opentelemetry",
+    "boto3",
+    "anthropic",
+    "openai",
+    "google",
+    "networkx",
+    "textual",
+    "rich",
+    "tenacity",
+]
+force-sort-within-sections = true
+combine-as-imports          = true
+split-on-trailing-comma     = true
+
+[tool.ruff.lint.pep8-naming]
+# Allow these classmethod argument names (Pydantic validators use `cls`)
+classmethod-decorators = [
+    "classmethod",
+    "pydantic.validator",
+    "pydantic.root_validator",
+    "pydantic.field_validator",
+    "pydantic.model_validator",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests — relax rules that are too strict for test code
+"tests/**/*.py" = [
+    "S101",   # assert is fine in tests
+    "S105",   # hardcoded passwords in test fixtures are OK
+    "S106",
+    "ANN",    # no type annotations required in tests
+    "D",      # no docstrings required in tests
+    "PLR2004",
+    "PT",     # pytest-style rules already covered by conftest
+]
+# Orchestrator — complex async planner has long functions by design
+"orchestrator/**/*.py" = [
+    "PLR0912",
+    "PLR0915",
+    "C901",
+]
+# Agent base class — optional LLM imports loaded lazily
+"agents/**/*.py" = [
+    "PLC0415",
+    "TID251",
+]
+# Config / settings files — magic values are expected
+"**/config.py"   = ["PLR2004"]
+"**/settings.py" = ["PLR2004"]
+
+[tool.ruff.format]
+# Black-compatible defaults
+quote-style              = "double"
+indent-style             = "space"
+skip-magic-trailing-comma = false
+line-ending              = "lf"
+docstring-code-format    = true
+docstring-code-line-length = 72
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Black — code formatter
+# CLI:  black .            (format)
+#       black --check .    (CI check, mirrors Makefile `make lint`)
+# ──────────────────────────────────────────────────────────────────────────────
+[tool.black]
+line-length    = 88
+target-version = ["py311", "py312"]
+skip-string-normalization = false
+exclude = '''
+/(
+    \.git
+  | \.github
+  | \.pytest_cache
+  | \.ruff_cache
+  | \.mypy_cache
+  | __pycache__
+  | venv
+  | \.venv
+  | node_modules
+  | build
+  | dist
+  | output
+  | tmp_repos
+  | htmlcov
+  | migrations
+  | infra
+  | k8s
+  | dashboard
+  | go-backend
+  | moe-scoring
+)/
+'''
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Pytest — test runner
+# CLI:  python -m pytest tests/ -v --tb=short          (make test)
+#       python -m pytest tests/ --cov=. --cov-report=html  (make test-coverage)
+# ──────────────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion   = "7.0"
+testpaths    = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Default flags for all pytest runs
+addopts = [
+    "--strict-markers",     # fail on unknown markers
+    "--strict-config",      # fail on unknown ini options
+    "--tb=short",           # compact tracebacks
+    "-ra",                  # show reasons for all non-passing tests
+    "--color=yes",
+    "--import-mode=importlib",
+]
+
+# asyncio mode — required for pytest-asyncio (all agents + orchestrator use async)
+asyncio_mode = "auto"
+
+# Custom markers used across the test suite
+markers = [
+    "unit: pure unit tests, no I/O, no network",
+    "integration: tests that spin up Docker services or hit real APIs",
+    "slow: tests that take > 5 s (excluded from fast CI runs with -m 'not slow')",
+    "llm: tests that call real LLM APIs (Bedrock / Gemini / OpenAI / Anthropic)",
+    "kafka: tests that require a running Kafka broker",
+    "db: tests that require a running PostgreSQL instance",
+    "smoke: lightweight smoke tests run post-deployment",
+]
+
+# Filter noisy warnings from third-party async libs
+filterwarnings = [
+    "ignore::DeprecationWarning:kafka.*:",
+    "ignore::DeprecationWarning:asyncpg.*:",
+    "ignore::PendingDeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "error::RuntimeWarning",  # surface hidden async errors
+]
+
+# Coverage settings (used when --cov is passed)
+[tool.coverage.run]
+source    = ["agents", "orchestrator", "api", "moe", "messaging", "tools", "utils"]
+omit      = [
+    "venv/*",
+    ".venv/*",
+    "tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/migrations/*",
+    "run_demo.py",
+    "tui.py",
+    "list_models.py",
+    "check_routes.py",
+    "test_bedrock_integration.py",
+]
+branch    = true
+parallel  = false
+
+[tool.coverage.report]
+show_missing   = true
+skip_covered   = false
+skip_empty     = true
+precision      = 2
+fail_under     = 60    # minimum coverage gate (raise gradually as coverage improves)
+exclude_lines  = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "raise AssertionError",
+    "@(abc\\.)?abstractmethod",
+    "\\.\\.\\.",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+title     = "AI Org — Python Coverage Report"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Pyright — static type checker (also consumed by Zed's pyright LSP)
+# CLI:  pyright agents/ orchestrator/ api/ moe/ tools/ utils/
+# ──────────────────────────────────────────────────────────────────────────────
+[tool.pyright]
+pythonVersion          = "3.12"
+pythonPlatform         = "Linux"
+venvPath               = "."
+venv                   = "venv"
+typeCheckingMode       = "basic"
+
+# Source roots
+include = ["agents", "orchestrator", "api", "moe", "messaging", "tools", "utils"]
+exclude = [
+    "venv", ".venv", "__pycache__", "node_modules",
+    "build", "dist", "output", "tmp_repos",
+    "go-backend", "moe-scoring", "dashboard", "infra", "k8s",
+]
+
+# Diagnostics — basic mode with a few promotions to errors
+reportMissingImports           = "warning"
+reportMissingTypeStubs         = "none"       # many LLM SDKs lack stubs
+reportOptionalMemberAccess     = "warning"
+reportAttributeAccessIssue     = "warning"
+reportArgumentType             = "warning"
+reportReturnType               = "warning"
+reportUnusedVariable           = "information"
+reportUnusedImport             = "information"
+reportDuplicateImport          = "warning"
+reportUndefinedVariable        = "error"
+reportGeneralTypeIssues        = "warning"
+reportOperatorIssue            = "warning"
+reportIndexIssue               = "warning"
+reportCallIssue                = "warning"
+
+# Suppress noise from boto3 / google-genai (no bundled type stubs)
+reportUnknownMemberType        = "none"
+reportUnknownVariableType      = "none"
+reportUnknownArgumentType      = "none"
+reportUnknownParameterType     = "none"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Bandit — security scanner  (make security)
+# CLI:  bandit -r agents/ orchestrator/ api/ moe/ messaging/ tools/ -ll
+# ──────────────────────────────────────────────────────────────────────────────
+[tool.bandit]
+targets   = ["agents", "orchestrator", "api", "moe", "messaging", "tools", "utils"]
+exclude   = ["/venv", "/.venv", "/tests", "/output", "/tmp_repos"]
+# Skip these checks that are noisy / intentional in this codebase
+skips = [
+    "B101",  # assert_used: asserts are intentional in tests + dev code
+    "B104",  # hardcoded_bind_all_interfaces: 0.0.0.0 is fine in containers
+    "B311",  # random: non-cryptographic randomness used for load-balancing only
+    "B603",  # subprocess_without_shell_equals_true: intentional in devops agent
+    "B607",  # start_process_with_partial_path: intentional in sandbox tool
+]

@@ -1,8 +1,9 @@
-import os
+from datetime import UTC, datetime
 import json
+import os
+from typing import Any
+
 import structlog
-from datetime import datetime
-from typing import Dict, Any, Optional
 
 from tools.git_tool import GitTool
 
@@ -35,7 +36,7 @@ class CheckpointManager:
         self._initialized = True
 
     async def save_checkpoint(
-        self, task_name: str, agent_role: str, memory_state: Dict[str, Any]
+        self, task_name: str, agent_role: str, memory_state: dict[str, Any]
     ) -> None:
         """
         Hooks into the Orchestrator.
@@ -93,7 +94,7 @@ class CheckpointManager:
             )
             return
 
-        msg = f"Checkpoint: {task_name}\nAgent: {agent_role}\nTimestamp: {datetime.utcnow().isoformat()}"
+        msg = f"Checkpoint: {task_name}\nAgent: {agent_role}\nTimestamp: {datetime.now(UTC).isoformat()}"
         res = await self.git.run("commit", message=msg)
 
         if res.success:
@@ -105,7 +106,7 @@ class CheckpointManager:
         else:
             logger.warning("Shadow checkpoint failed.", error=res.error)
 
-    async def list_checkpoints(self) -> list[Dict[str, str]]:
+    async def list_checkpoints(self) -> list[dict[str, str]]:
         """Returns the timeline of agent execution checkpoints."""
         await self._ensure_git_repo()
         res = await self.git.run("log", n=50)
@@ -118,11 +119,16 @@ class CheckpointManager:
                         checkpoints.append({"hash": parts[0], "message": parts[1]})
         return checkpoints
 
-    async def rewind(self, commit_hash: str) -> Optional[Dict[str, Any]]:
+    async def rewind(self, commit_hash: str, force: bool = False) -> dict[str, Any] | None:
         """
         Hard undo to a precise checkpoint hash.
         Cleans the workspace and returns the restored ProjectMemory state for the Orchestrator.
+        Requires force=True to execute.
         """
+        if not force:
+            logger.error("Rewind aborted. 'force=True' is required for destructive checkpoint rewinds.")
+            return None
+
         await self._ensure_git_repo()
 
         # 1. Hard reset to checkpoint
@@ -143,7 +149,7 @@ class CheckpointManager:
         # 3. Reload the orchestrator's state memory
         state_file = os.path.join(self.workspace_dir, ".ai-org", "memory_state.json")
         if os.path.exists(state_file):
-            with open(state_file, "r") as f:
+            with open(state_file) as f:
                 return json.load(f)
 
         return None

@@ -5,33 +5,40 @@ Provides REST API + WebSocket for real-time agent event streaming.
 """
 
 import asyncio
-from datetime import datetime
-import os
-from typing import Any, Dict, List, Optional
+from collections import defaultdict
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+import os
+import time
+from typing import Any
 
 import boto3
 from dotenv import load_dotenv
-from google import genai
-from agents.model_registry import get_default
-
 from fastapi import (
+    Depends,
     FastAPI,
+    HTTPException,
+    Request,
+    Security,
     WebSocket,
     WebSocketDisconnect,
-    HTTPException,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
+from google import genai
+from pydantic import BaseModel, Field
 import structlog
 
-from orchestrator.planner import OrchestratorEngine, ExecutionEvent
 from agents.ceo_agent import CEOAgent
 from agents.cto_agent import CTOAgent
-from agents.engineer_agent import EngineerAgent
-from agents.qa_agent import QAAgent
 from agents.devops_agent import DevOpsAgent
+from agents.engineer_agent import EngineerAgent
 from agents.finance_agent import FinanceAgent
+from agents.model_registry import get_default
+from agents.qa_agent import QAAgent
+from agents.roles import AgentRole
+from orchestrator.planner import ExecutionEvent, OrchestratorEngine
 
 logger = structlog.get_logger(__name__)
 
@@ -70,10 +77,26 @@ else:
 orchestrator = OrchestratorEngine(budget_usd=200.0, output_dir="./output")
 
 
+# ── Security Setup ─────────────────────────────────────────────────
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    """Dependency to enforce X-API-Key header authentication."""
+    expected_key = os.getenv("API_KEY")
+    if not expected_key:
+        logger.warning("API_KEY environment variable is not set. All secure requests will be rejected.")
+        raise HTTPException(status_code=403, detail="Server misconfiguration: No API key defined")
+
+    if api_key != expected_key:
+        raise HTTPException(status_code=403, detail="Could not validate API key")
+    return api_key
+
+
 # ── WebSocket Connection Manager ───────────────────────────────────
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
+        self.active_connections: dict[str, list[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, project_id: str):
         await websocket.accept()
@@ -86,13 +109,16 @@ class ConnectionManager:
         if project_id in self.active_connections:
             self.active_connections[project_id].remove(websocket)
 
-    async def broadcast(self, project_id: str, data: Dict[str, Any]):
+    async def broadcast(self, project_id: str, data: dict[str, Any]):
         if project_id not in self.active_connections:
             return
         dead = []
         for ws in self.active_connections[project_id]:
             try:
-                await ws.send_json(data)
+                # Issue #25: Prevent slow clients from freezing the event loop
+                await asyncio.wait_for(ws.send_json(data), timeout=0.5)
+            except TimeoutError:
+                logger.warning("WebSocket broadcast timeout, dropping message", project_id=project_id)
             except Exception:
                 dead.append(ws)
         for ws in dead:
@@ -106,48 +132,48 @@ manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Register all agents on startup using model_registry defaults."""
-    
+
     def get_agent_config(role: str):
         config = get_default(role)
         provider = config["provider"]
         model = config["model"]
-        
+
         client = None
         if provider == "google":
             client = gemini_client
         elif provider == "bedrock":
             client = bedrock_client
-            
+
         return client, model, provider
 
     # CEO
-    client, model, provider = get_agent_config("CEO")
-    orchestrator.register_agent("CEO", CEOAgent(llm_client=client, model_name=model, provider=provider))
-    
+    client, model, provider = get_agent_config(AgentRole.CEO)
+    orchestrator.register_agent(AgentRole.CEO, CEOAgent(llm_client=client, model_name=model, provider=provider))
+
     # CTO
-    client, model, provider = get_agent_config("CTO")
-    orchestrator.register_agent("CTO", CTOAgent(llm_client=client, model_name=model, provider=provider))
-    
+    client, model, provider = get_agent_config(AgentRole.CTO)
+    orchestrator.register_agent(AgentRole.CTO, CTOAgent(llm_client=client, model_name=model, provider=provider))
+
     # Backend Engineer
-    client, model, provider = get_agent_config("Engineer_Backend")
-    orchestrator.register_agent("Engineer_Backend", EngineerAgent(mode="backend", llm_client=client, model_name=model, provider=provider))
-    
+    client, model, provider = get_agent_config(AgentRole.ENGINEER_BACKEND)
+    orchestrator.register_agent(AgentRole.ENGINEER_BACKEND, EngineerAgent(mode="backend", llm_client=client, model_name=model, provider=provider))
+
     # Frontend Engineer
-    client, model, provider = get_agent_config("Engineer_Frontend")
-    orchestrator.register_agent("Engineer_Frontend", EngineerAgent(mode="frontend", llm_client=client, model_name=model, provider=provider))
-    
+    client, model, provider = get_agent_config(AgentRole.ENGINEER_FRONTEND)
+    orchestrator.register_agent(AgentRole.ENGINEER_FRONTEND, EngineerAgent(mode="frontend", llm_client=client, model_name=model, provider=provider))
+
     # QA
-    client, model, provider = get_agent_config("QA")
-    orchestrator.register_agent("QA", QAAgent(llm_client=client, model_name=model, provider=provider))
-    
+    client, model, provider = get_agent_config(AgentRole.QA)
+    orchestrator.register_agent(AgentRole.QA, QAAgent(llm_client=client, model_name=model, provider=provider))
+
     # DevOps
-    client, model, provider = get_agent_config("DevOps")
-    orchestrator.register_agent("DevOps", DevOpsAgent(llm_client=client, model_name=model, provider=provider))
-    
+    client, model, provider = get_agent_config(AgentRole.DEVOPS)
+    orchestrator.register_agent(AgentRole.DEVOPS, DevOpsAgent(llm_client=client, model_name=model, provider=provider))
+
     # Finance
-    client, model, provider = get_agent_config("Finance")
-    orchestrator.register_agent("Finance", FinanceAgent(llm_client=client, model_name=model, provider=provider))
-    
+    client, model, provider = get_agent_config(AgentRole.FINANCE)
+    orchestrator.register_agent(AgentRole.FINANCE, FinanceAgent(llm_client=client, model_name=model, provider=provider))
+
     logger.info("All agents registered and ready")
     yield
 
@@ -169,13 +195,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Simple In-Memory Rate Limiter ──────────────────────────────────
+RATE_LIMIT_DURATION = 60
+RATE_LIMIT_REQUESTS = 60
+request_counts = defaultdict(list)
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    now = time.time()
+
+    # Fast prune old requests
+    request_counts[client_ip] = [t for t in request_counts[client_ip] if now - t < RATE_LIMIT_DURATION]
+
+    if len(request_counts[client_ip]) >= RATE_LIMIT_REQUESTS:
+        return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Please try again later."})
+
+    request_counts[client_ip].append(now)
+    return await call_next(request)
+
 
 # ── Request/Response Models ────────────────────────────────────────
 class StartProjectRequest(BaseModel):
-    idea: str
-    budget: Dict[str, Any] = {"max_cost_usd": 200.0}
-    name: Optional[str] = ""
-    constraints: Optional[Dict[str, Any]] = None
+    idea: str = Field(..., min_length=5, max_length=1000, description="The core business idea")
+    budget: dict[str, Any] = Field(default_factory=lambda: {"max_cost_usd": 200.0})
+    name: str | None = Field(default="", max_length=100)
+    constraints: dict[str, Any] | None = None
 
 
 # ── REST Endpoints ─────────────────────────────────────────────────
@@ -195,15 +240,15 @@ async def root():
 async def health():
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "uptime_seconds": 3600, # Mock uptime
         "agents": list(orchestrator._agent_registry.keys()),
         "active_projects": len(orchestrator._active_projects),
     }
 
 
-@app.post("/v1/projects")
-async def start_project(request: StartProjectRequest):
+@app.post("/v1/projects", status_code=202)
+async def start_project(request: StartProjectRequest, api_key: str = Depends(verify_api_key)):
     """
     MAIN ENDPOINT: Submit a business idea and launch the AI company.
     Returns a project_id for WebSocket streaming and status polling.
@@ -218,7 +263,7 @@ async def start_project(request: StartProjectRequest):
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
-        business_idea=request.idea, 
+        business_idea=request.idea,
         user_constraints=request.constraints or {}
     )
 
@@ -237,12 +282,12 @@ async def start_project(request: StartProjectRequest):
         "progress_pct": 0,
         "tasks_total": 0,
         "tasks_done": 0,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.now(UTC).isoformat()
     }
 
 
 @app.get("/v1/projects/{project_id}")
-async def get_project_status(project_id: str):
+async def get_project_status(project_id: str, api_key: str = Depends(verify_api_key)):
     """Get full project status including task graph, cost, and artifacts."""
     status = orchestrator.get_project_status(project_id)
     if not status:
@@ -280,7 +325,7 @@ async def get_cost_report(project_id: str):
     status = orchestrator.get_project_status(project_id)
     if not status:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     cost_report = status.get("cost_report", {})
     return {
         "total_usd": cost_report.get("total_usd", 0.0),
@@ -303,13 +348,13 @@ async def get_decisions(project_id: str):
 async def list_agents():
     """List all registered agents and their capabilities."""
     agent_info = {
-        "CEO": "Strategy, vision, milestone planning, risk assessment",
-        "CTO": "Architecture design, tech stack selection, cost estimation",
-        "Engineer_Backend": "FastAPI code generation, DB models, CRUD APIs",
-        "Engineer_Frontend": "Next.js UI, React components, API integration",
-        "QA": "Test generation, security scanning, coverage analysis",
-        "DevOps": "Terraform IaC, Docker, ECS deployment, CI/CD pipelines",
-        "Finance": "Cost tracking, budget governance, optimization recommendations",
+        AgentRole.CEO: "Strategy, vision, milestone planning, risk assessment",
+        AgentRole.CTO: "Architecture design, tech stack selection, cost estimation",
+        AgentRole.ENGINEER_BACKEND: "FastAPI code generation, DB models, CRUD APIs",
+        AgentRole.ENGINEER_FRONTEND: "Next.js UI, React components, API integration",
+        AgentRole.QA: "Test generation, security scanning, coverage analysis",
+        AgentRole.DEVOPS: "Terraform IaC, Docker, ECS deployment, CI/CD pipelines",
+        AgentRole.FINANCE: "Cost tracking, budget governance, optimization recommendations",
     }
     return {
         "agents": [
@@ -327,11 +372,11 @@ async def list_agents():
 class WebhookPayload(BaseModel):
     user_id: str
     text: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @app.post("/api/webhooks/{channel}")
-async def omni_channel_webhook(channel: str, payload: WebhookPayload):
+async def omni_channel_webhook(channel: str, payload: WebhookPayload, api_key: str = Depends(verify_api_key)):
     """
     Omni-channel control plane integration.
     Allows passing messages from Slack, Discord, or Telegram to the CEO/Orchestrator.
@@ -360,14 +405,28 @@ async def websocket_events(websocket: WebSocket, project_id: str):
     Bi-directional WebSocket endpoint.
     Receives live updates as agents execute execution graphs.
     Allows client to stream commands (HITL, rewind, chat) directly to the Orchestrator.
+
+    Note: WebSockets don't natively support headers in browsers easily.
+    We enforce authentication here by demanding the first message be an init payload
+    with the API key.
     """
     await manager.connect(websocket, project_id)
     try:
+        # Require immediate authentication upon connection
+        try:
+            auth_msg = await asyncio.wait_for(websocket.receive_json(), timeout=5.0)
+            if auth_msg.get("type") != "authenticate" or auth_msg.get("api_key") != os.getenv("API_KEY"):
+                await websocket.send_json({"type": "error", "message": "Authentication failed"})
+                raise WebSocketDisconnect("Authentication failed")
+        except TimeoutError:
+            await websocket.send_json({"type": "error", "message": "Authentication timeout"})
+            raise WebSocketDisconnect("Authentication timeout") from None
+
         await websocket.send_json(
             {
                 "type": "connected",
                 "message": f"Connected to project {project_id}",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -403,7 +462,7 @@ async def websocket_events(websocket: WebSocket, project_id: str):
                     logger.info("Rewind command requested via WebSocket", hash=hash_val)
                     ctx = orchestrator._active_projects.get(project_id)
                     if ctx and ctx.get("checkpoint_manager"):
-                        await ctx["checkpoint_manager"].rewind(hash_val)
+                        await ctx["checkpoint_manager"].rewind(hash_val, force=True)
                         await manager.broadcast(
                             project_id,
                             {
@@ -412,9 +471,9 @@ async def websocket_events(websocket: WebSocket, project_id: str):
                             },
                         )
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await websocket.send_json(
-                    {"type": "heartbeat", "timestamp": datetime.utcnow().isoformat()}
+                    {"type": "heartbeat", "timestamp": datetime.now(UTC).isoformat()}
                 )
             except Exception as e:
                 # Handle non-JSON messages or disconnects

@@ -5,7 +5,7 @@
 # ═══════════════════════════════════════════════════════════════════════
 
 # ── Stage 1: Builder ────────────────────────────────────────────────────
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 # Build args for image metadata
 ARG BUILD_DATE
@@ -30,7 +30,7 @@ RUN pip install --upgrade pip && \
 
 
 # ── Stage 2: Runtime ────────────────────────────────────────────────────
-FROM python:3.11-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 ARG BUILD_DATE
 ARG GIT_COMMIT

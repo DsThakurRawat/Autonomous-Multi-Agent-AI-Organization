@@ -6,8 +6,10 @@ Supports: FastAPI backend, Next.js frontend, with self-fix loops.
 
 import json
 import textwrap
-from typing import Any, Dict, List
+from typing import Any
+
 import structlog
+
 from .base_agent import BaseAgent
 
 logger = structlog.get_logger(__name__)
@@ -59,11 +61,11 @@ class EngineerAgent(BaseAgent):
 
     async def run(
         self,
-        task: Any = None,
-        context: Any = None,
-        architecture: Dict[str, Any] = None,
+        task: Any | None = None,
+        context: Any | None = None,
+        architecture: dict[str, Any] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         arch = context.memory.architecture if context else (architecture or {})
         files = {}
 
@@ -79,14 +81,29 @@ class EngineerAgent(BaseAgent):
 
         return {"generated_files": list(files.keys()), "file_count": len(files)}
 
-    async def execute_task(self, task: Any, context: Any) -> Dict[str, Any]:
+    async def execute_task(self, task: Any, context: Any) -> dict[str, Any]:
         return await self.run(task=task, context=context)
 
     # ── Backend Code Generation ─────────────────────────────────────
     async def _generate_backend(
-        self, arch: Dict[str, Any], context: Any
-    ) -> Dict[str, str]:
+        self, arch: dict[str, Any], context: Any
+    ) -> dict[str, str]:
         """Generate complete FastAPI backend."""
+        # Issue #18: LLM Code Validation
+        if getattr(self, "llm_client", None):
+            logger.info("Generating backend using active LLM agent")
+            prompt = f"System Architecture:\\n{json.dumps(arch, indent=2)}\\n"
+            prompt += "Based on this architecture, output a JSON dictionary mapping absolute file paths (e.g. 'backend/main.py') to their string content. No markdown wrappers. Just valid JSON."
+            response_json_str = await self.call_llm([{"role": "user", "content": prompt}], response_format="json_object")
+            if response_json_str:
+                try:
+                    response_json = json.loads(response_json_str)
+                    if isinstance(response_json, dict):
+                        return response_json
+                except json.JSONDecodeError:
+                    logger.error("Failed to parse Engineer backend LLM response")
+
+        logger.warning("LLM disabled or failed, using static backend templates")
         files = {}
 
         # Generate main app
@@ -119,9 +136,24 @@ class EngineerAgent(BaseAgent):
 
     # ── Frontend Code Generation ────────────────────────────────────
     async def _generate_frontend(
-        self, arch: Dict[str, Any], context: Any
-    ) -> Dict[str, str]:
+        self, arch: dict[str, Any], context: Any
+    ) -> dict[str, str]:
         """Generate complete Next.js frontend."""
+        # Issue #18: LLM Code Validation
+        if getattr(self, "llm_client", None):
+            logger.info("Generating frontend using active LLM agent")
+            prompt = f"System Architecture:\\n{json.dumps(arch, indent=2)}\\n"
+            prompt += "Based on this architecture, output a JSON dictionary mapping absolute file paths (e.g. 'frontend/package.json') to their string content. No markdown wrappers. Just valid JSON."
+            response_json_str = await self.call_llm([{"role": "user", "content": prompt}], response_format="json_object")
+            if response_json_str:
+                try:
+                    response_json = json.loads(response_json_str)
+                    if isinstance(response_json, dict):
+                        return response_json
+                except json.JSONDecodeError:
+                    logger.error("Failed to parse Engineer frontend LLM response")
+
+        logger.warning("LLM disabled or failed, using static frontend templates")
         files = {}
 
         files["frontend/package.json"] = self._generate_package_json()
@@ -147,7 +179,7 @@ class EngineerAgent(BaseAgent):
 
     # ══ CODE TEMPLATES ══════════════════════════════════════════════
 
-    def _generate_main_app(self, arch: Dict[str, Any]) -> str:
+    def _generate_main_app(self, arch: dict[str, Any]) -> str:
         return textwrap.dedent(
             '''
             """
@@ -222,8 +254,8 @@ class EngineerAgent(BaseAgent):
                 SECRET_KEY: str = "change-me-in-production"
                 ALGORITHM: str = "HS256"
                 ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-                CORS_ORIGINS: List[str] = ["http://localhost:3000"]
-                ALLOWED_HOSTS: List[str] = ["*"]
+                CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+                ALLOWED_HOSTS: list[str] = ["*"]
                 AWS_REGION: str = "us-east-1"
                 ENVIRONMENT: str = "development"
 
@@ -235,7 +267,7 @@ class EngineerAgent(BaseAgent):
         '''
         ).strip()
 
-    def _generate_database(self, arch: Dict[str, Any]) -> str:
+    def _generate_database(self, arch: dict[str, Any]) -> str:
         return textwrap.dedent(
             '''
             """Async SQLAlchemy database engine and session management."""
@@ -280,7 +312,7 @@ class EngineerAgent(BaseAgent):
         '''
         ).strip()
 
-    def _generate_models(self, schema: List[Dict]) -> str:
+    def _generate_models(self, schema: list[dict]) -> str:
         return textwrap.dedent(
             '''
             """SQLAlchemy ORM Models — auto-generated from CTO architecture."""
@@ -322,7 +354,7 @@ class EngineerAgent(BaseAgent):
         '''
         ).strip()
 
-    def _generate_schemas(self, schema: List[Dict]) -> str:
+    def _generate_schemas(self, schema: list[dict]) -> str:
         return textwrap.dedent(
             '''
             """Pydantic schemas for request/response validation."""
@@ -376,7 +408,7 @@ class EngineerAgent(BaseAgent):
                 model_config = {"from_attributes": True}
 
             class PaginatedItems(BaseModel):
-                items: List[ItemResponse]
+                items: list[ItemResponse]
                 total: int
                 page: int
                 page_size: int
@@ -479,7 +511,7 @@ class EngineerAgent(BaseAgent):
         '''
         ).strip()
 
-    def _generate_items_router(self, api_contracts: List[Dict]) -> str:
+    def _generate_items_router(self, api_contracts: list[dict]) -> str:
         return textwrap.dedent(
             '''
             """Items CRUD endpoints."""

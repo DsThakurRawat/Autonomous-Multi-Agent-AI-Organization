@@ -62,6 +62,9 @@ class DockerSandboxTool(BaseTool):
         if not allow_internet:
             docker_cmd.extend(["--network", "none"])
 
+        # Prevent container privilege escalation (military-grade sandbox)
+        docker_cmd.extend(["--cap-drop=ALL", "--security-opt=no-new-privileges"])
+
         # Optional memory constraints matching our Finance/Pruning logic
         docker_cmd.extend(["--memory", "512m", "--cpus", "1.0"])
 

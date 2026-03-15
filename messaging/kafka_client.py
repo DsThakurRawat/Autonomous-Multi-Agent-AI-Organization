@@ -39,6 +39,7 @@ class _InMemoryBus:
     def __init__(self):
         self._queues: Dict[str, asyncio.Queue] = {}
         self._subscribers: Dict[str, List[Callable]] = {}
+        self._log_file = os.getenv("KAFKA_MOCK_LOG", "kafka_mock_bus.jsonl")
 
     def _get_queue(self, topic: str) -> asyncio.Queue:
         if topic not in self._queues:
@@ -49,6 +50,14 @@ class _InMemoryBus:
         queue = self._get_queue(topic)
         await queue.put({"key": key, "value": value})
         logger.debug("InMemoryBus: published", topic=topic, key=key)
+        
+        # Issue #23: Persistence for mock bus to recover state across runs
+        try:
+            val_str = value.decode("utf-8") if isinstance(value, bytes) else str(value)
+            with open(self._log_file, "a") as f:
+                f.write(json.dumps({"topic": topic, "key": key, "value": val_str}) + "\\n")
+        except Exception as e:
+            logger.error("Failed to append to mock bus log", error=str(e))
 
     async def consume(self, topic: str, group_id: str = "default") -> Dict[str, Any]:
         """Block until a message is available."""

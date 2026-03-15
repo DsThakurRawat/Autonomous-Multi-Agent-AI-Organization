@@ -5,18 +5,21 @@ Supports parallel execution, dependency resolution, and real-time status.
 """
 
 import asyncio
+from datetime import UTC, datetime
+from enum import Enum, StrEnum
+from typing import Any
 import uuid
-from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional
+
 import networkx as nx
 from pydantic import BaseModel, Field
 import structlog
 
+from agents.roles import AgentRole
+
 logger = structlog.get_logger(__name__)
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     PENDING = "pending"
     QUEUED = "queued"
     IN_PROGRESS = "in_progress"
@@ -43,23 +46,23 @@ class Task(BaseModel):
     agent_role: str  # Which agent executes this
     status: TaskStatus = TaskStatus.PENDING
     priority: TaskPriority = TaskPriority.MEDIUM
-    dependencies: List[str] = []  # Task IDs this depends on
-    input_data: Dict[str, Any] = {}
-    output_data: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
+    dependencies: list[str] = []  # Task IDs this depends on
+    input_data: dict[str, Any] = {}
+    output_data: dict[str, Any] | None = None
+    error_message: str | None = None
     retry_count: int = 0
     max_retries: int = 3
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     estimated_duration_seconds: int = 60
-    tags: List[str] = []
+    tags: list[str] = []
 
     class Config:
         use_enum_values = True
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
@@ -69,17 +72,17 @@ class Task(BaseModel):
 
     def mark_started(self):
         self.status = TaskStatus.IN_PROGRESS
-        self.started_at = datetime.utcnow()
+        self.started_at = datetime.now(UTC)
 
-    def mark_completed(self, output: Dict[str, Any]):
+    def mark_completed(self, output: dict[str, Any]):
         self.status = TaskStatus.COMPLETED
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(UTC)
         self.output_data = output
 
     def mark_failed(self, error: str):
         self.status = TaskStatus.FAILED
         self.error_message = error
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(UTC)
 
 
 class TaskGraph:
@@ -91,7 +94,7 @@ class TaskGraph:
     def __init__(self, project_id: str):
         self.project_id = project_id
         self.graph = nx.DiGraph()
-        self.tasks: Dict[str, Task] = {}
+        self.tasks: dict[str, Task] = {}
         self._lock = asyncio.Lock()
         self._completion_event = asyncio.Event()
         logger.info("TaskGraph initialized", project_id=project_id)
@@ -118,7 +121,7 @@ class TaskGraph:
         logger.info("Task added to graph", task_id=task.id, task_name=task.name)
         return task.id
 
-    def get_ready_tasks(self) -> List[Task]:
+    def get_ready_tasks(self) -> list[Task]:
         """Return tasks whose all dependencies are completed and are PENDING."""
         ready = []
         for task_id, task in self.tasks.items():
@@ -133,7 +136,7 @@ class TaskGraph:
         # Sort by priority
         return sorted(ready, key=lambda t: t.priority)
 
-    def get_blocked_tasks(self) -> List[Task]:
+    def get_blocked_tasks(self) -> list[Task]:
         """Return tasks blocked by failed dependencies."""
         blocked = []
         for task_id, task in self.tasks.items():
@@ -153,15 +156,28 @@ class TaskGraph:
     def is_successful(self) -> bool:
         return all(t.status == TaskStatus.COMPLETED for t in self.tasks.values())
 
-    def get_critical_path(self) -> List[str]:
-        """Returns the longest dependency chain (critical path)."""
+    def get_critical_path(self) -> list[str]:
+        """Returns the longest dependency chain (critical path), weighted by task duration."""
         try:
-            return nx.dag_longest_path(self.graph)
-        except Exception:
+            # Issue #26: Use actual or estimated duration as the weight for correct diamond-dependency calc
+            for _, data in self.graph.nodes(data=True):
+                t: Task = data["task"]
+                # networkx dag_longest_path uses the 'weight' attribute on edges.
+                # For node-weights, we must assign it to the outgoing edges.
+                weight = t.duration_seconds or t.estimated_duration_seconds or 60
+                data["weight"] = weight
+
+            for u, _v, d in self.graph.edges(data=True):
+                # The weight of an edge u->v is the duration of u
+                d["weight"] = self.graph.nodes[u].get("weight", 60)
+
+            return nx.dag_longest_path(self.graph, weight="weight")
+        except Exception as e:
+            logger.warning("Failed to calculate critical path", error=str(e))
             return []
 
-    def get_status_summary(self) -> Dict[str, Any]:
-        counts = {status: 0 for status in TaskStatus}
+    def get_status_summary(self) -> dict[str, Any]:
+        counts = dict.fromkeys(TaskStatus, 0)
         for task in self.tasks.values():
             counts[task.status] += 1
         total = len(self.tasks)
@@ -175,7 +191,7 @@ class TaskGraph:
             "progress_pct": round((completed / total) * 100, 1) if total > 0 else 0,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the task graph for API/frontend consumption."""
         nodes = []
         edges = []
@@ -206,7 +222,7 @@ class TaskGraph:
 
 
 def build_standard_task_graph(
-    project_id: str, architecture: Dict[str, Any]
+    project_id: str, architecture: dict[str, Any]
 ) -> TaskGraph:
     """
     Build the standard AI company task graph based on CTO architecture output.
@@ -218,7 +234,7 @@ def build_standard_task_graph(
     t_repo = Task(
         name="Setup Repository",
         description="Initialize Git repository with project structure",
-        agent_role="DevOps",
+        agent_role=AgentRole.DEVOPS,
         priority=TaskPriority.CRITICAL,
         estimated_duration_seconds=30,
         tags=["foundation"],
@@ -229,7 +245,7 @@ def build_standard_task_graph(
     t_backend = Task(
         name="Build Backend API",
         description="Generate FastAPI application with all endpoints and DB models",
-        agent_role="Engineer_Backend",
+        agent_role=AgentRole.ENGINEER_BACKEND,
         priority=TaskPriority.HIGH,
         dependencies=[repo_id],
         input_data={"architecture": architecture},
@@ -242,7 +258,7 @@ def build_standard_task_graph(
     t_frontend = Task(
         name="Build Frontend UI",
         description="Generate Next.js dashboard and forms connected to backend API",
-        agent_role="Engineer_Frontend",
+        agent_role=AgentRole.ENGINEER_FRONTEND,
         priority=TaskPriority.HIGH,
         dependencies=[repo_id],
         input_data={"architecture": architecture},
@@ -255,7 +271,7 @@ def build_standard_task_graph(
     t_tests = Task(
         name="Run QA Testing",
         description="Generate and run unit tests, security scan, API contract validation",
-        agent_role="QA",
+        agent_role=AgentRole.QA,
         priority=TaskPriority.HIGH,
         dependencies=[backend_id],
         estimated_duration_seconds=120,
@@ -267,7 +283,7 @@ def build_standard_task_graph(
     t_docker = Task(
         name="Dockerize Application",
         description="Create Dockerfiles for backend and frontend, build images",
-        agent_role="DevOps",
+        agent_role=AgentRole.DEVOPS,
         priority=TaskPriority.MEDIUM,
         dependencies=[backend_id, frontend_id],
         estimated_duration_seconds=90,
@@ -279,7 +295,7 @@ def build_standard_task_graph(
     t_infra = Task(
         name="Provision AWS Infrastructure",
         description="Run Terraform to create ECS, RDS, S3, ALB, and all required services",
-        agent_role="DevOps",
+        agent_role=AgentRole.DEVOPS,
         priority=TaskPriority.CRITICAL,
         dependencies=[tests_id, docker_id],
         estimated_duration_seconds=300,
@@ -291,7 +307,7 @@ def build_standard_task_graph(
     t_deploy = Task(
         name="Deploy to AWS ECS",
         description="Push images to ECR, deploy ECS services, configure ALB, setup HTTPS",
-        agent_role="DevOps",
+        agent_role=AgentRole.DEVOPS,
         priority=TaskPriority.CRITICAL,
         dependencies=[infra_id],
         estimated_duration_seconds=240,
@@ -303,7 +319,7 @@ def build_standard_task_graph(
     t_finance = Task(
         name="Cost Analysis",
         description="Analyze AWS costs, compare against budget, suggest optimizations",
-        agent_role="Finance",
+        agent_role=AgentRole.FINANCE,
         priority=TaskPriority.MEDIUM,
         dependencies=[deploy_id],
         estimated_duration_seconds=60,
@@ -319,8 +335,8 @@ def build_standard_task_graph(
 
 async def generate_dynamic_task_graph(
     project_id: str,
-    business_plan: Dict[str, Any],
-    architecture: Dict[str, Any],
+    business_plan: dict[str, Any],
+    architecture: dict[str, Any],
     llm_client: Any,
     model_name: str,
     provider: str = "google",
@@ -351,7 +367,7 @@ Requirements for each task:
 - "dependencies": an array of "id" strings representing tasks this one blocks on
 - "estimated_duration_seconds": roughly 60-300
 
-Make sure there are no dependency cycles! 
+Make sure there are no dependency cycles!
 Return raw JSON ONLY. No markdown blocks.
     """
 
@@ -385,7 +401,7 @@ Return raw JSON ONLY. No markdown blocks.
             t = Task(
                 name=t_spec.get("name", "Unknown Task"),
                 description=t_spec.get("description", ""),
-                agent_role=t_spec.get("agent_role", "Engineer_Backend"),
+                agent_role=t_spec.get("agent_role", AgentRole.ENGINEER_BACKEND),
                 priority=TaskPriority(t_spec.get("priority", 3)),
                 estimated_duration_seconds=t_spec.get("estimated_duration_seconds", 60),
             )

@@ -8,6 +8,7 @@ import json
 import time
 from typing import Optional
 import structlog
+from filelock import FileLock, Timeout
 
 from .base_tool import BaseTool, ToolResult
 
@@ -23,12 +24,14 @@ class CollaborationTool(BaseTool):
     TIMEOUT_S = 60
     
     BOARD_FILE = ".agent_collaboration_board.json"
+    LOCK_FILE = ".agent_collaboration_board.json.lock"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not os.path.exists(self.BOARD_FILE):
-            with open(self.BOARD_FILE, "w") as f:
-                json.dump([], f)
+            with FileLock(self.LOCK_FILE, timeout=5):
+                with open(self.BOARD_FILE, "w") as f:
+                    json.dump([], f)
 
     async def run(self, action: str, agent_name: str, target_agent: Optional[str] = None, message: Optional[str] = None, **kwargs) -> ToolResult:
         """
@@ -58,34 +61,44 @@ class CollaborationTool(BaseTool):
             return ToolResult(success=False, output="", error="Must provide a 'message' to post.")
             
         try:
-            with open(self.BOARD_FILE, "r") as f:
-                board = json.load(f)
-        except Exception:
-            board = []
-            
-        entry = {
-            "timestamp": time.time(),
-            "from_agent": agent_name,
-            "to_agent": target_agent or "ALL",
-            "message": message
-        }
-        board.append(entry)
-        
-        with open(self.BOARD_FILE, "w") as f:
-            json.dump(board, f, indent=2)
-            
-        return ToolResult(
-            success=True,
-            output=f"Message posted successfully to {target_agent or 'ALL'}.",
-            metadata={"board_size": len(board)}
-        )
+            with FileLock(self.LOCK_FILE, timeout=10):
+                try:
+                    with open(self.BOARD_FILE, "r") as f:
+                        board = json.load(f)
+                except Exception:
+                    board = []
+                    
+                entry = {
+                    "timestamp": time.time(),
+                    "from_agent": agent_name,
+                    "to_agent": target_agent or "ALL",
+                    "message": message
+                }
+                board.append(entry)
+                
+                with open(self.BOARD_FILE, "w") as f:
+                    json.dump(board, f, indent=2)
+                    
+            return ToolResult(
+                success=True,
+                output=f"Message posted successfully to {target_agent or 'ALL'}.",
+                metadata={"board_size": len(board)}
+            )
+        except Timeout:
+            logger.error("Timeout acquiring collaboration board lock", agent=agent_name)
+            return ToolResult(success=False, output="", error="Timeout acquiring board lock")
 
     async def _read_all(self, agent_name: str, **kwargs) -> ToolResult:
         try:
-            with open(self.BOARD_FILE, "r") as f:
-                board = json.load(f)
-        except Exception:
-            board = []
+            with FileLock(self.LOCK_FILE, timeout=5):
+                try:
+                    with open(self.BOARD_FILE, "r") as f:
+                        board = json.load(f)
+                except Exception:
+                    board = []
+        except Timeout:
+            logger.error("Timeout acquiring collaboration board lock for reading", agent=agent_name)
+            return ToolResult(success=False, output="", error="Timeout acquiring board lock")
             
         if not board:
             return ToolResult(success=True, output="The collaboration board is currently empty.")
@@ -102,9 +115,14 @@ class CollaborationTool(BaseTool):
         )
         
     async def _clear_board(self, agent_name: str, **kwargs) -> ToolResult:
-        with open(self.BOARD_FILE, "w") as f:
-            json.dump([], f)
-        return ToolResult(
-            success=True,
-            output="Collaboration board has been cleared."
-        )
+        try:
+            with FileLock(self.LOCK_FILE, timeout=5):
+                with open(self.BOARD_FILE, "w") as f:
+                    json.dump([], f)
+            return ToolResult(
+                success=True,
+                output="Collaboration board has been cleared."
+            )
+        except Timeout:
+            logger.error("Timeout acquiring collaboration board lock for clearing", agent=agent_name)
+            return ToolResult(success=False, output="", error="Timeout acquiring board lock")

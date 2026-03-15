@@ -5,8 +5,10 @@ Outputs: tech stack, database schema, API contracts, cost estimates, infra spec.
 """
 
 import json
-from typing import Any, Dict
+from typing import Any
+
 import structlog
+
 from .base_agent import BaseAgent
 
 logger = structlog.get_logger(__name__)
@@ -53,11 +55,11 @@ You explain your architectural decisions with rationale.
 
     async def run(
         self,
-        business_plan: Dict[str, Any] = None,
+        business_plan: dict[str, Any] | None = None,
         budget_usd: float = 200.0,
-        context: Any = None,
+        context: Any | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Design complete system architecture from business plan."""
         logger.info("CTO Agent: Designing architecture")
         if context:
@@ -163,7 +165,7 @@ Return a JSON architecture specification:
         )
         return arch
 
-    def _validate_cost(self, arch: Dict[str, Any], budget: float) -> Dict[str, Any]:
+    def _validate_cost(self, arch: dict[str, Any], budget: float) -> dict[str, Any]:
         """Downgrade components if estimated cost exceeds budget."""
         est = arch.get("estimated_monthly_cost_usd", 100)
         if est > budget:
@@ -180,7 +182,7 @@ Return a JSON architecture specification:
             arch["_cost_optimized"] = True
         return arch
 
-    def _default_architecture(self, budget: float) -> Dict[str, Any]:
+    def _default_architecture(self, budget: float) -> dict[str, Any]:
         return {
             "frontend": {
                 "framework": "Next.js 14",
