@@ -3,7 +3,7 @@
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Sparkles, ArrowRight, LayoutDashboard, Search, Workflow, Zap, ShieldCheck } from 'lucide-react';
+import { Sparkles, ArrowRight, LayoutDashboard, Search, Workflow, Zap, ShieldCheck, Terminal } from 'lucide-react';
 import Image from 'next/image';
 
 export default function LandingPage() {

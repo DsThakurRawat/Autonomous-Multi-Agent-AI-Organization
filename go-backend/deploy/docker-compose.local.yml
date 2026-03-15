@@ -25,7 +25,7 @@ services:
     image: migrate/migrate:v4.17.0
     volumes:
       - ../migrations:/migrations
-    command: [ "-path", "/migrations", "-database", "postgres://aiorg:${POSTGRES_PASSWORD:-secret}@postgres:5432/aiorg?sslmode=disable", "up" ]
+    command: [ "-path", "/migrations", "-database", "postgres://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg?sslmode=disable", "up" ]
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,7 +45,7 @@ services:
       - LOCAL_USER_EMAIL=${LOCAL_USER_EMAIL:-local@localhost}
       - AI_ORG_ENV=local
       - AI_ORG_SERVER__PORT=8080
-      - AI_ORG_POSTGRES__DSN=postgres://aiorg:${POSTGRES_PASSWORD:-secret}@postgres:5432/aiorg?sslmode=disable
+      - AI_ORG_POSTGRES__DSN=postgres://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg?sslmode=disable
       - AI_ORG_REDIS__ADDR=redis:6379
       - AI_ORG_KAFKA__BROKERS=kafka:29092
       - AI_ORG_ORCHESTRATOR_TARGET=orchestrator:9090
@@ -76,7 +76,7 @@ services:
     environment:
       - AI_ORG_ENV=local
       - AI_ORG_SERVER__GRPC_PORT=9090
-      - AI_ORG_POSTGRES__DSN=postgres://aiorg:${POSTGRES_PASSWORD:-secret}@postgres:5432/aiorg?sslmode=disable
+      - AI_ORG_POSTGRES__DSN=postgres://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg?sslmode=disable
       - AI_ORG_REDIS__ADDR=redis:6379
       - AI_ORG_KAFKA__BROKERS=kafka:29092
       - KEY_ENCRYPTION_KEY=${KEY_ENCRYPTION_KEY}
@@ -126,7 +126,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8080
       - NEXT_PUBLIC_WS_URL=ws://localhost:8081
       - NEXT_PUBLIC_AUTH_DISABLED=true
-      - NEXTAUTH_SECRET=local-secret-not-used-in-local-mode
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=http://localhost:3000
     depends_on:
       - gateway
@@ -273,7 +273,7 @@ services:
     image: postgres:15-alpine
     environment:
       - POSTGRES_USER=aiorg
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secret}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=aiorg
     ports:
       - "5432:5432"

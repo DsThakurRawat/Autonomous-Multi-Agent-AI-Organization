@@ -11,11 +11,9 @@ FROM base AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
-COPY package*.json ./
-RUN npm ci --only=production && \
-    cp -R node_modules /prod_node_modules
-
-RUN npm ci
+COPY package.json ./
+# Use npm install for better resilience. Includes devDeps for the builder stage.
+RUN npm install
 
 # ── Stage 2: Build ───────────────────────────────────────────────────
 FROM base AS builder

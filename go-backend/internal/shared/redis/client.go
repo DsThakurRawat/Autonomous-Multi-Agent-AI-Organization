@@ -4,6 +4,7 @@ package redisclient
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -52,7 +53,11 @@ func New(ctx context.Context, cfg *config.RedisConfig) (*Client, error) {
 // SetJSON serialises val to JSON and stores it with optional TTL.
 // Uses MarshalJSON if val implements it, otherwise falls back to fmt.Sprintf.
 func (c *Client) SetJSON(ctx context.Context, key string, val any, ttl time.Duration) error {
-	return c.Set(ctx, key, fmt.Sprintf("%v", val), ttl).Err()
+	data, err := json.Marshal(val)
+	if err != nil {
+		return fmt.Errorf("redis: marshal: %w", err)
+	}
+	return c.Set(ctx, key, data, ttl).Err()
 }
 
 // GetString returns a string value or ("", false) if key is absent.
@@ -74,7 +79,7 @@ func (c *Client) Publish(ctx context.Context, channel, msg string) error {
 
 // Subscribe returns a PubSub connection to the given channel.
 func (c *Client) Subscribe(ctx context.Context, channel string) *redis.PubSub {
-	return c.UniversalClient.(*redis.ClusterClient).Subscribe(ctx, channel)
+	return c.UniversalClient.Subscribe(ctx, channel)
 }
 
 // IncrBy atomically increments a key. Returns new value.

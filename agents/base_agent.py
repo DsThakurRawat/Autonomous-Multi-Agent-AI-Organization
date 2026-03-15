@@ -59,6 +59,9 @@ class BaseAgent(ABC):
 
     def __init__(
         self,
+        llm_client: Optional[Any] = None,
+        tools: Optional[Dict[str, Callable]] = None,
+        model_name: Optional[str] = None,
         llm_client=None,
         tools: dict[str, Callable] | None = None,
         model_name: str | None = None,
@@ -109,6 +112,7 @@ class BaseAgent(ABC):
             return self._mock_llm_response(messages)
 
         try:
+            assert self.llm_client is not None  # guarded above
             # ── Google Gemini ──────────────────────────────────────────────
             if self.provider == "google":
                 system_prompt = self.system_prompt
@@ -131,6 +135,11 @@ class BaseAgent(ABC):
                         )
                     )
 
+                response = await asyncio.to_thread(
+                    self.llm_client.models.generate_content,  # type: ignore[union-attr]
+                    model=self.model_name,
+                    contents=gemini_messages,
+                    config=config,
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         self.llm_client.models.generate_content,
@@ -151,8 +160,10 @@ class BaseAgent(ABC):
                     "max_tokens": max_tokens,
                 }
                 if response_format == "json_object":
-                    kwargs["response_format"] = {"type": "json_object"}
+                    kwargs["response_format"] = {"type": "json_object"}  # type: ignore[assignment]
 
+                response = await asyncio.to_thread(
+                    self.llm_client.chat.completions.create, **kwargs  # type: ignore[union-attr]
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         self.llm_client.chat.completions.create, **kwargs
@@ -174,6 +185,12 @@ class BaseAgent(ABC):
                     if m["role"] != "system"
                 ]
 
+                response = await asyncio.to_thread(
+                    self.llm_client.messages.create,  # type: ignore[union-attr]
+                    model=self.model_name,
+                    max_tokens=max_tokens,
+                    system=system_content,
+                    messages=anthropic_messages,
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         self.llm_client.messages.create,
@@ -209,9 +226,11 @@ class BaseAgent(ABC):
                     "inferenceConfig": {
                         "temperature": temperature,
                         "maxTokens": max_tokens,
-                    }
+                    },
                 }
 
+                response = await asyncio.to_thread(self.llm_client.converse, **kwargs)  # type: ignore[union-attr]
+                text = response["output"]["message"]["content"][0]["text"]
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         self.llm_client.converse, **kwargs

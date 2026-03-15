@@ -8,7 +8,7 @@ from api.main import app
 
 print("Registered Routes:")
 for route in app.routes:
-    methods = getattr(route, 'methods', None)
-    path = getattr(route, 'path', None)
+    methods = getattr(route, "methods", None)
+    path = getattr(route, "path", None)
     if path:
         print(f"{list(methods) if methods else 'WS'} -> {path}")

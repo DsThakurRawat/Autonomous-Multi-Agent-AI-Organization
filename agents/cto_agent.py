@@ -64,7 +64,18 @@ You explain your architectural decisions with rationale.
         logger.info("CTO Agent: Designing architecture")
         if context:
             await context.emit_event(
-                type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": self.ROLE, "message": "Evaluating AWS services and cost constraints for the given MVP...", "level": "info"}})()
+                type(
+                    "E",
+                    (),
+                    {
+                        "to_dict": lambda s: {
+                            "type": "thinking",
+                            "agent": self.ROLE,
+                            "message": "Evaluating AWS services and cost constraints for the given MVP...",
+                            "level": "info",
+                        }
+                    },
+                )()
             )
         features = [f["name"] for f in business_plan.get("mvp_features", [])]
 
@@ -132,7 +143,18 @@ Return a JSON architecture specification:
 
         if context:
             await context.emit_event(
-                type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": self.ROLE, "message": f"Drafted Architecture:\nFrontend: {arch.get('frontend', {}).get('framework')}\nBackend: {arch.get('backend', {}).get('framework')}\nDatabase: {arch.get('database', {}).get('type')}", "level": "info"}})()
+                type(
+                    "E",
+                    (),
+                    {
+                        "to_dict": lambda s: {
+                            "type": "thinking",
+                            "agent": self.ROLE,
+                            "message": f"Drafted Architecture:\nFrontend: {arch.get('frontend', {}).get('framework')}\nBackend: {arch.get('backend', {}).get('framework')}\nDatabase: {arch.get('database', {}).get('type')}",
+                            "level": "info",
+                        }
+                    },
+                )()
             )
 
         # Self-critique the architecture

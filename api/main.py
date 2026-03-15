@@ -70,7 +70,9 @@ if aws_key and aws_key != "your-access-key-id":
     )
     logger.info("Amazon Bedrock (Nova) client initialized", region=aws_region)
 else:
-    logger.warning("No AWS Bedrock credentials found. Agents will fall back to Gemini or Mock.")
+    logger.warning(
+        "No AWS Bedrock credentials found. Agents will fall back to Gemini or Mock."
+    )
 
 
 # ── Global Orchestrator ────────────────────────────────────────────
@@ -147,6 +149,7 @@ async def lifespan(app: FastAPI):
         return client, model, provider
 
     # CEO
+<<<<<<< Updated upstream
     client, model, provider = get_agent_config(AgentRole.CEO)
     orchestrator.register_agent(AgentRole.CEO, CEOAgent(llm_client=client, model_name=model, provider=provider))
 
@@ -173,6 +176,54 @@ async def lifespan(app: FastAPI):
     # Finance
     client, model, provider = get_agent_config(AgentRole.FINANCE)
     orchestrator.register_agent(AgentRole.FINANCE, FinanceAgent(llm_client=client, model_name=model, provider=provider))
+=======
+    client, model, provider = get_agent_config("CEO")
+    orchestrator.register_agent(
+        "CEO", CEOAgent(llm_client=client, model_name=model, provider=provider)
+    )
+
+    # CTO
+    client, model, provider = get_agent_config("CTO")
+    orchestrator.register_agent(
+        "CTO", CTOAgent(llm_client=client, model_name=model, provider=provider)
+    )
+
+    # Backend Engineer
+    client, model, provider = get_agent_config("Engineer_Backend")
+    orchestrator.register_agent(
+        "Engineer_Backend",
+        EngineerAgent(
+            mode="backend", llm_client=client, model_name=model, provider=provider
+        ),
+    )
+
+    # Frontend Engineer
+    client, model, provider = get_agent_config("Engineer_Frontend")
+    orchestrator.register_agent(
+        "Engineer_Frontend",
+        EngineerAgent(
+            mode="frontend", llm_client=client, model_name=model, provider=provider
+        ),
+    )
+
+    # QA
+    client, model, provider = get_agent_config("QA")
+    orchestrator.register_agent(
+        "QA", QAAgent(llm_client=client, model_name=model, provider=provider)
+    )
+
+    # DevOps
+    client, model, provider = get_agent_config("DevOps")
+    orchestrator.register_agent(
+        "DevOps", DevOpsAgent(llm_client=client, model_name=model, provider=provider)
+    )
+
+    # Finance
+    client, model, provider = get_agent_config("Finance")
+    orchestrator.register_agent(
+        "Finance", FinanceAgent(llm_client=client, model_name=model, provider=provider)
+    )
+>>>>>>> Stashed changes
 
     logger.info("All agents registered and ready")
     yield
@@ -240,8 +291,13 @@ async def root():
 async def health():
     return {
         "status": "healthy",
+<<<<<<< Updated upstream
         "timestamp": datetime.now(UTC).isoformat(),
         "uptime_seconds": 3600, # Mock uptime
+=======
+        "timestamp": datetime.utcnow().isoformat(),
+        "uptime_seconds": 3600,  # Mock uptime
+>>>>>>> Stashed changes
         "agents": list(orchestrator._agent_registry.keys()),
         "active_projects": len(orchestrator._active_projects),
     }
@@ -254,17 +310,19 @@ async def start_project(request: StartProjectRequest, api_key: str = Depends(ver
     Returns a project_id for WebSocket streaming and status polling.
     """
     if len(request.idea.strip()) < 5:
-        raise HTTPException(
-            status_code=400, detail="Idea too short"
-        )
+        raise HTTPException(status_code=400, detail="Idea too short")
 
     # Wire up WebSocket event broadcasting
     async def broadcast_event(event: ExecutionEvent):
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
+<<<<<<< Updated upstream
         business_idea=request.idea,
         user_constraints=request.constraints or {}
+=======
+        business_idea=request.idea, user_constraints=request.constraints or {}
+>>>>>>> Stashed changes
     )
 
     # Subscribe the event broadcaster for this project
@@ -282,7 +340,11 @@ async def start_project(request: StartProjectRequest, api_key: str = Depends(ver
         "progress_pct": 0,
         "tasks_total": 0,
         "tasks_done": 0,
+<<<<<<< Updated upstream
         "created_at": datetime.now(UTC).isoformat()
+=======
+        "created_at": datetime.utcnow().isoformat(),
+>>>>>>> Stashed changes
     }
 
 
@@ -329,7 +391,7 @@ async def get_cost_report(project_id: str):
     cost_report = status.get("cost_report", {})
     return {
         "total_usd": cost_report.get("total_usd", 0.0),
-        "by_agent": cost_report.get("by_agent", {})
+        "by_agent": cost_report.get("by_agent", {}),
     }
 
 

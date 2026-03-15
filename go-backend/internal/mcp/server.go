@@ -3,7 +3,6 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -93,7 +92,7 @@ func handleReadFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	data, err := ioutil.ReadFile(securePath)
+	data, err := os.ReadFile(securePath)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to read file: %v", err)), nil
 	}
@@ -122,7 +121,7 @@ func handleWriteFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to create directories: %v", err)), nil
 	}
 
-	err = ioutil.WriteFile(securePath, []byte(content), 0644)
+	err = os.WriteFile(securePath, []byte(content), 0644)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to write file: %v", err)), nil
 	}
@@ -138,7 +137,7 @@ func handleListFiles(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	entries, err := ioutil.ReadDir(securePath)
+	entries, err := os.ReadDir(securePath)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to list directory: %v", err)), nil
 	}

@@ -108,7 +108,18 @@ Return a JSON object with EXACTLY this structure:
 
         if context:
             await context.emit_event(
-                type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": "CEO", "message": f"MVP Strategy Drafted:\nVision: {plan.get('vision')}\nTarget: {plan.get('target_users')}\nFeatures: {len(plan.get('mvp_features', []))} core tasks.", "level": "info"}})()
+                type(
+                    "E",
+                    (),
+                    {
+                        "to_dict": lambda s: {
+                            "type": "thinking",
+                            "agent": "CEO",
+                            "message": f"MVP Strategy Drafted:\nVision: {plan.get('vision')}\nTarget: {plan.get('target_users')}\nFeatures: {len(plan.get('mvp_features', []))} core tasks.",
+                            "level": "info",
+                        }
+                    },
+                )()
             )
 
         # Self-critique to validate completeness

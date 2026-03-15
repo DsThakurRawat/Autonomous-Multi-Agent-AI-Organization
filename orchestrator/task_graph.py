@@ -380,16 +380,14 @@ Return raw JSON ONLY. No markdown blocks.
             text = response.text
         elif provider == "bedrock":
             # Nova models use the Bedrock Converse API format
-            bedrock_messages = [
-                {"role": "user", "content": [{"text": prompt}]}
-            ]
+            bedrock_messages = [{"role": "user", "content": [{"text": prompt}]}]
             response = await asyncio.to_thread(
                 llm_client.converse,
                 modelId=model_name,
                 messages=bedrock_messages,
-                inferenceConfig={"temperature": 0.1}
+                inferenceConfig={"temperature": 0.1},
             )
-            text = response['output']['message']['content'][0]['text']
+            text = response["output"]["message"]["content"][0]["text"]
 
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)

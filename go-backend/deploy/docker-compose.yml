@@ -11,7 +11,7 @@ services:
     environment:
       - AI_ORG_ENV=local
       - AI_ORG_SERVER__PORT=8080
-      - AI_ORG_POSTGRES__DSN=postgres://aiorg:secret@postgres:5432/aiorg?sslmode=disable
+      - AI_ORG_POSTGRES__DSN=postgres://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg?sslmode=disable
       - AI_ORG_REDIS__ADDR=redis:6379
       - AI_ORG_KAFKA__BROKERS=kafka:29092
       - AI_ORG_ORCHESTRATOR_TARGET=orchestrator:9090
@@ -34,7 +34,7 @@ services:
     environment:
       - AI_ORG_ENV=local
       - AI_ORG_SERVER__GRPC_PORT=9090
-      - AI_ORG_POSTGRES__DSN=postgres://aiorg:secret@postgres:5432/aiorg?sslmode=disable
+      - AI_ORG_POSTGRES__DSN=postgres://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg?sslmode=disable
       - AI_ORG_REDIS__ADDR=redis:6379
       - AI_ORG_KAFKA__BROKERS=kafka:29092
     depends_on:
@@ -118,7 +118,7 @@ services:
     image: postgres:15-alpine
     environment:
       - POSTGRES_USER=aiorg
-      - POSTGRES_PASSWORD=secret
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=aiorg
     ports:
       - "5432:5432"

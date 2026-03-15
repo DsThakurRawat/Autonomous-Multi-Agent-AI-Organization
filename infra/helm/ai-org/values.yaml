@@ -78,7 +78,7 @@ postgresql:
     port: 5432
   auth:
     username: ai_admin
-    password: mysecurepassword
+    password: CHANGEME  # Override via --set or sealed-secrets
     database: ai_org_db
 
 redis:

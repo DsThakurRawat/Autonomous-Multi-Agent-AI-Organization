@@ -80,7 +80,7 @@ services:
     ports:
       - "3002:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: "ai-org-admin"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/main.json
     volumes:
@@ -107,7 +107,7 @@ services:
     image: opensearchproject/opensearch:2.12.0
     environment:
       discovery.type: single-node
-      OPENSEARCH_INITIAL_ADMIN_PASSWORD: "Admin@AI0rg2026"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_ADMIN_PASSWORD}
       plugins.security.disabled: "true"   # Dev mode — enable in prod
       bootstrap.memory_lock: "true"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
