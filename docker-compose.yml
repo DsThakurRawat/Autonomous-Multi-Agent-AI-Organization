@@ -18,13 +18,13 @@ x-agent-env: &agent-env
   KAFKA_BOOTSTRAP_SERVERS: kafka:29092
   KAFKA_MOCK: "false"
   REDIS_URL: redis://redis:6379/0
-  DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
+  DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg
   OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
   ENVIRONMENT: ${ENVIRONMENT:-development}
 
 x-go-env: &go-env
   AI_ORG_ENV: development
-  AI_ORG_POSTGRES__DSN: postgres://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg?sslmode=disable
+  AI_ORG_POSTGRES__DSN: postgres://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg?sslmode=disable
   AI_ORG_REDIS__ADDR: redis:6379
   AI_ORG_KAFKA__BROKERS: kafka:29092
   AI_ORG_OBSERVABILITY__LOG_LEVEL: debug
@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: aiorg
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiorg_secret_2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: aiorg
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
@@ -368,7 +368,7 @@ services:
       - "${GRAFANA_PORT:-3002}:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-ai-org-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
