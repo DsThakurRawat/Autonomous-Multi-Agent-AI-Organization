@@ -5,7 +5,8 @@ and orchestrates the full AWS deployment lifecycle.
 """
 
 import textwrap
-from typing import Any, Dict
+from collections.abc import Generator
+from typing import Any, Dict, Optional
 import structlog
 from .base_agent import BaseAgent
 
@@ -43,12 +44,17 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         self,
         task: Any = None,
         context: Any = None,
-        architecture: Dict[str, Any] = None,
+        architecture: Optional[Dict[str, Any]] = None,
         project_name: str = "ai-org",
         **kwargs,
     ) -> Dict[str, Any]:
         """Generate all infrastructure code and simulate deployment."""
-        arch = context.memory.architecture if context else (architecture or {})
+        # Fix: Ensure arch is a dict to avoid "Cannot index into str" errors later
+        arch: Dict[str, Any] = {}
+        if context and hasattr(context, "memory") and hasattr(context.memory, "architecture"):
+            arch = context.memory.architecture
+        elif architecture is not None:
+            arch = architecture
 
         # Generate infrastructure files
         infra_files = self._generate_terraform(arch, project_name)
@@ -81,7 +87,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                 decision_type="deployment",
                 description="AWS infrastructure provisioned and services deployed",
                 rationale="ECS Fargate chosen for serverless container management",
-                input_context={"architecture": str(arch)[:500]},
+                input_context={"architecture": str(arch)},  # Removed slice to avoid Pyre indexing error
                 output=deployment_result,
                 confidence=0.88,
                 tags=["aws", "deployment", "terraform"],
@@ -117,9 +123,15 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         for step, message in steps:
             logger.info(message)
             if context:
-                await context.emit_event(
-                    type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": self.ROLE, "message": message, "level": "info"}})()
-                )
+                # Fix: Replace metaprogramming class with a standardized dict format
+                # that matches what the orchestrator/TUI expects.
+                event_data = {
+                    "type": "thinking",
+                    "agent": self.ROLE,
+                    "message": message,
+                    "level": "info"
+                }
+                await context.emit_event(event_data)
             await asyncio.sleep(0.5)
 
         return {
@@ -992,11 +1004,8 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
             # Health check
             ALB=$(terraform output -raw alb_dns_name)
             echo "🏥 Health check: https://$ALB/health"
-            curl -sf "https://$ALB/health" && echo "✅ Deployment successful!"
-        """).strip()
             curl -sf "https://$ALB/health" && echo "Deployment successful!"
-        """
-        ).strip()
+        """).strip()
 
     def _rollback_script(self, name: str) -> str:
         return textwrap.dedent(f"""
@@ -1021,9 +1030,6 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
 
             echo "✅ Rollback initiated. Monitor in CloudWatch."
         """).strip()
-            echo "Rollback initiated. Monitor in CloudWatch."
-        """
-        ).strip()
 
     def _generate_docker_compose(self, arch: Dict[str, Any]) -> str:
         return textwrap.dedent("""
