@@ -1,0 +1,33 @@
+{
+  "include": [
+    "agents",
+    "orchestrator",
+    "moe",
+    "tools",
+    "utils",
+    "api",
+    "messaging",
+    "observability",
+    "tests"
+  ],
+  "exclude": [
+    ".venv",
+    "node_modules",
+    "dashboard",
+    "go-backend",
+    "moe-scoring",
+    "**/__pycache__"
+  ],
+  "extraPaths": [
+    "."
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "reportOptionalMemberAccess": "warning",
+  "reportGeneralTypeIssues": "warning",
+  "reportIndexIssue": "none"
+}
