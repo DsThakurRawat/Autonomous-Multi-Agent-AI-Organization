@@ -403,6 +403,17 @@ The system is now hardened for production environments:
 - **Agent sandboxing** — Code execution runs in isolated Docker containers with `--network=none`.
 - **Least privilege** — CEO cannot write code; Engineer cannot modify billing.
 
+## Commit Message Format
+
+The project follows a standardized commit message convention to keep the history readable and searchable:
+
+- `feat`: add Kafka lease model  
+- `fix`: resolve race condition  
+- `docs`: update setup guide  
+- `refactor`: optimize DAG traversal  
+- `test`: add unit tests  
+- `chore`: dependency update
+
 ---
 
 ## Contributing
