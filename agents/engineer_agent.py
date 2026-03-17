@@ -179,8 +179,6 @@ class EngineerAgent(BaseAgent):
 
     # ══ CODE TEMPLATES ══════════════════════════════════════════════
 
-    def _generate_main_app(self, arch: Dict[str, Any]) -> str:
-        return textwrap.dedent('''
     def _generate_main_app(self, arch: dict[str, Any]) -> str:
         return textwrap.dedent(
             '''
@@ -266,8 +264,6 @@ class EngineerAgent(BaseAgent):
             settings = Settings()
         ''').strip()
 
-    def _generate_database(self, arch: Dict[str, Any]) -> str:
-        return textwrap.dedent('''
     def _generate_database(self, arch: dict[str, Any]) -> str:
         return textwrap.dedent(
             '''
@@ -312,8 +308,6 @@ class EngineerAgent(BaseAgent):
                     await conn.run_sync(Base.metadata.create_all)
         ''').strip()
 
-    def _generate_models(self, schema: List[Dict]) -> str:
-        return textwrap.dedent('''
     def _generate_models(self, schema: list[dict]) -> str:
         return textwrap.dedent(
             '''
@@ -355,8 +349,6 @@ class EngineerAgent(BaseAgent):
                 owner: Mapped["User"] = relationship("User", back_populates="items")
         ''').strip()
 
-    def _generate_schemas(self, schema: List[Dict]) -> str:
-        return textwrap.dedent('''
     def _generate_schemas(self, schema: list[dict]) -> str:
         return textwrap.dedent(
             '''
@@ -509,8 +501,6 @@ class EngineerAgent(BaseAgent):
                 return {"access_token": token, "token_type": "bearer"}
         ''').strip()
 
-    def _generate_items_router(self, api_contracts: List[Dict]) -> str:
-        return textwrap.dedent('''
     def _generate_items_router(self, api_contracts: list[dict]) -> str:
         return textwrap.dedent(
             '''
