@@ -1,6 +1,6 @@
 """
 orchestrator/kafka_dispatcher.py
-Kafka-based task dispatcher — sends tasks to agent topics and waits for results.
+Kafka-based task dispatcher - sends tasks to agent topics and waits for results.
 Falls back gracefully when Kafka is not available.
 """
 
