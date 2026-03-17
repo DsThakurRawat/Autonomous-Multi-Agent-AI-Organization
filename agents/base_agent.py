@@ -4,16 +4,18 @@ Abstract base class for all AI agents in the organization.
 Provides LLM invocation, memory access, tool calling, and event emission.
 """
 
-from abc import ABC, abstractmethod
 import asyncio
+import json
+import os
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from datetime import UTC, datetime
-import json
 from typing import Any
 
-from google.genai import types
 import structlog
+from google.genai import types
 
+from messaging.kafka_client import KafkaProducerClient
 from tools.collaboration_tool import CollaborationTool
 
 logger = structlog.get_logger(__name__)
@@ -59,13 +61,11 @@ class BaseAgent(ABC):
 
     def __init__(
         self,
-        llm_client: Optional[Any] = None,
-        tools: Optional[Dict[str, Callable]] = None,
-        model_name: Optional[str] = None,
-        llm_client=None,
+        llm_client: Any | None = None,
         tools: dict[str, Callable] | None = None,
         model_name: str | None = None,
         provider: str = "google",
+        kafka_producer: KafkaProducerClient | None = None,
     ):
         self.llm_client = llm_client
         self.tools = tools or {}
@@ -73,11 +73,30 @@ class BaseAgent(ABC):
             self.tools["collaboration"] = CollaborationTool().run
         self.provider = provider
         self.model_name = model_name
+        self.kafka_producer = kafka_producer
         self._scratchpad: list[dict[str, str]] = []
         self._iteration_count = 0
+        self._heartbeat_task: asyncio.Task | None = None
+        self._current_task_id: str | None = None
         logger.info(
             "Agent initialized", role=self.ROLE, provider=provider, model=model_name
         )
+
+    @staticmethod
+    def get_secret(name: str, default: str | None = None) -> str | None:
+        """
+        Securely retrieve a secret. 
+        Checks /run/secrets/ai-org/ first (tmpfs), then environment variables.
+        """
+        secret_path = f"/run/secrets/ai-org/{name}"
+        if os.path.exists(secret_path):
+            try:
+                with open(secret_path, "r") as f:
+                    return f.read().strip()
+            except Exception as e:
+                logger.error("Failed to read secret from tmpfs", name=name, error=str(e))
+
+        return os.getenv(name, default)
 
     @property
     @abstractmethod
@@ -87,15 +106,57 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def run(self, **kwargs) -> dict[str, Any]:
-        """Main entry point — each agent implements its specific logic."""
+        """Main entry point - each agent implements its specific logic."""
         ...
 
     async def execute_task(self, task: Any, context: Any) -> dict[str, Any]:
         """Generic task executor called by the orchestrator."""
-        logger.info("Executing task", agent=self.ROLE, task=task.name)
-        return await self.run(task=task, context=context)
+        logger.info("Executing task", agent=self.ROLE, task=task.name, task_id=task.id)
+        self._current_task_id = task.id
+        self._current_task_version = getattr(task, "version", 1)
+        
+        # Start background heartbeat
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        
+        try:
+            return await self.run(task=task, context=context)
+        finally:
+            # Stop background heartbeat
+            if self._heartbeat_task:
+                self._heartbeat_task.cancel()
+                self._heartbeat_task = None
+            self._current_task_id = None
 
-    # ── LLM Interface ──────────────────────────────────────────────
+    async def _heartbeat_loop(self):
+        """Background loop to send heartbeats every 10 seconds."""
+        while True:
+            try:
+                await self._send_heartbeat()
+                await asyncio.sleep(10)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error("Heartbeat loop error", error=str(e))
+                await asyncio.sleep(5)
+
+    async def _send_heartbeat(self):
+        """Send a heartbeat message to Kafka."""
+        if not self.kafka_producer or not self._current_task_id:
+            return
+
+        heartbeat_topic = os.getenv("KAFKA_TOPIC_HEARTBEATS", "ai-org-heartbeats")
+        payload = {
+            "task_id": self._current_task_id,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "agent_role": self.ROLE,
+            "progress": f"Executing iteration {self._iteration_count}",
+            "version": self._current_task_version
+        }
+        
+        await self.kafka_producer.publish_json(heartbeat_topic, payload, key=self._current_task_id)
+        logger.debug("Heartbeat sent", task_id=self._current_task_id)
+
+    # -- LLM Interface ----------------------------------------------
     async def call_llm(
         self,
         messages: list[dict[str, str]],
@@ -113,7 +174,7 @@ class BaseAgent(ABC):
 
         try:
             assert self.llm_client is not None  # guarded above
-            # ── Google Gemini ──────────────────────────────────────────────
+            # -- Google Gemini ----------------------------------------------
             if self.provider == "google":
                 system_prompt = self.system_prompt
                 config = types.GenerateContentConfig(
@@ -135,23 +196,18 @@ class BaseAgent(ABC):
                         )
                     )
 
-                response = await asyncio.to_thread(
-                    self.llm_client.models.generate_content,  # type: ignore[union-attr]
-                    model=self.model_name,
-                    contents=gemini_messages,
-                    config=config,
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
-                        self.llm_client.models.generate_content,
+                        self.llm_client.models.generate_content,  # type: ignore[union-attr]
                         model=self.model_name,
                         contents=gemini_messages,
                         config=config,
                     ),
-                    timeout=60.0
+                    timeout=60.0,
                 )
                 return response.text
 
-            # ── OpenAI ────────────────────────────────────────────────────
+            # -- OpenAI ----------------------------------------------------
             elif self.provider == "openai":
                 kwargs = {
                     "model": self.model_name,
@@ -162,19 +218,17 @@ class BaseAgent(ABC):
                 if response_format == "json_object":
                     kwargs["response_format"] = {"type": "json_object"}  # type: ignore[assignment]
 
-                response = await asyncio.to_thread(
-                    self.llm_client.chat.completions.create, **kwargs  # type: ignore[union-attr]
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
-                        self.llm_client.chat.completions.create, **kwargs
+                        self.llm_client.chat.completions.create, **kwargs  # type: ignore[union-attr]
                     ),
-                    timeout=60.0
+                    timeout=60.0,
                 )
                 return response.choices[0].message.content
 
-            # ── Anthropic Claude ──────────────────────────────────────────
+            # -- Anthropic Claude ------------------------------------------
             elif self.provider == "anthropic":
-                # Extract system prompt separately — Anthropic uses it as a top-level param
+                # Extract system prompt separately - Anthropic uses it as a top-level param
                 system_content = self.system_prompt
                 if response_format == "json_object":
                     system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
@@ -185,28 +239,22 @@ class BaseAgent(ABC):
                     if m["role"] != "system"
                 ]
 
-                response = await asyncio.to_thread(
-                    self.llm_client.messages.create,  # type: ignore[union-attr]
-                    model=self.model_name,
-                    max_tokens=max_tokens,
-                    system=system_content,
-                    messages=anthropic_messages,
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
-                        self.llm_client.messages.create,
+                        self.llm_client.messages.create,  # type: ignore[union-attr]
                         model=self.model_name,
                         max_tokens=max_tokens,
                         system=system_content,
                         messages=anthropic_messages,
                     ),
-                    timeout=60.0
+                    timeout=60.0,
                 )
                 text = response.content[0].text
                 if response_format == "json_object":
                     text = _clean_json_response(text)
                 return text
 
-            # ── Amazon Bedrock (Nova) ──────────────────────────────────────────────────
+            # -- Amazon Bedrock (Nova) --------------------------------------------------
             elif self.provider == "bedrock":
                 # Nova models use the Bedrock Converse API format
                 system_content = self.system_prompt
@@ -229,15 +277,13 @@ class BaseAgent(ABC):
                     },
                 }
 
-                response = await asyncio.to_thread(self.llm_client.converse, **kwargs)  # type: ignore[union-attr]
-                text = response["output"]["message"]["content"][0]["text"]
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
-                        self.llm_client.converse, **kwargs
+                        self.llm_client.converse, **kwargs  # type: ignore[union-attr]
                     ),
-                    timeout=60.0
+                    timeout=60.0,
                 )
-                text = response['output']['message']['content'][0]['text']
+                text = response["output"]["message"]["content"][0]["text"]
                 if response_format == "json_object":
                     text = _clean_json_response(text)
                 return text
@@ -267,7 +313,7 @@ class BaseAgent(ABC):
             }
         )
 
-    # ── Tool Calling ───────────────────────────────────────────────
+    # -- Tool Calling ----------------------------------------------─
     async def use_tool(self, tool_name: str, **kwargs) -> Any:
         """Execute a registered tool safely."""
         if tool_name not in self.tools:
@@ -287,7 +333,7 @@ class BaseAgent(ABC):
             logger.error("Tool failed", agent=self.ROLE, tool=tool_name, error=str(e))
             raise
 
-    # ── Memory Access ──────────────────────────────────────────────
+    # -- Memory Access ----------------------------------------------
     def add_to_scratchpad(self, role: str, content: str):
         """Add to agent's private reasoning scratchpad."""
         self._scratchpad.append(
@@ -306,7 +352,7 @@ class BaseAgent(ABC):
         self._scratchpad = []
         self._iteration_count = 0
 
-    # ── Self-Critique ──────────────────────────────────────────────
+    # -- Self-Critique ----------------------------------------------
     async def self_critique(self, output: dict[str, Any]) -> dict[str, Any]:
         """
         Reflection loop: Agent reviews its own output and scores it.
