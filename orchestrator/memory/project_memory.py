@@ -40,7 +40,7 @@ class ProjectMemory:
 
         logger.info("ProjectMemory initialized", project_id=project_id)
 
-    # ── Core CRUD ──────────────────────────────────────────────────
+    # -- Core CRUD --------------------------------------------------
     async def set(self, key: str, value: Any, ttl: int | None = None):
         """Write to all memory layers."""
         self._hot_cache[key] = value
@@ -75,7 +75,7 @@ class ProjectMemory:
         if self._redis:
             await self._redis.delete(f"project:{self.project_id}:{key}")
 
-    # ── Agent-Specific Memory ──────────────────────────────────────
+    # -- Agent-Specific Memory --------------------------------------
     async def set_agent_state(self, agent_id: str, state: dict[str, Any]):
         self.agent_states[agent_id] = {
             **state,
@@ -86,7 +86,7 @@ class ProjectMemory:
     async def get_agent_state(self, agent_id: str) -> dict[str, Any]:
         return self.agent_states.get(agent_id, {})
 
-    # ── Knowledge Graph ────────────────────────────────────────────
+    # -- Knowledge Graph --------------------------------------------
     def add_knowledge_node(
         self, node_type: str, node_id: str, properties: dict[str, Any]
     ):
@@ -122,7 +122,7 @@ class ProjectMemory:
             }
         )
 
-    # ── Snapshot ───────────────────────────────────────────────────
+    # -- Snapshot --------------------------------------------------─
     def snapshot(self) -> dict[str, Any]:
         """Return complete project memory state."""
         return {
