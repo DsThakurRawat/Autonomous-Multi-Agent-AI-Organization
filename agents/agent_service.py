@@ -1,6 +1,5 @@
 """
-Agent Service — Kafka Consumer Entrypoint
-==========================================
+Agent Service - Kafka Consumer Entrypoint
 Each agent microservice runs this module.
 The AGENT_ROLE env var determines which agent class is loaded
 and which Kafka topic is consumed.
@@ -33,7 +32,7 @@ from utils.logging_config import setup_logging
 logger = structlog.get_logger(__name__)
 
 
-# ── Agent Role → (Module, Class) Mapping ─────────────────────────────────────
+# -- Agent Role → (Module, Class) Mapping ------------------------------------─
 AGENT_REGISTRY: dict[str, tuple] = {
     AgentRole.CEO: ("agents.ceo_agent", "CEOAgent"),
     AgentRole.CTO: ("agents.cto_agent", "CTOAgent"),
@@ -71,7 +70,7 @@ def _build_llm_client(llm_config: dict, agent_role: str):
         api_key = os.getenv(env_map.get(provider, "GOOGLE_API_KEY"), "")
 
     if not api_key and provider != "bedrock":
-        logger.warning("No API key found — running in mock mode", provider=provider)
+        logger.warning("No API key found - running in mock mode", provider=provider)
         return None, model, provider
 
     try:
@@ -171,7 +170,7 @@ class AgentMicroservice:
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, self._shutdown)
 
-        # Agent is loaded once — LLM client is resolved per-task from Kafka payload
+        # Agent is loaded once - LLM client is resolved per-task from Kafka payload
         self.agent = _load_agent(self.role)
         self.producer = KafkaProducerClient()
         self.consumer = KafkaConsumerClient(
@@ -240,7 +239,7 @@ class AgentMicroservice:
             await server.serve_forever()
 
     async def _consume_loop(self):
-        """Main consumer loop — pull TaskMessages, process, publish ResultMessage."""
+        """Main consumer loop - pull TaskMessages, process, publish ResultMessage."""
         logger.info("Consumer loop started", role=self.role)
 
         consumer = self.consumer
@@ -311,14 +310,14 @@ class AgentMicroservice:
         """Execute one task and publish the result."""
         start_ms = time.time() * 1000
 
-        # ── Resolve LLM client per-task from Kafka payload ────────────────
+        # -- Resolve LLM client per-task from Kafka payload ----------------
         # The Go Orchestrator injects the resolved llm_config based on the
         # user's Settings preferences (or platform defaults as fallback).
         llm_config = task_msg.input_data.get("llm_config", {})
         llm_client, model_name, provider = _build_llm_client(llm_config, self.role)
 
         # Patch the resolved client onto the agent instance for this task only.
-        # This is safe — agent pods process tasks sequentially per role.
+        # This is safe - agent pods process tasks sequentially per role.
         if self.agent is None:
             raise RuntimeError("Agent not initialized")
         agent = self.agent
@@ -461,7 +460,7 @@ class AgentMicroservice:
             await self._emit_event(
                 project_id=task_msg.project_id,
                 event_type="task_failed",
-                message=f"[{self.role}] Failed: {task_msg.task_name} — {err_str[:100]}",  # type: ignore[index]
+                message=f"[{self.role}] Failed: {task_msg.task_name} - {err_str[:100]}",  # type: ignore[index]
                 data={"task_id": task_msg.task_id, "error": err_str},
                 level="error",
                 trace_id=task_msg.trace_id,
