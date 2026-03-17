@@ -1,5 +1,5 @@
 """
-Messaging Layer — Kafka-based distributed communication.
+Messaging Layer - Kafka-based distributed communication.
 Provides async producer/consumer base classes and message schemas.
 """
 
