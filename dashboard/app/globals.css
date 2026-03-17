@@ -5,32 +5,21 @@
 @tailwind utilities;
 
 /* ── Design Tokens ─────────────────────────────────────────── */
+/* forced Dark Theme by default */
 :root {
-  --bg-primary:   #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-card:      #ffffff;
-  --bg-hover:     #f1f5f9;
-  --bg-border:    #e2e8f0;
+  --bg-primary:   #09090b;
+  --bg-secondary: #0c0c0e;
+  --bg-card:      #121214;
+  --bg-hover:     #1d1d20;
+  --bg-border:    #27272a;
 
   --accent-emerald: #10b981;
-  --accent-emerald-light: #34d399;
   --accent-cyan:    #06b6d4;
   --accent-blue:    #3b82f6;
   --accent-purple:  #8b5cf6;
+  --accent-gradient: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
 
-  --text-primary:   #0f172a;
-  --text-secondary: #334155;
-  --text-muted:     #64748b;
-}
-
-/* Dark mode overrides (optional fallback if user wants it, but default is light for slashy vibe) */
-.dark {
-  --bg-primary:   #09090b;
-  --bg-secondary: #121214;
-  --bg-card:      #18181b;
-  --bg-hover:     #27272a;
-  --bg-border:    #27272a;
-  --text-primary:   #f4f4f5;
+  --text-primary:   #fafafa;
   --text-secondary: #a1a1aa;
   --text-muted:     #71717a;
 }
