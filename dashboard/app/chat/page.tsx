@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState, useRef } from 'react';
 import { Loader2, Send, Plus, Settings, LogOut, MessageSquare, Terminal, ChevronRight, Sparkles } from 'lucide-react';
 import { api, AGENT_COLORS } from '../../lib/api';
@@ -114,7 +115,7 @@ export default function ChatPage() {
         <div className="flex h-screen bg-slate-50 text-slate-800 font-sans overflow-hidden">
             
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 hidden md:flex">
+            <aside className="w-64 bg-slate-900 text-slate-300 shrink-0 border-r border-slate-800 hidden md:flex flex-col">
                 <div className="p-4">
                     <button className="w-full flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg p-2.5 transition-colors text-sm font-medium">
                         <Plus size={18} /> New Workspace
@@ -133,7 +134,7 @@ export default function ChatPage() {
                 <div className="p-4 border-t border-slate-800 space-y-2">
                     <div className="flex items-center gap-3 mb-4 px-2">
                         {session.user?.image ? (
-                            <img src={session.user.image} alt="User" className="w-8 h-8 rounded-full border border-slate-700" />
+                            <Image src={session.user.image} alt="User" width={32} height={32} className="w-8 h-8 rounded-full border border-slate-700" />
                         ) : (
                             <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">{session.user?.name?.charAt(0) || 'U'}</div>
                         )}
