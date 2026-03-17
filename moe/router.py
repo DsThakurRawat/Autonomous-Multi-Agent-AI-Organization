@@ -1,5 +1,5 @@
 """
-MoE Router — Master Orchestrator for Expert Selection
+MoE Router - Master Orchestrator for Expert Selection
 Implements dynamic agent routing with:
   1. Direct routing (unambiguous task types)
   2. Scored routing (cosine sim + load + success + cost)
@@ -28,7 +28,7 @@ logger = structlog.get_logger(__name__)
 
 class MoERouter:
     """
-    Mixture of Experts (MoE) Router — the intelligent task dispatcher.
+    Mixture of Experts (MoE) Router - the intelligent task dispatcher.
 
     Routing pipeline:
       1. Parse task for type and context
@@ -50,7 +50,7 @@ class MoERouter:
             "MoERouter initialized", experts=list(self._registry.all_experts().keys())
         )
 
-    # ── Main Routing Interface ─────────────────────────────────────────────
+    # -- Main Routing Interface --------------------------------------------─
     async def route(
         self,
         task_type: str,
@@ -82,12 +82,12 @@ class MoERouter:
         """
         start_time = time.monotonic()
 
-        # ── Step -1: Early exit if no experts ─────────────────────────────
+        # -- Step -1: Early exit if no experts ----------------------------─
         if not self._registry.all_experts():
             logger.error("No experts registered in the system.")
             return await self._queue_for_retry(task_id, task_type, task_name, project_id, trace_id)
 
-        # ── Step 0: Try Rust Service (Fast Path) ───────────────────────────
+        # -- Step 0: Try Rust Service (Fast Path) --------------------------─
         rust_client = get_rust_client()
         if rust_client:
             # We must pass the dynamic expert map + stats to Rust so it matches python state
@@ -118,7 +118,7 @@ class MoERouter:
                 )
                 return decision
 
-        # ── Step 1: Direct Routing Check (Python Fallback) ────────────────
+        # -- Step 1: Direct Routing Check (Python Fallback) ----------------
         direct_expert = self._registry.get_direct_expert_for_task_type(task_type)
         if direct_expert and not force_ensemble:
             self._registry.get_expert(direct_expert)
@@ -139,10 +139,10 @@ class MoERouter:
                 )
                 return decision
 
-        # ── Step 2: Compute Task Vector ────────────────────────────────────
+        # -- Step 2: Compute Task Vector ------------------------------------
         task_vector = task_type_to_vector(task_type, input_context)
 
-        # ── Step 3: Get All Expert Stats ───────────────────────────────────
+        # -- Step 3: Get All Expert Stats ----------------------------------─
         experts = self._registry.all_experts()
         stats_dict = {
             role: s.to_dict() for role, s in self._registry.all_stats().items()
@@ -157,7 +157,7 @@ class MoERouter:
             }
 
         if not experts:
-            # Fallback: no skill match — use all experts
+            # Fallback: no skill match - use all experts
             experts = self._registry.all_experts()
             logger.warning(
                 "No experts matched required skills, routing to all",
@@ -170,7 +170,7 @@ class MoERouter:
                 task_id, task_type, task_name, project_id, trace_id
             )
 
-        # ── Step 4: Score and Rank ─────────────────────────────────────────
+        # -- Step 4: Score and Rank ----------------------------------------─
         rankings = rank_experts(
             task_vector=task_vector,
             experts=experts,
@@ -179,7 +179,7 @@ class MoERouter:
         )
 
         if not rankings:
-            # All experts overloaded — queue the task
+            # All experts overloaded - queue the task
             logger.warning("All experts overloaded, queueing task", task_id=task_id)
             return await self._queue_for_retry(
                 task_id, task_type, task_name, project_id, trace_id
@@ -190,7 +190,7 @@ class MoERouter:
             rankings[1] if len(rankings) > 1 else (None, 0.0, {})
         )
 
-        # ── Step 5: Ensemble Decision ──────────────────────────────────────
+        # -- Step 5: Ensemble Decision --------------------------------------
         use_ensemble = force_ensemble or (
             second_role and should_use_ensemble(top_score, second_score)
         )
@@ -232,7 +232,7 @@ class MoERouter:
 
         return decision
 
-    # ── Batch Routing ──────────────────────────────────────────────────────
+    # -- Batch Routing ------------------------------------------------------
     async def route_batch(self, tasks: List[Dict[str, Any]]) -> List[MoERouteDecision]:
         """Route multiple tasks in parallel."""
         experts_map = {
@@ -281,7 +281,7 @@ class MoERouter:
         )
         return list(decisions)
 
-    # ── Priority Queue Fallback ────────────────────────────────────────────
+    # -- Priority Queue Fallback --------------------------------------------
     async def _queue_for_retry(
         self,
         task_id: str,
@@ -308,13 +308,13 @@ class MoERouter:
             selected_expert=expert,
             fallback_experts=[],
             routing_score=0.0,
-            routing_reason="All experts overloaded — last-resort fallback routing",
+            routing_reason="All experts overloaded - last-resort fallback routing",
             ensemble_mode=False,
             confidence=0.1,
         )
         return decision
 
-    # ── Decision History ───────────────────────────────────────────────────
+    # -- Decision History --------------------------------------------------─
     async def _record_decision(
         self, decision: MoERouteDecision, routing_type: str, latency_s: float
     ):

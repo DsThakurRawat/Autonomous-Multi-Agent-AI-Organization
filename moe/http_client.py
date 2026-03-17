@@ -1,6 +1,5 @@
 """
 MoE Rust Scoring HTTP Client
-============================
 Drop-in async client for the Rust moe-scoring service.
 Python router.py calls this when MOE_RUST_URL env var is set.
 Falls back to pure-Python scoring if the service is unavailable.
@@ -72,7 +71,7 @@ class RustMoeClient:
         except Exception:
             if self._available is not False:
                 logger.warning(
-                    "Rust MoE service unreachable — falling back to Python scorer",
+                    "Rust MoE service unreachable - falling back to Python scorer",
                     url=self.base_url,
                 )
             self._available = False
@@ -160,7 +159,7 @@ class RustMoeClient:
             await self._session.close()
             self._session = None
 
-    # ── Internal HTTP helpers ───────────────────────────────────────────
+    # -- Internal HTTP helpers ------------------------------------------─
 
     async def _get(self, path: str) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
@@ -191,8 +190,8 @@ class RustMoeClient:
         raise RuntimeError("No HTTP library available")
 
 
-# ── Module-level singleton ────────────────────────────────────────────────────
-# Shared client — reuses sessions for efficiency
+# -- Module-level singleton ----------------------------------------------------
+# Shared client - reuses sessions for efficiency
 _client: Optional[RustMoeClient] = None
 
 

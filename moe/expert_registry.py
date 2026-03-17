@@ -1,5 +1,5 @@
 """
-Mixture of Experts (MoE) Router — Expert Registry
+Mixture of Experts (MoE) Router - Expert Registry
 Maintains capability vectors and real-time load/performance stats
 for all registered agent experts.
 """
@@ -12,7 +12,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-# ── Expert Capability Vectors ──────────────────────────────────────────────
+# -- Expert Capability Vectors ----------------------------------------------
 # Each vector represents the agent's specialization across task dimensions.
 # Dimensions: [strategy, architecture, backend_code, frontend_code,
 #              testing, devops, cost_optimization, security]
@@ -146,7 +146,7 @@ TASK_TYPE_TO_EXPERT = {
 
 
 class ExpertStats:
-    """Runtime statistics for an expert agent — updated in real-time."""
+    """Runtime statistics for an expert agent - updated in real-time."""
 
     def __init__(self, role: str, max_concurrent: int):
         self.role = role
