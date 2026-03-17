@@ -1,5 +1,5 @@
 """
-CTO Agent — Chief Technology Officer
+CTO Agent - Chief Technology Officer
 Designs the complete technical architecture based on the CEO's business plan.
 Outputs: tech stack, database schema, API contracts, cost estimates, infra spec.
 """
@@ -77,7 +77,13 @@ You explain your architectural decisions with rationale.
                     },
                 )()
             )
-        features = [f["name"] for f in business_plan.get("mvp_features", [])]
+        raw_features = business_plan.get("mvp_features", []) if business_plan else []
+        features = []
+        for f in raw_features:
+            if isinstance(f, dict):
+                features.append(f.get("name", str(f)))
+            else:
+                features.append(str(f))
 
         prompt = f"""
 Design a production AWS architecture for this project.
