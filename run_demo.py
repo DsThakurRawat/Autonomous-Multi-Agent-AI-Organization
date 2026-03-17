@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Quick-start demo runner.
-Runs the full AI company pipeline locally without AWS — simulates all agent outputs.
+Runs the full AI company pipeline locally without AWS - simulates all agent outputs.
 Usage: python run_demo.py "Your business idea here"
 """
 
@@ -27,7 +27,7 @@ async def run_full_demo(idea: str):
     console.print(
         Panel.fit(
             f"[bold bright_magenta]🏢 Autonomous Multi-Agent AI Organization[/]\n"
-            f"[dim]AI Company in a Box — Demo Mode[/]\n\n"
+            f"[dim]AI Company in a Box - Demo Mode[/]\n\n"
             f"[bold white]Business Idea:[/] {idea}",
             border_style="bright_magenta",
         )
@@ -71,8 +71,8 @@ async def run_full_demo(idea: str):
 
     memory.project_config = {"business_idea": idea, "budget_usd": 200.0}
 
-    # ── Phase 1: CEO ───────────────────────────────────────────
-    console.print("\n[bold yellow]👑 CEO Agent[/] — Strategy Phase")
+    # -- Phase 1: CEO ------------------------------------------─
+    console.print("\n[bold yellow]👑 CEO Agent[/] - Strategy Phase")
     ceo = CEOAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[yellow]Analyzing business idea...[/]"):
         plan = await ceo.run(business_idea=idea, budget_usd=200.0)
@@ -81,8 +81,8 @@ async def run_full_demo(idea: str):
 
     _print_plan(plan)
 
-    # ── Phase 2: CTO ───────────────────────────────────────────
-    console.print("\n[bold blue]🏗 CTO Agent[/] — Architecture Phase")
+    # -- Phase 2: CTO ------------------------------------------─
+    console.print("\n[bold blue]🏗 CTO Agent[/] - Architecture Phase")
     cto = CTOAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[blue]Designing system architecture...[/]"):
         arch = await cto.run(business_plan=plan, budget_usd=200.0)
@@ -91,8 +91,8 @@ async def run_full_demo(idea: str):
 
     _print_arch(arch)
 
-    # ── Phase 3: Engineers ──────────────────────────────────────
-    console.print("\n[bold cyan]⚙️ Engineer Agents[/] — Build Phase (parallel)")
+    # -- Phase 3: Engineers --------------------------------------
+    console.print("\n[bold cyan]⚙️ Engineer Agents[/] - Build Phase (parallel)")
     eng_be = EngineerAgent(mode="backend", llm_client=llm_client, model_name=model_name)
     eng_fe = EngineerAgent(
         mode="frontend", llm_client=llm_client, model_name=model_name
@@ -101,6 +101,7 @@ async def run_full_demo(idea: str):
     class MockCtx:
         def __init__(self):
             self.memory = memory
+            self.project_id = memory.project_id
             self.decision_log = decision_log
             self.cost_ledger = cost_ledger
             self.artifacts = artifacts
@@ -120,8 +121,8 @@ async def run_full_demo(idea: str):
     console.print(f"  ✅ Backend: [green]{be_result['file_count']} files[/] generated")
     console.print(f"  ✅ Frontend: [green]{fe_result['file_count']} files[/] generated")
 
-    # ── Phase 4: QA ─────────────────────────────────────────────
-    console.print("\n[bold green]🧪 QA Agent[/] — Testing Phase")
+    # -- Phase 4: QA --------------------------------------------─
+    console.print("\n[bold green]🧪 QA Agent[/] - Testing Phase")
     qa = QAAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[green]Running tests and security scan...[/]"):
         qa_result = await qa.run(context=mock_ctx)
@@ -136,8 +137,8 @@ async def run_full_demo(idea: str):
         f"  ✅ Coverage: [green]{qa_result['coverage']['line_coverage_pct']}%[/]"
     )
 
-    # ── Phase 5: DevOps ───────────────────────────────────────────
-    console.print("\n[bold bright_cyan]🚀 DevOps Agent[/] — Deployment Phase")
+    # -- Phase 5: DevOps ------------------------------------------─
+    console.print("\n[bold bright_cyan]🚀 DevOps Agent[/] - Deployment Phase")
     devops = DevOpsAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[bright_cyan]Provisioning AWS and deploying...[/]"):
         devops_result = await devops.run(context=mock_ctx, project_name="ai-org")
@@ -149,11 +150,11 @@ async def run_full_demo(idea: str):
     )
     console.print(f"  ✅ Deployed: [bright_cyan link]{deployment['public_url']}[/]")
     console.print(
-        f"  ✅ HTTPS: [green]{'Enabled' if deployment['https_enabled'] else 'Disabled'}[/]"
+        f"  ✅ HTTPS: [green]{'Enabled' if deployment.get('https_enabled', False) else 'Disabled'}[/]"
     )
 
-    # ── Phase 6: Finance ──────────────────────────────────────────
-    console.print("\n[bold magenta]💰 Finance Agent[/] — Cost Analysis")
+    # -- Phase 6: Finance ------------------------------------------
+    console.print("\n[bold magenta]💰 Finance Agent[/] - Cost Analysis")
     finance = FinanceAgent(llm_client=llm_client, model_name=model_name)
     with console.status("[magenta]Analyzing AWS costs...[/]"):
         fin_result = await finance.run(context=mock_ctx, budget_usd=200.0)
@@ -166,7 +167,7 @@ async def run_full_demo(idea: str):
         f"  💡 {len(fin_result['optimizations'])} optimization opportunities found"
     )
 
-    # ── Final Summary ─────────────────────────────────────────────
+    # -- Final Summary --------------------------------------------─
     _print_summary(project_id, idea, deployment, fin_result, artifacts)
 
 
@@ -209,7 +210,7 @@ def _print_summary(project_id, idea, deployment, fin_result, artifacts):
             f"[bold white]⏱ Time:[/] ~19 seconds (production would be ~3-5 min)\n\n"
             f"[dim]Output saved to: ./output/{project_id}/[/]",
             border_style="bright_green",
-            title="[bold]AI Company in a Box — Results[/]",
+            title="[bold]AI Company in a Box - Results[/]",
         )
     )
 
