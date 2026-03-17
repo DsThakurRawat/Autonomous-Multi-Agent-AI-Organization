@@ -16,12 +16,14 @@ import (
 // ResultHandler processes task results from Kafka and advances the DAG.
 type ResultHandler struct {
 	db       *db.Pool
+	redis    *db.Redis
 	producer *kafka.Producer
 }
 
-func NewResultHandler(pool *db.Pool, prod *kafka.Producer) *ResultHandler {
+func NewResultHandler(pool *db.Pool, rds *db.Redis, prod *kafka.Producer) *ResultHandler {
 	return &ResultHandler{
 		db:       pool,
+		redis:    rds,
 		producer: prod,
 	}
 }
@@ -40,6 +42,7 @@ type ResultMessage struct {
 	CostUSD       float64        `json:"cost_usd"`
 	TokensUsed    int            `json:"tokens_used"`
 	ModelUsed     string         `json:"model_used,omitempty"`
+	Version       int            `json:"version"`
 }
 
 func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
@@ -64,13 +67,26 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 		status = "failed"
 	}
 
-	updateQuery := `UPDATE tasks SET status = $1, output_data = $2, error_message = $3, completed_at = $4 WHERE id = $5`
+	updateQuery := `
+		UPDATE tasks 
+		SET status = $1, output_data = $2, error_message = $3, completed_at = $4, version = version + 1 
+		WHERE id = $5 AND version = $6 AND status != 'done'`
+	
 	outJSON, _ := json.Marshal(res.OutputData)
-	_, err := h.db.Exec(ctx, updateQuery, status, outJSON, res.ErrorMessage, time.Now(), res.TaskID)
+	tag, err := h.db.Exec(ctx, updateQuery, status, outJSON, res.ErrorMessage, time.Now(), res.TaskID, res.Version)
 	if err != nil {
 		log.Error("failed to update task status in db", zap.Error(err))
 		return err
 	}
+
+	if tag.RowsAffected() == 0 {
+		log.Warn("idempotent update: task already processed or version mismatch", 
+			zap.String("task_id", res.TaskID), zap.Int("version", res.Version))
+		return nil // Return nil so we don't retry processing a duplicate
+	}
+
+	// 1.5 Clear the Redis lease as the task is no longer running
+	_ = h.redis.ClearTaskLease(ctx, res.TaskID)
 
 	// Record costs
 	if res.ModelUsed != "" || res.TokensUsed > 0 || res.CostUSD > 0 {
