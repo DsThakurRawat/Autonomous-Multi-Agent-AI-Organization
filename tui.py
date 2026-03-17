@@ -142,7 +142,7 @@ class ProximusNovaTUI(App):
                             f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] ✅ [green]Completed[/]"
                         )
                     elif event_type == "phase_change":
-                        log.write(f"\n[bold white]── PHASE CHANGE: {text} ──[/]\n")
+                        log.write(f"\n[bold white]-- PHASE CHANGE: {text} --[/]\n")
                     else:
                         log.write(
                             f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] {text}"
