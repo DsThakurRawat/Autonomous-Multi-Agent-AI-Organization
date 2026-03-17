@@ -230,7 +230,7 @@ def build_standard_task_graph(
     """
     graph = TaskGraph(project_id=project_id)
 
-    # ── Phase 0: Foundation ─────────────────────────────────────────
+    # -- Phase 0: Foundation ----------------------------------------─
     t_repo = Task(
         name="Setup Repository",
         description="Initialize Git repository with project structure",
@@ -241,7 +241,7 @@ def build_standard_task_graph(
     )
     repo_id = graph.add_task(t_repo)
 
-    # ── Phase 1: Backend ────────────────────────────────────────────
+    # -- Phase 1: Backend --------------------------------------------
     t_backend = Task(
         name="Build Backend API",
         description="Generate FastAPI application with all endpoints and DB models",
@@ -254,7 +254,7 @@ def build_standard_task_graph(
     )
     backend_id = graph.add_task(t_backend)
 
-    # ── Phase 2: Frontend ───────────────────────────────────────────
+    # -- Phase 2: Frontend ------------------------------------------─
     t_frontend = Task(
         name="Build Frontend UI",
         description="Generate Next.js dashboard and forms connected to backend API",
@@ -267,7 +267,7 @@ def build_standard_task_graph(
     )
     frontend_id = graph.add_task(t_frontend)
 
-    # ── Phase 3: Testing ────────────────────────────────────────────
+    # -- Phase 3: Testing --------------------------------------------
     t_tests = Task(
         name="Run QA Testing",
         description="Generate and run unit tests, security scan, API contract validation",
@@ -279,7 +279,7 @@ def build_standard_task_graph(
     )
     tests_id = graph.add_task(t_tests)
 
-    # ── Phase 4: Dockerize ──────────────────────────────────────────
+    # -- Phase 4: Dockerize ------------------------------------------
     t_docker = Task(
         name="Dockerize Application",
         description="Create Dockerfiles for backend and frontend, build images",
@@ -291,7 +291,7 @@ def build_standard_task_graph(
     )
     docker_id = graph.add_task(t_docker)
 
-    # ── Phase 5: AWS Infrastructure ─────────────────────────────────
+    # -- Phase 5: AWS Infrastructure --------------------------------─
     t_infra = Task(
         name="Provision AWS Infrastructure",
         description="Run Terraform to create ECS, RDS, S3, ALB, and all required services",
@@ -303,7 +303,7 @@ def build_standard_task_graph(
     )
     infra_id = graph.add_task(t_infra)
 
-    # ── Phase 6: Deploy ─────────────────────────────────────────────
+    # -- Phase 6: Deploy --------------------------------------------─
     t_deploy = Task(
         name="Deploy to AWS ECS",
         description="Push images to ECR, deploy ECS services, configure ALB, setup HTTPS",
@@ -315,7 +315,7 @@ def build_standard_task_graph(
     )
     deploy_id = graph.add_task(t_deploy)
 
-    # ── Phase 7: Finance Check ──────────────────────────────────────
+    # -- Phase 7: Finance Check --------------------------------------
     t_finance = Task(
         name="Cost Analysis",
         description="Analyze AWS costs, compare against budget, suggest optimizations",
