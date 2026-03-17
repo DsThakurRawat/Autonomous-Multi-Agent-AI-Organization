@@ -4,6 +4,8 @@
 package logger
 
 import (
+	"regexp"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -35,6 +37,9 @@ func Init(serviceName, level string, jsonOutput bool) error {
 		),
 		zap.AddCaller(),
 		zap.AddStacktrace(zapcore.ErrorLevel),
+		zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+			return &redactingCore{Core: core}
+		}),
 	)
 	if err != nil {
 		return err
@@ -43,6 +48,42 @@ func Init(serviceName, level string, jsonOutput bool) error {
 	global = log
 	zap.ReplaceGlobals(log)
 	return nil
+}
+
+// ── Redacting Core ─────────────────────────────────────────────────────────────
+
+var (
+	openaiRegex  = regexp.MustCompile(`sk-[a-zA-Z0-9]{48}`)
+	googleRegex  = regexp.MustCompile(`AIza[a-zA-Z0-9_-]{35}`)
+	awsKeyRegex  = regexp.MustCompile(`(AKIA|ASIA)[a-zA-Z0-9]{16}`)
+)
+
+type redactingCore struct {
+	zapcore.Core
+}
+
+func (c *redactingCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
+	ent.Message = redact(ent.Message)
+	for i := range fields {
+		if fields[i].Type == zapcore.StringType {
+			fields[i].String = redact(fields[i].String)
+		}
+	}
+	return c.Core.Write(ent, fields)
+}
+
+func (c *redactingCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if c.Enabled(ent.Level) {
+		return ce.AddCore(ent, c)
+	}
+	return ce
+}
+
+func redact(s string) string {
+	s = openaiRegex.ReplaceAllString(s, "sk-[REDACTED]")
+	s = googleRegex.ReplaceAllString(s, "AIza[REDACTED]")
+	s = awsKeyRegex.ReplaceAllString(s, "$1[REDACTED]")
+	return s
 }
 
 // L returns the global logger. Panics if Init was not called.

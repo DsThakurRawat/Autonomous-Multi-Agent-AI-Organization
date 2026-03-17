@@ -1,5 +1,5 @@
 """
-Skills Registry Tool — The "ClawHub Integration" for loading external capabilities on-the-fly.
+Skills Registry Tool - The "ClawHub Integration" for loading external capabilities on-the-fly.
 Allows the AI to dynamically discover and download new execution skills to its sandbox.
 """
 

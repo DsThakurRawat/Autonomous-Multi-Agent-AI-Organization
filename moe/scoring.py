@@ -13,13 +13,13 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# ── Scoring Weights ────────────────────────────────────────────────────────
+# -- Scoring Weights --------------------------------------------------------
 WEIGHT_SIMILARITY = 0.40  # Capability match (most important)
 WEIGHT_LOAD = 0.25  # Available capacity
 WEIGHT_SUCCESS = 0.20  # Historical reliability
 WEIGHT_COST = 0.15  # Cost efficiency
 
-# Confidence threshold — below this, trigger ensemble mode
+# Confidence threshold - below this, trigger ensemble mode
 ENSEMBLE_THRESHOLD = 0.70
 
 

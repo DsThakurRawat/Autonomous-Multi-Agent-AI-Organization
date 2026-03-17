@@ -1,5 +1,5 @@
 """
-Distributed Tracing — OpenTelemetry Setup
+Distributed Tracing - OpenTelemetry Setup
 Provides a unified tracer that propagates context across all agents,
 Kafka messages, and HTTP calls. Compatible with Jaeger and AWS X-Ray.
 """
@@ -12,7 +12,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Try OpenTelemetry — graceful degradation if not installed
+# Try OpenTelemetry - graceful degradation if not installed
 try:
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
@@ -25,10 +25,10 @@ try:
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
-    logger.warning("opentelemetry SDK not installed — tracing will be no-ops")
+    logger.warning("opentelemetry SDK not installed - tracing will be no-ops")
 
 
-# ── No-Op Tracer Stubs ─────────────────────────────────────────────────────
+# -- No-Op Tracer Stubs ----------------------------------------------------─
 class _NoOpSpan:
     def set_attribute(self, key, value):
         pass
@@ -77,7 +77,7 @@ class _NoOpContextManager:
         pass
 
 
-# ── Tracer Initialization ──────────────────────────────────────────────────
+# -- Tracer Initialization --------------------------------------------------
 _tracer = None
 
 
@@ -135,7 +135,7 @@ def get_tracer() -> Any:
     return _tracer
 
 
-# ── Trace Context Propagation ───────────────────────────────────────────────
+# -- Trace Context Propagation ----------------------------------------------─
 def inject_trace_context(headers: Dict[str, str]) -> Dict[str, str]:
     """
     Inject current trace context into headers dict.
@@ -158,7 +158,7 @@ def extract_trace_context(headers: Dict[str, str]):
     return extract(headers)
 
 
-# ── Span Context Manager ────────────────────────────────────────────────────
+# -- Span Context Manager ----------------------------------------------------
 @contextmanager
 def create_span(
     name: str,
@@ -222,7 +222,7 @@ async def async_span(
         yield span
 
 
-# ── Decorator ─────────────────────────────────────────────────────────────
+# -- Decorator ------------------------------------------------------------─
 def traced(span_name: Optional[str] = None, attributes: Optional[Dict] = None):
     """
     Decorator to automatically trace a function.

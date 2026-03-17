@@ -1,4 +1,4 @@
-# Autonomous Multi-Agent AI Organization
+# Autonomous Multi-Agent AI Organization (Post-Hackathon)
 
 [![Go](https://img.shields.io/badge/go-1.24.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -10,15 +10,17 @@
 [![Frontend CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml)
 [![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
-> A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
+> A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** (March 2026) where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
 >
-> **Hackathon Edition Features:**
+> **Core Intelligence Features:**
 >
 > - **Native Amazon Nova Integration**: Specialized agents optimized for Nova Pro, Lite, and Micro models.
-> - **Proximus-Nova CLI**: Unified launcher for instant setup, management, and real-time monitoring.
-> - **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and agent feedback.
-> - **Event-Driven Architecture**: Decoupled gRPC/Kafka backbone for high-concurrency autonomous workflows.
+- **Proximus-Nova CLI**: Unified launcher for instant setup, management, and real-time monitoring.
+- **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and agent feedback.
+- **Production-Grade Shielding**: kernel-level sandboxing (gVisor), secure in-memory secret injection (tmpfs), and automated PII/Key redaction in logs.
+- **Self-Healing Connectivity**: Background health orchestrator ensures 100% dependency availability before task execution.
 - **Self-Critique Quality Loop**: Automated agent-level reflection and quality scoring for every task output.
+- **Atomic State Recovery**: Git-based checkpointing with sync barriers for lossless state rewind.
 
 ---
 
@@ -139,7 +141,12 @@ cp .env.example .env
 
 # 3. Start the platform
 ./proximus-nova start
-For long-term plans, SaaS scaling, and post-hackathon objectives (after March 17), please see the [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md).
+
+---
+
+## Future Vision
+
+Post-hackathon development focuses on scaling to production, advanced self-healing, and visual intelligence. For the full technical vision, please see the [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md).
 
 ---
 
@@ -372,6 +379,20 @@ Provisions (Planned): ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, R
 
 ---
 
+---
+
+## Production Softening & Resilience
+
+The system is now hardened for production environments:
+
+- **Egress Proxy**: Restricts agent network access to an allowlist of LLM providers and infrastructure.
+- **Log Redactor**: Automatically masks API keys (AWS, Google, OpenAI) in both Python and Go logging pipelines using high-performance regex cores.
+- **Memory Decay**: Background worker periodically prunes stale agent memories to prevent context-window explosion and data rot.
+- **Budget Alerts**: Real-time emission of `budget_alert` events when spend thresholds are crossed, integrated into the Finance Agent's monitoring loop.
+- **Health Orchestrator**: Go-based aggregator provides unified readiness checks on `/healthz`, verifying Postgres, Redis, and Kafka availability.
+
+---
+
 ## Security
 
 - **Encrypted API keys** — AES-256-GCM. Raw keys never written to disk.
@@ -381,6 +402,17 @@ Provisions (Planned): ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, R
 - **HttpOnly JWT cookie** — Immune to XSS token theft.
 - **Agent sandboxing** — Code execution runs in isolated Docker containers with `--network=none`.
 - **Least privilege** — CEO cannot write code; Engineer cannot modify billing.
+
+## Commit Message Format
+
+The project follows a standardized commit message convention to keep the history readable and searchable:
+
+- `feat`: add Kafka lease model  
+- `fix`: resolve race condition  
+- `docs`: update setup guide  
+- `refactor`: optimize DAG traversal  
+- `test`: add unit tests  
+- `chore`: dependency update
 
 ---
 

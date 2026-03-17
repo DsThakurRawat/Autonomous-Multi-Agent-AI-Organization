@@ -21,6 +21,9 @@ x-agent-env: &agent-env
   DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD}@postgres:5432/aiorg
   OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
   ENVIRONMENT: ${ENVIRONMENT:-development}
+  HTTP_PROXY: http://egress-proxy:8080
+  HTTPS_PROXY: http://egress-proxy:8080
+  NO_PROXY: localhost,127.0.0.1,postgres,redis,kafka,zookeeper,jaeger,prometheus,orchestrator,api-gateway,ws-hub,ceo-agent,cto-agent,engineer-backend,engineer-frontend,qa-agent,devops-agent,finance-agent
 
 x-go-env: &go-env
   AI_ORG_ENV: development
@@ -52,6 +55,9 @@ x-agent-defaults: &agent-defaults
     options:
       max-size: "10m"
       max-file: "3"
+  # runtime: runsc # Uncomment to enable gVisor (requires runsc installed on host)
+  tmpfs:
+    - /run/secrets/ai-org:mode=1777,size=10m
   healthcheck:
     test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8000/health"]
     interval: 10s
@@ -64,6 +70,21 @@ services:
   # ══════════════════════════════════════════════════════════════════════
   # INFRASTRUCTURE
   # ══════════════════════════════════════════════════════════════════════
+
+  egress-proxy:
+    build:
+      context: ./go-backend
+      dockerfile: deploy/dockerfiles/Dockerfile.proxy
+    restart: unless-stopped
+    environment:
+      PROXY_ADDR: ":8080"
+    networks:
+      - ai-org-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   postgres:
     image: postgres:15-alpine

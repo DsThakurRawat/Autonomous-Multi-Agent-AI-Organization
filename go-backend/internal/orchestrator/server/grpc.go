@@ -20,13 +20,15 @@ type OrchestratorServer struct {
 	pb.UnimplementedOrchestratorServiceServer
 
 	db       *db.Pool
+	redis    *db.Redis
 	producer *kafka.Producer
 	keys     *keystore.Resolver // resolves per-user LLM config at dispatch time
 }
 
-func NewOrchestratorServer(pool *db.Pool, prod *kafka.Producer) *OrchestratorServer {
+func NewOrchestratorServer(pool *db.Pool, rds *db.Redis, prod *kafka.Producer) *OrchestratorServer {
 	return &OrchestratorServer{
 		db:       pool,
+		redis:    rds,
 		producer: prod,
 		keys:     keystore.NewResolver(pool),
 	}
@@ -78,6 +80,22 @@ func (s *OrchestratorServer) CreateProject(ctx context.Context, req *pb.CreatePr
 		"api_key":  llmCfg.APIKey, // plaintext in RAM only, serialised to Kafka TLS channel
 		"model":    llmCfg.ModelName,
 	}
+
+	// Check for existing lease in Redis to prevent duplicate dispatch
+	leased, err := s.redis.IsTaskLeased(ctx, taskID)
+	if err != nil {
+		log.Warn("failed to check redis lease", zap.Error(err))
+	}
+	if leased {
+		log.Info("task already leased, skipping duplicate dispatch", zap.String("task_id", taskID))
+		return &pb.ProjectResponse{
+			ProjectId: projectID,
+			// ... return existing project info
+		}, nil
+	}
+
+	// Set initial lease
+	_, _ = s.redis.SetTaskLease(ctx, taskID, 30*time.Second)
 
 	// Dispatch task to Kafka
 	taskPayload := map[string]any{

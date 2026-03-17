@@ -1,5 +1,5 @@
 """
-Finance Agent — Cost Governance & Optimization
+Finance Agent - Cost Governance & Optimization
 Tracks AWS costs in real time, enforces budget limits,
 and generates optimization recommendations.
 """
@@ -115,9 +115,9 @@ You produce clear, actionable financial reports with specific dollar amounts.
         elif utilization_pct < 80:
             return "⚠️ Monitor Closely"
         elif utilization_pct < 95:
-            return "🔴 Alert — Optimize Now"
+            return "🔴 Alert - Optimize Now"
         else:
-            return "🚨 CRITICAL — Non-critical services should be paused"
+            return "🚨 CRITICAL - Non-critical services should be paused"
 
     def _generate_optimizations(self, report: dict[str, Any]) -> list[dict[str, Any]]:
         """Generate specific, actionable cost optimizations."""
@@ -192,12 +192,12 @@ You produce clear, actionable financial reports with specific dollar amounts.
 
     def _recommend_savings_plan(self, report: dict[str, Any]) -> dict[str, Any]:
         return {
-            "recommended": "Compute Savings Plan — 1 Year, No Upfront",
+            "recommended": "Compute Savings Plan - 1 Year, No Upfront",
             "commitment_per_hour_usd": 0.15,
             "estimated_monthly_savings_usd": 22.50,
             "eligible_services": ["ECS Fargate", "EC2", "Lambda"],
             "break_even_months": 1,
-            "confidence": "High — consistent usage pattern detected",
+            "confidence": "High - consistent usage pattern detected",
         }
 
     def _generate_alerts(
@@ -211,7 +211,7 @@ You produce clear, actionable financial reports with specific dollar amounts.
             alerts.append(
                 {
                     "severity": "WARNING",
-                    "message": f"Budget {utilization:.1f}% utilized — review non-critical services",
+                    "message": f"Budget {utilization:.1f}% utilized - review non-critical services",
                     "action": "Run cost optimization recommendations",
                 }
             )

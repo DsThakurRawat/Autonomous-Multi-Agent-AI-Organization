@@ -1,12 +1,12 @@
 """
-Kafka Topic Definitions — Single source of truth for all topic names.
+Kafka Topic Definitions - Single source of truth for all topic names.
 """
 
 
 class KafkaTopics:
     """All Kafka topic names used in the AI Organization system."""
 
-    # ── Static Topics matching Go Backend ──────────────────────────────────
+    # -- Static Topics matching Go Backend ----------------------------------
     TASKS = "ai-org-tasks"
     RESULTS = "ai-org-results"
     EVENTS = "ai-org-events"
@@ -35,7 +35,7 @@ class KafkaTopics:
     def all_task_topics(cls) -> list:
         return [cls.TASKS]
 
-    # ── Dispatcher-friendly aliases ────────────────────────────────────────
+    # -- Dispatcher-friendly aliases ----------------------------------------
     @classmethod
     def agent_task_topic(cls, agent_role: str) -> str:
         return cls.TASKS
@@ -48,7 +48,7 @@ class KafkaTopics:
     def project_events(cls, project_id: str) -> str:
         return cls.EVENTS
 
-    # ── Topic Configurations ───────────────────────────────────────────────
+    # -- Topic Configurations ----------------------------------------------─
     # Used when creating topics programmatically
     TOPIC_CONFIGS = {
         TASKS: {"num_partitions": 12, "replication_factor": 3},

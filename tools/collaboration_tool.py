@@ -1,5 +1,5 @@
 """
-Agent Collaboration Tool — Enables agents to communicate securely with each other
+Agent Collaboration Tool - Enables agents to communicate securely with each other
 by leaving persistent messages, code snippets, or architectural notes in a shared space.
 """
 

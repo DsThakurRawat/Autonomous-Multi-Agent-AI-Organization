@@ -1,5 +1,5 @@
 """
-Unit Tests — MoE Scoring Engine
+Unit Tests - MoE Scoring Engine
 Tests cosine similarity, expert ranking, and routing score computation.
 """
 
@@ -35,7 +35,7 @@ class TestCosineSimilarity:
         assert 0.0 <= sim <= 1.0
 
     def test_different_length_vectors(self):
-        """Shorter vector is padded — no exception raised."""
+        """Shorter vector is padded - no exception raised."""
         v1 = [1.0, 0.5]
         v2 = [1.0, 0.5, 0.8]
         # Should not raise

@@ -1,5 +1,5 @@
 """
-CEO Agent — Chief Executive Officer
+CEO Agent - Chief Executive Officer
 Converts a business idea into a structured business plan with
 vision, MVP scope, milestones, risk assessment, and success metrics.
 """
@@ -136,6 +136,20 @@ Return a JSON object with EXACTLY this structure:
                 confidence=0.9,
                 tags=["strategy", "mvp"],
             )
+
+        if not isinstance(plan, dict):
+            logger.warning("CEO: LLM response was not a dict, using fallback", type=type(plan))
+            plan = self._extract_plan_fallback(business_idea)
+
+        # Normalize features
+        if "mvp_features" in plan and isinstance(plan["mvp_features"], list):
+            valid_features = []
+            for f in plan["mvp_features"]:
+                if isinstance(f, str):
+                    valid_features.append({"name": f, "priority": "P1", "description": f})
+                elif isinstance(f, dict):
+                    valid_features.append(f)
+            plan["mvp_features"] = valid_features
 
         logger.info(
             "CEO: Business plan complete",

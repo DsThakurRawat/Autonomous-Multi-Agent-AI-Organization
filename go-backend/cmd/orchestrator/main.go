@@ -10,12 +10,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/health"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/server"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/config"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
@@ -48,16 +50,25 @@ func main() {
 	}
 	defer pgPool.Close()
 
+	// ── Redis ─────────────────────────────────────────────────────────────
+	redisClient, err := db.NewRedis(ctx, &cfg.Redis)
+	if err != nil {
+		log.Fatal("redis failed", zap.Error(err))
+	}
+	defer redisClient.Close()
+
 	// ── Kafka Producer (for publishing tasks) ────────────────────────────
 	producer, err := kafka.NewProducer(&cfg.Kafka)
 	if err != nil {
 		log.Fatal("kafka producer failed", zap.Error(err))
 	}
 	defer producer.Close()
+	
+	healthOrch := health.NewHealthOrchestrator(pgPool, redisClient)
+	// Optionally wait for readiness before moving further in production
+	// healthOrch.WaitUntilReady(ctx, 10*time.Second) 
 
-	// ── Redis / DB / Producer setup above ──────────────────────────────
-
-	resultHandler := server.NewResultHandler(pgPool, producer)
+	resultHandler := server.NewResultHandler(pgPool, redisClient, producer)
 
 	// ── Kafka Consumer (for consuming results) ────────────────────────────
 	resultConsumer, err := kafka.NewConsumerGroup(
@@ -72,10 +83,29 @@ func main() {
 		log.Fatal("kafka consumer failed", zap.Error(err))
 	}
 
-	// ── Start Consumer in background ─────────────────────────────────────
+	// ── Kafka Consumer (for heartbeats) ──────────────────────────────────
+	hbHandler := server.NewHeartbeatHandler(redisClient)
+	hbConsumer, err := kafka.NewConsumerGroup(
+		&cfg.Kafka,
+		"orchestrator-heartbeats",
+		[]string{cfg.Kafka.TopicHB}, // ai-org-heartbeats
+		func(ctx context.Context, msg kafka.Message) error {
+			return hbHandler.Handle(ctx, msg)
+		},
+	)
+	if err != nil {
+		log.Fatal("heartbeat consumer failed", zap.Error(err))
+	}
+
+	// ── Start Consumers in background ─────────────────────────────────────
 	go func() {
 		if err := resultConsumer.Consume(ctx); err != nil {
-			log.Error("consumer stopped", zap.Error(err))
+			log.Error("result consumer stopped", zap.Error(err))
+		}
+	}()
+	go func() {
+		if err := hbConsumer.Consume(ctx); err != nil {
+			log.Error("heartbeat consumer stopped", zap.Error(err))
 		}
 	}()
 
@@ -87,11 +117,15 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	orchServer := server.NewOrchestratorServer(pgPool, producer)
+	orchServer := server.NewOrchestratorServer(pgPool, redisClient, producer)
 	pb.RegisterOrchestratorServiceServer(grpcServer, orchServer)
 
 	// Register reflection service on gRPC server (useful for evans / grpcui)
 	reflection.Register(grpcServer)
+
+	// ── Lease Monitor (background cleanup) ──────────────────────────────
+	monitor := server.NewLeaseMonitor(pgPool, redisClient)
+	go monitor.Start(ctx, 30*time.Second)
 
 	go func() {
 		log.Info("orchestrator grpc listening", zap.String("grpc_addr", cfg.GRPCAddr()))
@@ -103,7 +137,18 @@ func main() {
 	// ── Health Check (HTTP) ──────────────────────────────────────────────
 	healthApp := fiber.New(fiber.Config{DisableStartupMessage: true})
 	healthApp.Get("/healthz", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "ok", "service": "orchestrator"})
+		stats, healthy := healthOrch.CheckAll(c.Context())
+		if !healthy {
+			return c.Status(503).JSON(fiber.Map{
+				"status":       "unhealthy",
+				"dependencies": stats,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"status":       "ok",
+			"service":      "orchestrator",
+			"dependencies": stats,
+		})
 	})
 	go func() {
 		if err := healthApp.Listen(":9091"); err != nil {

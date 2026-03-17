@@ -4,6 +4,7 @@ Real-time AWS cost tracking and budget governance.
 Finance agent reads/writes here; all agents can query budget availability.
 """
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -50,7 +51,7 @@ class CostLedger:
         self.budget_usd = budget_usd
         self._entries: list[CostEntry] = []
         self.alert_threshold_pct: float = 0.80  # Alert at 80% spend
-        self._budget_exceeded_callbacks = []
+        self.on_budget_exceeded: Callable[[float, float], None] | None = None
         logger.info("CostLedger initialized", project_id=project_id, budget=budget_usd)
 
     def record(
@@ -77,6 +78,8 @@ class CostLedger:
         # Trigger alerts
         if total > self.budget_usd:
             logger.warning("BUDGET EXCEEDED", total=total, budget=self.budget_usd)
+            if self.on_budget_exceeded:
+                self.on_budget_exceeded(total, self.budget_usd)
         elif total / self.budget_usd >= self.alert_threshold_pct:
             logger.warning(
                 "Budget threshold reached", pct=round(total / self.budget_usd * 100, 1)
@@ -134,7 +137,7 @@ class CostLedger:
                 "Consider Reserved Instances or Savings Plans."
             )
         if self.utilization_pct() > 90:
-            hints.append("High budget utilization — pause non-critical services")
+            hints.append("High budget utilization - pause non-critical services")
 
         return hints
 

@@ -25,10 +25,10 @@ try:
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
-    logger.warning("prometheus_client not installed — metrics will be no-ops")
+    logger.warning("prometheus_client not installed - metrics will be no-ops")
 
 
-# ── Metric Stubs (no-op fallback) ─────────────────────────────────────────
+# -- Metric Stubs (no-op fallback) ----------------------------------------─
 class _NoOpMetric:
     """No-op metric used when prometheus_client is unavailable."""
 
@@ -438,7 +438,7 @@ def start_metrics_server(port: int = 9090):
         start_http_server(port)
         logger.info("Prometheus metrics server started", port=port)
     else:
-        logger.warning("prometheus_client not available — metrics server not started")
+        logger.warning("prometheus_client not available - metrics server not started")
 
 
 def get_metrics_text() -> str:

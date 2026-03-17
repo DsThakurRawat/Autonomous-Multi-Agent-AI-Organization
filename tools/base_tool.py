@@ -1,5 +1,5 @@
 """
-Base Tool — Abstract base class for all execution tools.
+Base Tool - Abstract base class for all execution tools.
 All tools are sandboxed, timed, audited, and observed.
 """
 

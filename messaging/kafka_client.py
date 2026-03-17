@@ -26,10 +26,10 @@ try:
     KAFKA_AVAILABLE = True
 except ImportError:
     KAFKA_AVAILABLE = False
-    logger.warning("kafka-python not installed — using in-memory mock bus")
+    logger.warning("kafka-python not installed - using in-memory mock bus")
 
 
-# ── In-Memory Mock Bus (dev/test without Kafka) ────────────────────────────
+# -- In-Memory Mock Bus (dev/test without Kafka) ----------------------------
 class _InMemoryBus:
     """
     Simple in-process pub/sub bus used when Kafka is not available.
@@ -358,7 +358,7 @@ class KafkaConsumerClient:
         logger.info("Kafka consumer stopped", topics=self.topics)
 
     async def close(self):
-        """Async close — called by KafkaDispatcher on shutdown."""
+        """Async close - called by KafkaDispatcher on shutdown."""
         self.stop()
 
     async def consume_stream(self):

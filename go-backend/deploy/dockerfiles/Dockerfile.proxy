@@ -1,0 +1,26 @@
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# Copy go.mod and go.sum from go-backend root
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the rest of the source code
+COPY . .
+
+# Build the proxy
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o proxy ./cmd/proxy/main.go
+
+# Final stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /app
+COPY --from=builder /app/proxy .
+
+EXPOSE 8080
+
+CMD ["./proxy"]

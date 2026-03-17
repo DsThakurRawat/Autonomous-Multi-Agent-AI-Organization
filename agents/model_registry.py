@@ -1,5 +1,5 @@
 """
-Model Registry — Single source of truth for default agent model preferences.
+Model Registry - Single source of truth for default agent model preferences.
 
 When a user has NOT configured custom agent preferences in the Settings panel,
 the Go Orchestrator falls back to these defaults when building the Kafka TaskMessage.
@@ -20,43 +20,43 @@ class ModelConfig(TypedDict):
     model: str  # exact model ID for the provider's API
 
 
-# ── Agent Defaults ────────────────────────────────────────────────────────────
+# -- Agent Defaults ------------------------------------------------------------
 # NOTE: As part of the Amazon Nova integration, all default models are routed
 # to Amazon Bedrock. The system orchestration still supports switching individual
 # agents to Google (Gemini), Anthropic (Claude), or OpenAI (GPT) for specific tasks
 # dynamically via the settings API.
 AGENT_MODEL_DEFAULTS: dict[str, ModelConfig] = {
-    # CEO — Strategic reasoning, structured JSON output
+    # CEO - Strategic reasoning, structured JSON output
     "CEO": {
         "provider": "bedrock",
         "model": "amazon.nova-lite-v1:0",
     },
-    # CTO / Architect — Long-context system design and research
+    # CTO / Architect - Long-context system design and research
     "CTO": {
         "provider": "bedrock",
         "model": "amazon.nova-lite-v1:0",
     },
-    # Engineer (Backend) — Real, runnable code with minimal hallucinations
+    # Engineer (Backend) - Real, runnable code with minimal hallucinations
     "Engineer_Backend": {
         "provider": "bedrock",
         "model": "amazon.nova-lite-v1:0",
     },
-    # Engineer (Frontend) — UI generation and React components
+    # Engineer (Frontend) - UI generation and React components
     "Engineer_Frontend": {
         "provider": "bedrock",
         "model": "amazon.nova-lite-v1:0",
     },
-    # QA — Test writing and bug analysis
+    # QA - Test writing and bug analysis
     "QA": {
         "provider": "bedrock",
         "model": "amazon.nova-lite-v1:0",
     },
-    # DevOps — YAML, Dockerfile, CI/CD generation
+    # DevOps - YAML, Dockerfile, CI/CD generation
     "DevOps": {
         "provider": "bedrock",
         "model": "amazon.nova-lite-v1:0",
     },
-    # Finance — Cost analysis and budget reporting
+    # Finance - Cost analysis and budget reporting
     "Finance": {
         "provider": "bedrock",
         "model": "amazon.nova-micro-v1:0",

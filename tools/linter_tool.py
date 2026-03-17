@@ -1,5 +1,5 @@
 """
-Linter Tool — Code quality enforcement via ruff and black.
+Linter Tool - Code quality enforcement via ruff and black.
 Runs static analysis, auto-formatting, and returns structured reports.
 """
 

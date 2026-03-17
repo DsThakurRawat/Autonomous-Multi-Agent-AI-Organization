@@ -1,5 +1,5 @@
 """
-Docker Sandbox Tool — Extreme Isolation for Agent Code Execution.
+Docker Sandbox Tool - Extreme Isolation for Agent Code Execution.
 Enforces military-grade sandboxing by wrapping agent code in ephemeral containers.
 No internet access by default unless explicitly allowed.
 """

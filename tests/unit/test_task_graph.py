@@ -1,5 +1,5 @@
 """
-Unit Tests — Task Graph Engine
+Unit Tests - Task Graph Engine
 Tests DAG construction, dependency resolution, cycle detection,
 parallel task readiness, and status tracking.
 """

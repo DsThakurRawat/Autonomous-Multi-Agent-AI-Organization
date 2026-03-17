@@ -4,27 +4,58 @@
 
 ---
 
-## Quickstart (The "Hackathon" Way)
+## Production / SaaS Setup (Recommended)
 
-This is the **recommended method** for the Amazon Nova AI Hackathon.
-It uses the unified launcher to verify your environment and start all services (including the Next.js Dashboard).
- 
- ```bash
+This method configures the platform for multi-user access with Google OAuth2 authentication.
+
+### 1. Prerequisites
+
+- **Docker + Docker Compose**
+- **Domain Name** (for OAuth callbacks)
+- **Google Cloud Console App** (for OAuth credentials)
+
+### 2. Manual Configuration
+
+```bash
 # 1. Clone
 git clone https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization.git
 cd "Autonomous Multi-Agent AI Organization"
- 
- # 2. Setup environment
- cp .env.example .env
 
 # 2. Setup environment
 cp .env.example .env
-# Edit .env and add your AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION
 
-# 3. Start the platform
+# 3. Generate RSA keys for JWT signing
+mkdir -p keys
+openssl genrsa -out keys/private.pem 2048
+openssl rsa -in keys/private.pem -pubout -out keys/public.pem
+
+# 4. Generate encryption key
+openssl rand -hex 32   # → paste as KEY_ENCRYPTION_KEY in .env
+
+# 5. Fill in Google OAuth and AWS credentials in .env
+```
+
+### 3. Launch
+
+```bash
+docker-compose -f go-backend/deploy/docker-compose.yml up -d --build
+```
+
+---
+
+## Quickstart (Local Development)
+
+Use this for instant evaluation on your local machine with authentication disabled.
+
+```bash
+# 1. Setup environment
+cp .env.example .env
+# Set AUTH_DISABLED=true in .env
+
+# 2. Start the platform
 ./proximus-nova start
 ```
-**That's it.** The CLI will build the containers and launch the dashboard at `http://localhost:3000`.
+The CLI will build the containers and launch the dashboard at `http://localhost:3000`.
 
 ---
 ## Manual / Docker Compose Setup
@@ -46,6 +77,7 @@ Use this if you want more control or are running in a CI/CD environment.
 - Dashboard: `http://localhost:3000`
 - API Gateway: `http://localhost:8080`
 - Kafka UI: `http://localhost:8888`
+
 
 ---
 

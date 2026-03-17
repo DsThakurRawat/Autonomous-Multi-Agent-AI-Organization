@@ -1,5 +1,5 @@
 """
-Git Tool — Repository operations for code management.
+Git Tool - Repository operations for code management.
 Handles: init, clone, add, commit, push, branch, status, diff.
 """
 

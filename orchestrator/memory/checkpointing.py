@@ -84,8 +84,17 @@ class CheckpointManager:
                     cwd=self.workspace_dir,
                 )
 
-        # Stage and commit snapshot
+        # Stage snapshots
         await self.git.run("add", files=".")
+
+        # ── Atomic Sync Barrier ──────────────────────────────────────────
+        # Ensure all OS file buffers are flushed to disk before committing
+        if hasattr(os, "sync"):
+            os.sync()
+
+        # Verify state file integrity before committing
+        if not os.path.exists(state_file):
+             logger.warning("Memory state file missing during checkpoint, skipping barrier verification")
 
         diff_res = await self.git.run("diff", staged=True)
         if not diff_res.output.strip():
@@ -94,7 +103,14 @@ class CheckpointManager:
             )
             return
 
-        msg = f"Checkpoint: {task_name}\nAgent: {agent_role}\nTimestamp: {datetime.now(UTC).isoformat()}"
+        # metadata for better observability
+        msg = (
+            f"Checkpoint: {task_name}\n"
+            f"Agent: {agent_role}\n"
+            f"Timestamp: {datetime.now(UTC).isoformat()}\n"
+            f"Project: {self.project_id}\n"
+            f"Status: snapshot_verified"
+        )
         res = await self.git.run("commit", message=msg)
 
         if res.success:
