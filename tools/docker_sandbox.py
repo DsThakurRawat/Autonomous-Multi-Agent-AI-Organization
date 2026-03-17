@@ -42,8 +42,9 @@ class DockerSandboxTool(BaseTool):
         Spins up an ephemeral container mapped to the project workspace.
         """
         container_name = f"ai-org-sandbox-{cast(str, uuid.uuid4().hex)[:8]}"
+        c_name: str = cast(str, container_name)
         logger.info(
-            "Spawning execution sandbox", container=cast(str, container_name)[:12], image=image
+            "Spawning execution sandbox", container=c_name[:12], image=image
         )
 
         # Build the docker run command to ensure isolation
@@ -77,12 +78,13 @@ class DockerSandboxTool(BaseTool):
         logger.debug("Executing isolated tool command", raw_cmd=" ".join(docker_cmd))
         result = await self._run_subprocess(docker_cmd)
 
+        c_name: str = cast(str, container_name)
         if result.success:
-            logger.info("Sandbox execution succeeded", container=cast(str, container_name)[:12])
+            logger.info("Sandbox execution succeeded", container=c_name[:12])
         else:
             logger.warning(
                 "Sandbox execution failed",
-                container=cast(str, container_name)[:12],
+                container=c_name[:12],
                 error=result.error,
             )
 
