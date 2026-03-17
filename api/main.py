@@ -1,18 +1,19 @@
 """
-Main API Server — Orchestrator Control Plane
+Main API Server - Orchestrator Control Plane
 FastAPI application that exposes the orchestrator to the world.
 Provides REST API + WebSocket for real-time agent event streaming.
 """
 
 import asyncio
+import os
+import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-import os
-import time
 from typing import Any
 
 import boto3
+import structlog
 from dotenv import load_dotenv
 from fastapi import (
     Depends,
@@ -28,7 +29,8 @@ from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from google import genai
 from pydantic import BaseModel, Field
-import structlog
+
+from messaging.kafka_client import KafkaProducerClient
 
 from agents.ceo_agent import CEOAgent
 from agents.cto_agent import CTOAgent
@@ -38,11 +40,12 @@ from agents.finance_agent import FinanceAgent
 from agents.model_registry import get_default
 from agents.qa_agent import QAAgent
 from agents.roles import AgentRole
+from agents.base_agent import BaseAgent
 from orchestrator.planner import ExecutionEvent, OrchestratorEngine
 
 logger = structlog.get_logger(__name__)
 
-# ── Dynamic LLM Setup ──────────────────────────────────────────────
+# -- Dynamic LLM Setup ----------------------------------------------
 
 load_dotenv()
 
@@ -50,15 +53,16 @@ load_dotenv()
 gemini_client = None
 bedrock_client = None
 
-# ── Google Gemini Setup ──────────────────────────────────────────
-gemini_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-if gemini_key and gemini_key != "your-gemini-key" and not gemini_key.startswith("AIza"):
+# -- Google Gemini Setup ------------------------------------------
+gemini_key = BaseAgent.get_secret("GOOGLE_API_KEY") or BaseAgent.get_secret("GEMINI_API_KEY")
+if gemini_key and gemini_key != "your-gemini-key" and gemini_key.startswith("AIza"):
     gemini_client = genai.Client(api_key=gemini_key)
     logger.info("Google Gemini client initialized")
 
-# ── Amazon Bedrock Setup ──────────────────────────────────────────
-aws_key = os.getenv("AWS_ACCESS_KEY_ID")
-aws_secret = os.getenv("AWS_SECRET_ACCESS_KEY")
+# -- Amazon Bedrock Setup ------------------------------------------
+aws_key = BaseAgent.get_secret("AWS_ACCESS_KEY_ID")
+aws_secret = BaseAgent.get_secret("AWS_SECRET_ACCESS_KEY")
+aws_session = BaseAgent.get_secret("AWS_SESSION_TOKEN")  # Support for temporary credentials
 aws_region = os.getenv("AWS_REGION", "us-east-1")
 
 if aws_key and aws_key != "your-access-key-id":
@@ -66,25 +70,30 @@ if aws_key and aws_key != "your-access-key-id":
         "bedrock-runtime",
         aws_access_key_id=aws_key,
         aws_secret_access_key=aws_secret,
+        aws_session_token=aws_session,
         region_name=aws_region,
     )
-    logger.info("Amazon Bedrock (Nova) client initialized", region=aws_region)
+    logger.info("Amazon Bedrock (Nova) client initialized", region=aws_region, session_token_used=bool(aws_session))
 else:
     logger.warning(
         "No AWS Bedrock credentials found. Agents will fall back to Gemini or Mock."
     )
 
 
-# ── Global Orchestrator ────────────────────────────────────────────
+# -- Global Orchestrator --------------------------------------------
 orchestrator = OrchestratorEngine(budget_usd=200.0, output_dir="./output")
+kafka_producer = KafkaProducerClient()
 
 
-# ── Security Setup ─────────────────────────────────────────────────
+# -- Security Setup ------------------------------------------------─
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 async def verify_api_key(api_key: str = Security(api_key_header)):
     """Dependency to enforce X-API-Key header authentication."""
+    if os.getenv("AUTH_DISABLED") == "true":
+        return "bypassed"
+
     expected_key = os.getenv("API_KEY")
     if not expected_key:
         logger.warning("API_KEY environment variable is not set. All secure requests will be rejected.")
@@ -95,7 +104,7 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
     return api_key
 
 
-# ── WebSocket Connection Manager ───────────────────────────────────
+# -- WebSocket Connection Manager ----------------------------------─
 class ConnectionManager:
     def __init__(self):
         self.active_connections: dict[str, list[WebSocket]] = {}
@@ -130,7 +139,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-# ── App Lifecycle ──────────────────────────────────────────────────
+# -- App Lifecycle --------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Register all agents on startup using model_registry defaults."""
@@ -146,93 +155,44 @@ async def lifespan(app: FastAPI):
         elif provider == "bedrock":
             client = bedrock_client
 
-        return client, model, provider
+        return client, model, provider, kafka_producer
 
     # CEO
-<<<<<<< Updated upstream
-    client, model, provider = get_agent_config(AgentRole.CEO)
-    orchestrator.register_agent(AgentRole.CEO, CEOAgent(llm_client=client, model_name=model, provider=provider))
+    client, model, provider, producer = get_agent_config(AgentRole.CEO)
+    orchestrator.register_agent(AgentRole.CEO, CEOAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     # CTO
-    client, model, provider = get_agent_config(AgentRole.CTO)
-    orchestrator.register_agent(AgentRole.CTO, CTOAgent(llm_client=client, model_name=model, provider=provider))
+    client, model, provider, producer = get_agent_config(AgentRole.CTO)
+    orchestrator.register_agent(AgentRole.CTO, CTOAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     # Backend Engineer
-    client, model, provider = get_agent_config(AgentRole.ENGINEER_BACKEND)
-    orchestrator.register_agent(AgentRole.ENGINEER_BACKEND, EngineerAgent(mode="backend", llm_client=client, model_name=model, provider=provider))
+    client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_BACKEND)
+    orchestrator.register_agent(AgentRole.ENGINEER_BACKEND, EngineerAgent(mode="backend", llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     # Frontend Engineer
-    client, model, provider = get_agent_config(AgentRole.ENGINEER_FRONTEND)
-    orchestrator.register_agent(AgentRole.ENGINEER_FRONTEND, EngineerAgent(mode="frontend", llm_client=client, model_name=model, provider=provider))
+    client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_FRONTEND)
+    orchestrator.register_agent(AgentRole.ENGINEER_FRONTEND, EngineerAgent(mode="frontend", llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     # QA
-    client, model, provider = get_agent_config(AgentRole.QA)
-    orchestrator.register_agent(AgentRole.QA, QAAgent(llm_client=client, model_name=model, provider=provider))
+    client, model, provider, producer = get_agent_config(AgentRole.QA)
+    orchestrator.register_agent(AgentRole.QA, QAAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     # DevOps
-    client, model, provider = get_agent_config(AgentRole.DEVOPS)
-    orchestrator.register_agent(AgentRole.DEVOPS, DevOpsAgent(llm_client=client, model_name=model, provider=provider))
+    client, model, provider, producer = get_agent_config(AgentRole.DEVOPS)
+    orchestrator.register_agent(AgentRole.DEVOPS, DevOpsAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     # Finance
-    client, model, provider = get_agent_config(AgentRole.FINANCE)
-    orchestrator.register_agent(AgentRole.FINANCE, FinanceAgent(llm_client=client, model_name=model, provider=provider))
-=======
-    client, model, provider = get_agent_config("CEO")
-    orchestrator.register_agent(
-        "CEO", CEOAgent(llm_client=client, model_name=model, provider=provider)
-    )
-
-    # CTO
-    client, model, provider = get_agent_config("CTO")
-    orchestrator.register_agent(
-        "CTO", CTOAgent(llm_client=client, model_name=model, provider=provider)
-    )
-
-    # Backend Engineer
-    client, model, provider = get_agent_config("Engineer_Backend")
-    orchestrator.register_agent(
-        "Engineer_Backend",
-        EngineerAgent(
-            mode="backend", llm_client=client, model_name=model, provider=provider
-        ),
-    )
-
-    # Frontend Engineer
-    client, model, provider = get_agent_config("Engineer_Frontend")
-    orchestrator.register_agent(
-        "Engineer_Frontend",
-        EngineerAgent(
-            mode="frontend", llm_client=client, model_name=model, provider=provider
-        ),
-    )
-
-    # QA
-    client, model, provider = get_agent_config("QA")
-    orchestrator.register_agent(
-        "QA", QAAgent(llm_client=client, model_name=model, provider=provider)
-    )
-
-    # DevOps
-    client, model, provider = get_agent_config("DevOps")
-    orchestrator.register_agent(
-        "DevOps", DevOpsAgent(llm_client=client, model_name=model, provider=provider)
-    )
-
-    # Finance
-    client, model, provider = get_agent_config("Finance")
-    orchestrator.register_agent(
-        "Finance", FinanceAgent(llm_client=client, model_name=model, provider=provider)
-    )
->>>>>>> Stashed changes
+    client, model, provider, producer = get_agent_config(AgentRole.FINANCE)
+    orchestrator.register_agent(AgentRole.FINANCE, FinanceAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     logger.info("All agents registered and ready")
     yield
 
 
-# ── FastAPI App ────────────────────────────────────────────────────
+# -- FastAPI App ----------------------------------------------------
 app = FastAPI(
     title="🏢 Autonomous Multi-Agent AI Organization",
-    description="AI Company in a Box — Control Plane API",
+    description="AI Company in a Box - Control Plane API",
     version="1.0.0",
     docs_url="/api/docs",
     lifespan=lifespan,
@@ -246,7 +206,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Simple In-Memory Rate Limiter ──────────────────────────────────
+# -- Simple In-Memory Rate Limiter ----------------------------------
 RATE_LIMIT_DURATION = 60
 RATE_LIMIT_REQUESTS = 60
 request_counts = defaultdict(list)
@@ -266,7 +226,7 @@ async def rate_limit_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-# ── Request/Response Models ────────────────────────────────────────
+# -- Request/Response Models ----------------------------------------
 class StartProjectRequest(BaseModel):
     idea: str = Field(..., min_length=5, max_length=1000, description="The core business idea")
     budget: dict[str, Any] = Field(default_factory=lambda: {"max_cost_usd": 200.0})
@@ -274,7 +234,7 @@ class StartProjectRequest(BaseModel):
     constraints: dict[str, Any] | None = None
 
 
-# ── REST Endpoints ─────────────────────────────────────────────────
+# -- REST Endpoints ------------------------------------------------─
 @app.get("/")
 async def root():
     return {
@@ -291,13 +251,8 @@ async def root():
 async def health():
     return {
         "status": "healthy",
-<<<<<<< Updated upstream
         "timestamp": datetime.now(UTC).isoformat(),
         "uptime_seconds": 3600, # Mock uptime
-=======
-        "timestamp": datetime.utcnow().isoformat(),
-        "uptime_seconds": 3600,  # Mock uptime
->>>>>>> Stashed changes
         "agents": list(orchestrator._agent_registry.keys()),
         "active_projects": len(orchestrator._active_projects),
     }
@@ -317,12 +272,8 @@ async def start_project(request: StartProjectRequest, api_key: str = Depends(ver
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
-<<<<<<< Updated upstream
         business_idea=request.idea,
         user_constraints=request.constraints or {}
-=======
-        business_idea=request.idea, user_constraints=request.constraints or {}
->>>>>>> Stashed changes
     )
 
     # Subscribe the event broadcaster for this project
@@ -340,11 +291,7 @@ async def start_project(request: StartProjectRequest, api_key: str = Depends(ver
         "progress_pct": 0,
         "tasks_total": 0,
         "tasks_done": 0,
-<<<<<<< Updated upstream
         "created_at": datetime.now(UTC).isoformat()
-=======
-        "created_at": datetime.utcnow().isoformat(),
->>>>>>> Stashed changes
     }
 
 
@@ -430,7 +377,7 @@ async def list_agents():
     }
 
 
-# ── Omni-Channel Webhook (Slack, Discord, Telegram) ────────────────
+# -- Omni-Channel Webhook (Slack, Discord, Telegram) ----------------
 class WebhookPayload(BaseModel):
     user_id: str
     text: str
@@ -460,7 +407,7 @@ async def omni_channel_webhook(channel: str, payload: WebhookPayload, api_key: s
     }
 
 
-# ── BI-DIRECTIONAL WebSocket Stream ───────────────────────────────────────────────
+# -- BI-DIRECTIONAL WebSocket Stream ----------------------------------------------─
 @app.websocket("/ws/{project_id}")
 async def websocket_events(websocket: WebSocket, project_id: str):
     """
@@ -475,14 +422,15 @@ async def websocket_events(websocket: WebSocket, project_id: str):
     await manager.connect(websocket, project_id)
     try:
         # Require immediate authentication upon connection
-        try:
-            auth_msg = await asyncio.wait_for(websocket.receive_json(), timeout=5.0)
-            if auth_msg.get("type") != "authenticate" or auth_msg.get("api_key") != os.getenv("API_KEY"):
-                await websocket.send_json({"type": "error", "message": "Authentication failed"})
-                raise WebSocketDisconnect("Authentication failed")
-        except TimeoutError:
-            await websocket.send_json({"type": "error", "message": "Authentication timeout"})
-            raise WebSocketDisconnect("Authentication timeout") from None
+        if os.getenv("AUTH_DISABLED") != "true":
+            try:
+                auth_msg = await asyncio.wait_for(websocket.receive_json(), timeout=5.0)
+                if auth_msg.get("type") != "authenticate" or auth_msg.get("api_key") != os.getenv("API_KEY"):
+                    await websocket.send_json({"type": "error", "message": "Authentication failed"})
+                    raise WebSocketDisconnect("Authentication failed")
+            except TimeoutError:
+                await websocket.send_json({"type": "error", "message": "Authentication timeout"})
+                raise WebSocketDisconnect("Authentication timeout") from None
 
         await websocket.send_json(
             {
