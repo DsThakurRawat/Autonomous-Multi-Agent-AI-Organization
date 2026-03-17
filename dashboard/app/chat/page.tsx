@@ -112,68 +112,73 @@ export default function ChatPage() {
     if (!session) return null; // handled by useEffect redirect
 
     return (
-        <div className="flex h-screen bg-slate-50 text-slate-800 font-sans overflow-hidden">
+        <div className="flex h-screen bg-[#09090b] text-white font-sans overflow-hidden">
             
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 text-slate-300 shrink-0 border-r border-slate-800 hidden md:flex flex-col">
-                <div className="p-4">
-                    <button className="w-full flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg p-2.5 transition-colors text-sm font-medium">
+            <aside className="w-72 bg-[#0c0c0e] shrink-0 border-r border-white/5 hidden md:flex flex-col">
+                <div className="p-6">
+                    <button className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-2xl py-3.5 transition-all text-sm font-bold hover:bg-slate-200 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                         <Plus size={18} /> New Workspace
                     </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto px-2 space-y-1">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest px-3 py-2 mb-1">Recent Projects</p>
+                <div className="flex-1 overflow-y-auto px-4 space-y-2 mt-4">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-3 mb-4">Recent Projects</p>
                     {['SaaS Dashboard Platform', 'E-commerce API', 'Internal Admin Tool'].map((proj, i) => (
-                        <button key={i} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-sm truncate flex items-center gap-2">
-                            <MessageSquare size={14} className="text-slate-500" /> {proj}
+                        <button key={i} className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 transition-colors text-sm truncate flex items-center gap-3 text-slate-400 hover:text-white group">
+                            <div className="w-2 h-2 rounded-full bg-slate-700 group-hover:bg-purple-500 transition-colors" />
+                            {proj}
                         </button>
                     ))}
                 </div>
 
-                <div className="p-4 border-t border-slate-800 space-y-2">
-                    <div className="flex items-center gap-3 mb-4 px-2">
+                <div className="p-6 border-t border-white/5 bg-[#09090b]/50">
+                    <div className="flex items-center gap-4 mb-6 px-2">
                         {session.user?.image ? (
-                            <Image src={session.user.image} alt="User" width={32} height={32} className="w-8 h-8 rounded-full border border-slate-700" />
+                            <Image src={session.user.image} alt="User" width={40} height={40} className="w-10 h-10 rounded-xl border border-white/10" />
                         ) : (
-                            <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">{session.user?.name?.charAt(0) || 'U'}</div>
+                            <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold">{session.user?.name?.charAt(0) || 'U'}</div>
                         )}
                         <div className="flex flex-col overflow-hidden">
-                            <span className="text-sm font-medium text-white truncate">{session.user?.name}</span>
+                            <span className="text-sm font-bold text-white truncate">{session.user?.name}</span>
                             <span className="text-xs text-slate-500 truncate">{session.user?.email}</span>
                         </div>
                     </div>
-                    <Link href="/settings" className="w-full flex items-center gap-3 text-slate-400 hover:text-white px-2 py-1.5 rounded-lg hover:bg-slate-800 transition-colors text-sm">
-                        <Settings size={16} /> Settings
-                    </Link>
-                    <button onClick={() => signOut()} className="w-full flex items-center gap-3 text-slate-400 hover:text-red-400 px-2 py-1.5 rounded-lg hover:bg-slate-800 transition-colors text-sm">
-                        <LogOut size={16} /> Sign out
-                    </button>
+                    <div className="space-y-1">
+                        <Link href="/settings" className="w-full flex items-center gap-3 text-slate-500 hover:text-white px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all text-sm">
+                            <Settings size={18} /> Settings
+                        </Link>
+                        <button onClick={() => signOut()} className="w-full flex items-center gap-3 text-slate-500 hover:text-red-400 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all text-sm">
+                            <LogOut size={18} /> Sign out
+                        </button>
+                    </div>
                 </div>
             </aside>
 
             {/* Main Chat Area */}
-            <main className="flex-1 flex flex-col bg-white relative">
+            <main className="flex-1 flex flex-col bg-[#09090b] relative">
                 
                 {/* Mobile Header */}
-                <header className="md:hidden flex items-center justify-between p-4 border-b border-slate-200 bg-white">
-                    <div className="flex items-center gap-2">
-                        <Sparkles size={20} className="text-purple-600" />
+                <header className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-[#09090b]">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                            <Sparkles size={16} />
+                        </div>
                         <span className="font-bold">Proximus-Nova</span>
                     </div>
                 </header>
 
                 {/* Chat History */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 md:p-12 space-y-8 scroll-smooth">
                     {logs.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center max-w-2xl mx-auto opacity-0 animate-[fadeIn_0.5s_ease-out_forwards]">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 text-purple-600 flex items-center justify-center mb-6 shadow-inner">
-                                <Sparkles size={32} />
+                        <div className="h-full flex flex-col items-center justify-center text-center max-w-2xl mx-auto">
+                            <div className="w-20 h-20 rounded-[2.5rem] bg-white/5 border border-white/10 text-purple-400 flex items-center justify-center mb-8 shadow-2xl animate-float">
+                                <Sparkles size={40} />
                             </div>
-                            <h2 className="text-2xl font-bold text-slate-800 mb-2">What do you want to build?</h2>
-                            <p className="text-slate-500 mb-8 max-w-md">Our multi-agent swarm is ready to architect, develop, and deploy your next big idea.</p>
+                            <h2 className="text-4xl font-bold text-white mb-4">What shall we build?</h2>
+                            <p className="text-slate-500 text-lg mb-12 max-w-md">Our multi-agent swarm is ready to architect, develop, and deploy your next big idea.</p>
                             
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
                                 {[
                                     "Build a CRM dashboard for real estate agents",
                                     "Create a Next.js blog with an admin panel",
@@ -183,7 +188,7 @@ export default function ChatPage() {
                                     <button 
                                         key={i} 
                                         onClick={() => setPrompt(suggestion)}
-                                        className="text-left text-sm p-3 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50 transition-colors text-slate-600 hover:text-purple-700"
+                                        className="text-left text-[15px] p-5 rounded-2xl border border-white/5 bg-white/5 hover:border-purple-500/50 hover:bg-white/10 transition-all text-slate-300 hover:text-white"
                                     >
                                         {suggestion}
                                     </button>
@@ -191,7 +196,7 @@ export default function ChatPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="max-w-4xl mx-auto space-y-8">
                             {logs.map((log, i) => {
                                 const isUser = log.role === 'User';
                                 const isSystem = log.role === 'System';
@@ -199,7 +204,7 @@ export default function ChatPage() {
                                 if (isUser) {
                                     return (
                                         <div key={i} className="flex justify-end animate-fade-in group">
-                                            <div className="bg-slate-900 text-white rounded-2xl rounded-tr-sm px-5 py-3 max-w-[85%] shadow-sm">
+                                            <div className="bg-white text-black rounded-3xl rounded-tr-sm px-6 py-4 max-w-[85%] shadow-2xl font-medium">
                                                 <p className="text-[15px] leading-relaxed">{log.text}</p>
                                             </div>
                                         </div>
@@ -207,42 +212,42 @@ export default function ChatPage() {
                                 }
                                 
                                 return (
-                                    <div key={i} className="flex gap-4 animate-fade-in max-w-[90%]">
+                                    <div key={i} className="flex gap-6 animate-fade-in max-w-[95%]">
                                         <div 
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm text-white font-bold text-xs"
-                                            style={{ backgroundColor: log.color, opacity: isSystem ? 0.6 : 1 }}
+                                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg text-white font-bold text-sm border border-white/10"
+                                            style={{ backgroundColor: isSystem ? '#1e293b' : log.color }}
                                         >
-                                            {isSystem ? <Terminal size={14} /> : log.role?.charAt(0)}
+                                            {isSystem ? <Terminal size={18} /> : log.role?.charAt(0)}
                                         </div>
-                                        <div className="flex flex-col gap-1.5 pt-1">
-                                            <span className="text-xs font-semibold text-slate-500 tracking-wider flex items-center gap-2">
+                                        <div className="flex flex-col gap-2 pt-1">
+                                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-3">
                                                 {log.role}
-                                                {isExecuting && i === logs.length - 1 && !isSystem && <span className="flex items-center"><Loader2 size={10} className="animate-spin ml-1" /></span>}
+                                                {isExecuting && i === logs.length - 1 && !isSystem && <span className="flex items-center"><div className="w-1 h-1 rounded-full bg-purple-500 animate-ping" /></span>}
                                             </span>
-                                            <div className="text-[15px] text-slate-700 leading-relaxed font-mono bg-slate-50 border border-slate-100 p-3 rounded-xl rounded-tl-sm">
+                                            <div className="text-[15px] text-slate-200 leading-relaxed font-mono bg-white/5 border border-white/5 p-5 rounded-2xl rounded-tl-sm backdrop-blur-md">
                                                 {log.text}
                                             </div>
                                         </div>
                                     </div>
                                 );
                             })}
-                            <div ref={logsEndRef} className="h-4" />
+                            <div ref={logsEndRef} className="h-8" />
                         </div>
                     )}
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 md:p-6 bg-white border-t border-slate-100">
+                <div className="p-6 md:p-10 bg-gradient-to-t from-[#09090b] to-transparent">
                     <div className="max-w-4xl mx-auto relative">
                         <form onSubmit={handlePromptSubmit} className="relative flex items-center">
                             <textarea 
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 disabled={isExecuting}
-                                placeholder="Message the Swarm..."
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-4 pr-14 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 resize-none overflow-hidden transition-all text-[15px]"
+                                placeholder="Command the swarm..."
+                                className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-5 pl-6 pr-16 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/5 resize-none overflow-hidden transition-all text-base backdrop-blur-2xl shadow-2xl"
                                 rows={1}
-                                style={{ minHeight: '60px', maxHeight: '200px' }}
+                                style={{ minHeight: '70px', maxHeight: '200px' }}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
@@ -253,13 +258,13 @@ export default function ChatPage() {
                             <button 
                                 type="submit" 
                                 disabled={isExecuting || !prompt.trim()} 
-                                className="absolute right-3 bottom-3 p-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
+                                className="absolute right-4 bottom-4 p-3 bg-white text-black rounded-2xl hover:bg-slate-200 disabled:opacity-20 disabled:bg-white/10 transition-all active:scale-90"
                             >
-                                {isExecuting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                                {isExecuting ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} />}
                             </button>
                         </form>
-                        <div className="text-center mt-3 text-xs text-slate-400">
-                            Agents may hallucinate. Trace everything in the execution dashboard and check your AWS bill.
+                        <div className="text-center mt-4 text-[11px] font-medium text-slate-600 uppercase tracking-wider">
+                            Multi-Agent Swarm Orchestration • AWS Nova-Pro
                         </div>
                     </div>
                 </div>
@@ -268,7 +273,8 @@ export default function ChatPage() {
 
             {/* Agent Feed Sidebar (Desktop/Tablet) */}
             {activeProject && (
-                <aside className="w-[350px] xl:w-[450px] border-l border-slate-200 bg-[#09090b] hidden md:flex flex-col">
+                <aside className="w-[400px] xl:w-[500px] border-l border-white/5 bg-[#070708] hidden md:flex flex-col relative">
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-purple-500 to-blue-500" />
                     <AgentFeed 
                         events={events} 
                         status={wsStatus} 
