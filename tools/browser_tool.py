@@ -1,5 +1,5 @@
 """
-Browser Tool — Gives agents Headless Chrome capabilities via Amazon Nova Act.
+Browser Tool - Gives agents Headless Chrome capabilities via Amazon Nova Act.
 Allows agents to read documentation, debug UIs, perform form filling, and verify deployments
 autonomously using natural language `nova.act()` prompts.
 """
@@ -98,7 +98,7 @@ class BrowserTool(BaseTool):
                 output_text = f"\\n(Failed to fetch URL locally: {str(e)})\\n"
 
         simulated_output = (
-            f"[Amazon Nova Act — Mock Execution]\\n"
+            f"[Amazon Nova Act - Mock Execution]\\n"
             f"Target URL: {url or 'New Browser Window'}\\n"
             f"Action Prompt: '{prompt}'\\n"
             f"Result: Successfully navigated the UI and extracted required text."
