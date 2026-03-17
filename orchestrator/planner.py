@@ -127,8 +127,9 @@ class OrchestratorEngine:
         Returns a project_id that can be used to poll status.
         """
         project_id = str(uuid.uuid4())
+        idea_prefix: str = cast(str, business_idea)
         logger.info(
-            "Starting new project", project_id=project_id, idea=cast(str, business_idea)[:80]
+            "Starting new project", project_id=project_id, idea=idea_prefix[0:80]
         )
 
         # Initialize shared memory systems
@@ -157,11 +158,12 @@ class OrchestratorEngine:
             "kafka_dispatcher": None,
         }
 
+        short_idea: str = cast(str, business_idea)
         await self._emit(
             ExecutionEvent(
                 event_type="system",
                 agent_role=AgentRole.ORCHESTRATOR,
-                message=f"Project started: {cast(str, business_idea)[:60]}",
+                message=f"Project started: {short_idea[0:60]}",
                 data={"project_id": project_id},
                 level="success",
             )
@@ -456,11 +458,12 @@ class OrchestratorEngine:
                     await asyncio.sleep(2**task.retry_count)  # Exponential backoff
                 else:
                     task.mark_failed(str(e))
-                    await self._emit(
+                    error_msg: str = cast(str, str(e))
+                     await self._emit(
                         ExecutionEvent(
                             "task_failed",
                             task.agent_role,
-                            f"[{task.agent_role}] Failed: {task.name} — {cast(str, str(e))[:100]}",
+                            f"[{task.agent_role}] Failed: {task.name} — {error_msg[0:100]}",
                             level="error",
                         )
                     )
@@ -576,12 +579,13 @@ class OrchestratorEngine:
     def _generate_fallback_business_plan(self, idea: str) -> dict[str, Any]:
         """Safety baseline for strategy phase, using the original idea as context."""
         keywords = " ".join([word for word in idea.split() if len(word) > 3])
+        short_kw: str = cast(str, keywords)
         return {
             "vision": f"A scalable platform for: {idea}",
-            "mvp_features": ["Core Authentication", "Basic Storage", f"API Endpoints for {cast(str, keywords)[:30]}..."],
+            "mvp_features": ["Core Authentication", "Basic Storage", f"API Endpoints for {short_kw[0:30]}..."],
             "milestones": ["Infra Bootstrap", "MVP Implementation", "QA Audit"],
             "risk_assessment": ["Vendor lock-in", "Latency threshold", "Data privacy"],
-            "target_users": f"Users interested in {cast(str, keywords)[:40]}...",
+            "target_users": f"Users interested in {short_kw[0:40]}...",
             "revenue_model": "Usage-based or Freemium",
             "success_metrics": ["99.9% availability", "< 500ms p95"],
         }
