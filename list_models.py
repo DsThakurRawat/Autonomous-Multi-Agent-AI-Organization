@@ -1,7 +1,7 @@
 import os
 
-import boto3
-from dotenv import load_dotenv
+import boto3  # pyre-ignore
+from dotenv import load_dotenv  # pyre-ignore
 
 load_dotenv()
 

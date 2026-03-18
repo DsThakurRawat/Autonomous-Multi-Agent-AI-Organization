@@ -10,12 +10,12 @@ from datetime import UTC, datetime
 import os
 import sys
 
-from dotenv import load_dotenv
-from google import genai
-from rich import box
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
+from dotenv import load_dotenv  # pyre-ignore
+from google import genai  # pyre-ignore
+from rich import box  # pyre-ignore
+from rich.console import Console  # pyre-ignore
+from rich.panel import Panel  # pyre-ignore
+from rich.table import Table  # pyre-ignore
 
 console = Console()
 
@@ -33,16 +33,16 @@ async def run_full_demo(idea: str):  # noqa: PLR0915
     )
 
     # Import agents
-    from agents.ceo_agent import CEOAgent
-    from agents.cto_agent import CTOAgent
-    from agents.devops_agent import DevOpsAgent
-    from agents.engineer_agent import EngineerAgent
-    from agents.finance_agent import FinanceAgent
-    from agents.qa_agent import QAAgent
-    from orchestrator.memory.artifacts_store import ArtifactsStore
-    from orchestrator.memory.cost_ledger import CostLedger
-    from orchestrator.memory.decision_log import DecisionLog
-    from orchestrator.memory.project_memory import ProjectMemory
+    from agents.ceo_agent import CEOAgent  # pyre-ignore
+    from agents.cto_agent import CTOAgent  # pyre-ignore
+    from agents.devops_agent import DevOpsAgent  # pyre-ignore
+    from agents.engineer_agent import EngineerAgent  # pyre-ignore
+    from agents.finance_agent import FinanceAgent  # pyre-ignore
+    from agents.qa_agent import QAAgent  # pyre-ignore
+    from orchestrator.memory.artifacts_store import ArtifactsStore  # pyre-ignore
+    from orchestrator.memory.cost_ledger import CostLedger  # pyre-ignore
+    from orchestrator.memory.decision_log import DecisionLog  # pyre-ignore
+    from orchestrator.memory.project_memory import ProjectMemory  # pyre-ignore
 
     # Load environment variables
     load_dotenv()
@@ -216,7 +216,7 @@ def _print_summary(project_id, idea, deployment, fin_result, artifacts):
 
 if __name__ == "__main__":
     idea = (
-        " ".join(sys.argv[1:])
+        " ".join(sys.argv[1:])  # pyre-ignore
         if len(sys.argv) > 1
         else "Build a SaaS platform for student internship application tracking"
     )
