@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "next dev -p 3000",
         "build": "next build",
-        "pages:build": "npx @cloudflare/next-on-pages",
+        "pages:build": "cloudflare-next-on-pages",
         "start": "next start -p 3000",
         "lint": "next lint",
         "type-check": "tsc --noEmit"
@@ -16,7 +16,7 @@
         "date-fns": "^3.6.0",
         "lucide-react": "^0.378.0",
         "next": "14.2.24",
-        "next-auth": "5.0.0-beta.25",
+        "next-auth": "4.24.13",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "reactflow": "^11.11.3",

@@ -6,7 +6,7 @@ Usage: python run_demo.py "Your business idea here"
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 import os
 import sys
 
@@ -20,7 +20,7 @@ from rich.table import Table
 console = Console()
 
 
-async def run_full_demo(idea: str):
+async def run_full_demo(idea: str):  # noqa: PLR0915
     """Simulate the full multi-agent pipeline with rich console output."""
 
     console.print(
@@ -60,7 +60,7 @@ async def run_full_demo(idea: str):
             "[yellow bold]⚠️ No valid Gemini API key found. Agents will run in mock mode.[/yellow bold]"
         )
 
-    project_id = f"demo-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    project_id = f"demo-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}"
 
     # Initialize shared memory
     memory = ProjectMemory(project_id=project_id)

@@ -8,7 +8,6 @@ Computes composite routing scores using:
 """
 
 import math
-from typing import Dict, List, Tuple
 
 import structlog
 
@@ -24,7 +23,7 @@ WEIGHT_COST = 0.15  # Cost efficiency
 ENSEMBLE_THRESHOLD = 0.70
 
 
-def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
+def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     """
     Compute cosine similarity between two vectors.
     Returns value in [0.0, 1.0]. Returns 0.0 if either vector is zero.
@@ -44,7 +43,7 @@ def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
     return max(0.0, min(1.0, dot_product / (mag_a * mag_b)))
 
 
-def task_type_to_vector(task_type: str, context: str = "") -> List[float]:
+def task_type_to_vector(task_type: str, context: str = "") -> list[float]:
     """
     Convert a task type name to an 8-dimensional routing vector.
     Dimensions: [strategy, architecture, backend_code, frontend_code,
@@ -138,13 +137,13 @@ def task_type_to_vector(task_type: str, context: str = "") -> List[float]:
 
 
 def compute_expert_score(
-    task_vector: List[float],
-    expert_vector: List[float],
+    task_vector: list[float],
+    expert_vector: list[float],
     load_factor: float,  # 0.0 (idle) → 1.0 (full)
     success_rate: float,  # 0.0 → 1.0
     avg_cost_usd: float,  # Per-task USD cost
     max_cost_usd: float = 0.10,  # Reference max for normalization
-) -> Tuple[float, Dict[str, float]]:
+) -> tuple[float, dict[str, float]]:
     """
     Compute the composite routing score for an expert.
 
@@ -175,11 +174,11 @@ def compute_expert_score(
 
 
 def rank_experts(
-    task_vector: List[float],
-    experts: Dict[str, Dict],  # role → {vector, avg_cost, ...}
-    stats: Dict[str, Dict],  # role → {load_factor, success_rate, avg_cost}
+    task_vector: list[float],
+    experts: dict[str, dict],  # role → {vector, avg_cost, ...}
+    stats: dict[str, dict],  # role → {load_factor, success_rate, avg_cost}
     exclude_overloaded: bool = True,
-) -> List[Tuple[str, float, Dict]]:
+) -> list[tuple[str, float, dict]]:
     """
     Rank all experts by composite score for the given task.
 

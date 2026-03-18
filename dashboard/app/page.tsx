@@ -2,9 +2,8 @@
 
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Sparkles, ArrowRight, LayoutDashboard, Search, Workflow, Zap, ShieldCheck, Terminal } from 'lucide-react';
-import Image from 'next/image';
 
 export default function LandingPage() {
     const { data: session, status } = useSession();
@@ -78,7 +77,11 @@ export default function LandingPage() {
                             Sign in with Google
                         </button>
                         <button 
-                            onClick={() => signIn('credentials', { username: 'admin', password: 'admin', callbackUrl: '/chat' })}
+                            onClick={() => {
+                                if (process.env.NODE_ENV !== 'production') {
+                                    signIn('credentials', { username: 'admin', password: 'admin', callbackUrl: '/chat' });
+                                }
+                            }}
                             className="bg-white/5 border border-white/10 backdrop-blur-md px-10 py-4 rounded-full text-base font-semibold hover:bg-white/10 transition-all w-full sm:w-auto"
                         >
                             Try Demo (Local)
@@ -144,25 +147,27 @@ export default function LandingPage() {
                 </section>
 
                 {/* Features Grid */}
-                <section id="features" className="py-24 px-6">
-                    <div className="max-w-7xl mx-auto md:px-12">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                             {[
                                 { icon: <LayoutDashboard size={24} />, title: "Real-time Dashboard", desc: "Watch the agents work live. See code generation, testing, and deployment happen in real-time.", color: "purple" },
                                 { icon: <Workflow size={24} />, title: "Full Visibility", desc: "No black boxes. Every architectural decision and code commit is logged and traceable.", color: "blue" },
                                 { icon: <Search size={24} />, title: "Semantic Search", desc: "Find information instantly across all generated codebase artifacts with powerful search.", color: "teal" }
-                            ].map((f, i) => (
-                                <div key={i} className="bg-white/5 border border-white/10 rounded-[2rem] p-8 hover:bg-white/[0.08] transition-all hover:-translate-y-2 duration-300">
-                                    <div className={`w-14 h-14 rounded-2xl bg-${f.color}-500/10 text-${f.color}-400 flex items-center justify-center mb-6 border border-${f.color}-500/20 shadow-inner`}>
-                                        {f.icon}
+                            ].map((f, i) => {
+                                const colorMap: Record<string, string> = {
+                                    purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                                    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                                    teal: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+                                };
+                                const colors = colorMap[f.color as keyof typeof colorMap] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+                                return (
+                                    <div key={i} className="bg-white/5 border border-white/10 rounded-[2rem] p-8 hover:bg-white/[0.08] transition-all hover:-translate-y-2 duration-300">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 border shadow-inner ${colors}`}>
+                                            {f.icon}
+                                        </div>
+                                        <h3 className="text-2xl font-bold text-white mb-4">{f.title}</h3>
+                                        <p className="text-slate-400 leading-relaxed text-lg">{f.desc}</p>
                                     </div>
-                                    <h3 className="text-2xl font-bold text-white mb-4">{f.title}</h3>
-                                    <p className="text-slate-400 leading-relaxed text-lg">{f.desc}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
+                                );
+                            })}
 
                 {/* Security Section (Slashy Inspired) */}
                 <section id="security" className="py-32 text-center px-6 bg-gradient-to-b from-transparent to-purple-900/10">

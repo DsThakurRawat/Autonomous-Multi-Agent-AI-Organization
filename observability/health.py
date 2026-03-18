@@ -4,10 +4,10 @@ Standardized health check responses for Kubernetes liveness/readiness probes
 and external monitoring systems.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 import os
 import time
-from typing import Any, Dict
+from typing import Any
 
 import structlog
 
@@ -26,14 +26,14 @@ class ComponentHealth:
     """Health check result for a single dependency."""
 
     def __init__(
-        self, name: str, status: str, latency_ms: float = 0, details: Dict | None = None
+        self, name: str, status: str, latency_ms: float = 0, details: dict | None = None
     ):
         self.name = name
         self.status = status
         self.latency_ms = latency_ms
         self.details = details or {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "status": self.status,
@@ -124,9 +124,9 @@ async def check_kafka(bootstrap_servers: str | None = None) -> ComponentHealth:
 def build_health_response(
     service_name: str,
     version: str = "2.0.0",
-    component_checks: Dict[str, ComponentHealth] | None = None,
-    extra_info: Dict[str, Any] | None = None,
-) -> Dict[str, Any]:
+    component_checks: dict[str, ComponentHealth] | None = None,
+    extra_info: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Build a standardized health response.
     Aggregates component statuses: if any UNHEALTHY → overall UNHEALTHY.
@@ -147,14 +147,14 @@ def build_health_response(
         "status": overall,
         "service": service_name,
         "version": version,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
         "uptime_seconds": uptime_seconds,
         "components": {name: c.to_dict() for name, c in components.items()},
         **(extra_info or {}),
     }
 
 
-def get_readiness_response(ready: bool, reason: str = "") -> Dict[str, Any]:
+def get_readiness_response(ready: bool, reason: str = "") -> dict[str, Any]:
     """
     Kubernetes readiness probe response.
     Returns 200 if ready, 503 if not.
@@ -162,11 +162,11 @@ def get_readiness_response(ready: bool, reason: str = "") -> Dict[str, Any]:
     return {
         "ready": ready,
         "reason": reason,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
     }
 
 
-def get_liveness_response() -> Dict[str, Any]:
+def get_liveness_response() -> dict[str, Any]:
     """
     Kubernetes liveness probe response.
     Always returns 200 as long as the process is running.
@@ -174,5 +174,5 @@ def get_liveness_response() -> Dict[str, Any]:
     return {
         "alive": True,
         "pid": os.getpid(),
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
     }

@@ -133,7 +133,6 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
 
         import asyncio
         for _step, message in steps:
-        for step, message in steps:
             logger.info(message)
             if context:
                 event_data = {

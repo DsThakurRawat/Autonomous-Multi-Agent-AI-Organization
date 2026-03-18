@@ -5,8 +5,8 @@ for all registered agent experts.
 """
 
 import asyncio
-from datetime import datetime
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 
@@ -157,7 +157,7 @@ class ExpertStats:
         self.failed_tasks: int = 0
         self.total_cost_usd: float = 0.0
         self.total_tokens: int = 0
-        self.latencies_ms: List[float] = []  # rolling window (last 100)
+        self.latencies_ms: list[float] = []  # rolling window (last 100)
         self.last_active: datetime | None = None
         self._lock = asyncio.Lock()
 
@@ -165,7 +165,7 @@ class ExpertStats:
         async with self._lock:
             self.current_load += 1
             self.total_tasks += 1
-            self.last_active = datetime.utcnow()
+            self.last_active = datetime.now(UTC)
 
     async def record_complete(self, latency_ms: float, cost_usd: float, tokens: int):
         async with self._lock:
@@ -212,7 +212,7 @@ class ExpertStats:
             return 0.05  # Estimated default
         return self.total_cost_usd / self.total_tasks
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "role": self.role,
             "current_load": self.current_load,
@@ -246,8 +246,8 @@ class ExpertRegistry:
     def __init__(self):
         if self._initialized:
             return
-        self._experts: Dict[str, Dict[str, Any]] = {}
-        self._stats: Dict[str, ExpertStats] = {}
+        self._experts: dict[str, dict[str, Any]] = {}
+        self._stats: dict[str, ExpertStats] = {}
         self._initialized = True
 
         # Register all built-in experts
@@ -256,7 +256,7 @@ class ExpertRegistry:
 
         logger.info("ExpertRegistry initialized", expert_count=len(self._experts))
 
-    def _register(self, role: str, config: Dict[str, Any]):
+    def _register(self, role: str, config: dict[str, Any]):
         self._experts[role] = {
             "role": role,
             "vector": config["vector"],
@@ -270,16 +270,16 @@ class ExpertRegistry:
             role=role, max_concurrent=config["max_concurrent"]
         )
 
-    def get_expert(self, role: str) -> Dict[str, Any] | None:
+    def get_expert(self, role: str) -> dict[str, Any] | None:
         return self._experts.get(role)
 
     def get_stats(self, role: str) -> ExpertStats | None:
         return self._stats.get(role)
 
-    def all_experts(self) -> Dict[str, Dict[str, Any]]:
+    def all_experts(self) -> dict[str, dict[str, Any]]:
         return dict(self._experts)
 
-    def all_stats(self) -> Dict[str, ExpertStats]:
+    def all_stats(self) -> dict[str, ExpertStats]:
         return dict(self._stats)
 
     async def record_task_start(self, role: str):
@@ -300,5 +300,5 @@ class ExpertRegistry:
         """Return direct expert if task type maps unambiguously."""
         return TASK_TYPE_TO_EXPERT.get(task_type.lower())
 
-    def get_all_stats_dict(self) -> List[Dict[str, Any]]:
+    def get_all_stats_dict(self) -> list[dict[str, Any]]:
         return [s.to_dict() for s in self._stats.values()]

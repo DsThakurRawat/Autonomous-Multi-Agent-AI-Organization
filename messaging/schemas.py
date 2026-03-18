@@ -6,7 +6,7 @@ Every message carries a trace_id for distributed tracing correlation.
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Dict, List
+from typing import Any
 import uuid
 
 from pydantic import BaseModel, Field
@@ -31,7 +31,7 @@ class TaskMessage(BaseModel):
     task_type: str  # e.g. "strategy", "architecture", "code_gen"
     agent_role: str  # e.g. "CEO", "CTO"
     project_id: str
-    input_data: Dict[str, Any] = {}
+    input_data: dict[str, Any] = {}
     priority: MessagePriority = MessagePriority.MEDIUM
     deadline_ms: int | None = None  # Unix timestamp in ms
     max_retries: int = 3
@@ -60,7 +60,7 @@ class ResultMessage(BaseModel):
     agent_role: str
     project_id: str
     status: str  # "completed" | "failed" | "retrying"
-    output_data: Dict[str, Any] = {}
+    output_data: dict[str, Any] = {}
     error_message: str | None = None
     duration_ms: int = 0
     cost_usd: float = 0.0
@@ -89,7 +89,7 @@ class EventMessage(BaseModel):
     agent_role: str
     project_id: str
     message: str
-    data: Dict[str, Any] = {}
+    data: dict[str, Any] = {}
     level: str = "info"  # "info" | "success" | "warning" | "error"
     trace_id: str = ""
     timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
@@ -101,7 +101,7 @@ class EventMessage(BaseModel):
     def from_kafka_payload(cls, payload: bytes) -> "EventMessage":
         return cls.model_validate_json(payload)
 
-    def to_ws_dict(self) -> Dict[str, Any]:
+    def to_ws_dict(self) -> dict[str, Any]:
         """WebSocket-friendly dict for frontend consumption."""
         return {
             "id": self.event_id,
@@ -151,7 +151,7 @@ class MetricMessage(BaseModel):
     metric_name: str  # e.g. "llm_tokens_used", "task_duration_ms"
     value: float
     unit: str  # "tokens" | "ms" | "usd" | "count"
-    labels: Dict[str, str] = {}
+    labels: dict[str, str] = {}
     timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_kafka_payload(self) -> bytes:
@@ -170,9 +170,9 @@ class MoERouteRequest(BaseModel):
     task_id: str
     task_type: str
     task_name: str
-    task_embedding: List[float] | None = None  # Pre-computed if available
+    task_embedding: list[float] | None = None  # Pre-computed if available
     input_context: str = ""  # Truncated context for routing
-    required_skills: List[str] = []
+    required_skills: list[str] = []
     priority: MessagePriority = MessagePriority.MEDIUM
     ensemble_mode: bool = False  # Request multiple experts
     trace_id: str = ""
@@ -187,7 +187,7 @@ class MoERouteDecision(BaseModel):
 
     request_id: str
     selected_expert: str  # Agent role
-    fallback_experts: List[str] = []
+    fallback_experts: list[str] = []
     routing_score: float
     routing_reason: str  # Human-readable explanation
     ensemble_mode: bool = False

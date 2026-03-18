@@ -13,7 +13,7 @@ import asyncio
 from collections.abc import Callable
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import structlog
 
@@ -39,8 +39,8 @@ class _InMemoryBus:
     """
 
     def __init__(self):
-        self._queues: Dict[str, asyncio.Queue] = {}
-        self._subscribers: Dict[str, List[Callable]] = {}
+        self._queues: dict[str, asyncio.Queue] = {}
+        self._subscribers: dict[str, list[Callable]] = {}
         self._log_file = os.getenv("KAFKA_MOCK_LOG", "kafka_mock_bus.jsonl")
 
     def _get_queue(self, topic: str) -> asyncio.Queue:
@@ -61,15 +61,15 @@ class _InMemoryBus:
         except Exception as e:
             logger.error("Failed to append to mock bus log", error=str(e))
 
-    async def consume(self, topic: str, group_id: str = "default") -> Dict[str, Any]:
+    async def consume(self, topic: str, group_id: str = "default") -> dict[str, Any]:
         """Block until a message is available."""
         queue = self._get_queue(topic)
         msg = await queue.get()
         return msg
 
     async def consume_batch(
-        self, topics: List[str], group_id: str, timeout_ms: int = 1000
-    ) -> List[Dict[str, Any]]:
+        self, topics: list[str], group_id: str, timeout_ms: int = 1000
+    ) -> list[dict[str, Any]]:
         """Consume from multiple topics in a non-blocking batch."""
         messages = []
         for topic in topics:
@@ -145,7 +145,7 @@ class KafkaProducerClient:
         topic: str,
         value: bytes,
         key: str | None = None,
-        headers: Dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> bool:
         """
         Publish a message to a Kafka topic.
@@ -174,9 +174,9 @@ class KafkaProducerClient:
     async def publish_json(
         self,
         topic: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         key: str | None = None,
-        headers: Dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> bool:
         """Convenience method: serialize dict to JSON and publish."""
         payload = json.dumps(data, default=str).encode("utf-8")
@@ -187,7 +187,7 @@ class KafkaProducerClient:
         topic: str,
         model: Any,  # Any Pydantic BaseModel
         key: str | None = None,
-        headers: Dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> bool:
         """Serialize a Pydantic model and publish to Kafka."""
         payload = model.model_dump_json().encode("utf-8")
@@ -206,7 +206,7 @@ class KafkaConsumerClient:
 
     def __init__(
         self,
-        topics: List[str],
+        topics: list[str],
         group_id: str,
         bootstrap_servers: str | None = None,
         auto_offset_reset: str = "earliest",
@@ -251,7 +251,7 @@ class KafkaConsumerClient:
             logger.warning("Kafka consumer failed, falling back to mock", error=str(e))
             self._use_mock = True
 
-    async def consume_one(self, timeout_ms: int = 5000) -> Dict[str, Any] | None:
+    async def consume_one(self, timeout_ms: int = 5000) -> dict[str, Any] | None:
         """
         Poll for a single message (non-blocking).
         Returns None if no message available within timeout.
@@ -401,7 +401,7 @@ class KafkaAdminManager:
             not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
         )
 
-    def ensure_topics(self, topic_configs: Dict[str, Dict]) -> Dict[str, bool]:
+    def ensure_topics(self, topic_configs: dict[str, dict]) -> dict[str, bool]:
         """
         Create all required topics if they don't exist.
         Returns dict of {topic: created_bool}.

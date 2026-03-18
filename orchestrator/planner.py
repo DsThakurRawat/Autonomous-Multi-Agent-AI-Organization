@@ -148,9 +148,9 @@ class OrchestratorEngine:
                     data={"total": total, "budget": budget}
                 )
             )
-        
+
         cost_ledger.on_budget_exceeded = lambda t, b: asyncio.create_task(budget_callback(t, b))
-        
+
         artifacts = ArtifactsStore(project_id=project_id, output_dir=self.output_dir)
 
         memory.project_config = {
@@ -185,7 +185,8 @@ class OrchestratorEngine:
         )
 
         # Run in background
-        _bg_task = asyncio.create_task(
+        _bg_task = asyncio.create_task(  # noqa: RUF006
+
             self._run_project_lifecycle(project_id)
         )
         return project_id
@@ -224,17 +225,12 @@ class OrchestratorEngine:
                     )
                     memory.business_plan = business_plan
                 except Exception as e:
-<<<<<<< Updated upstream
-                    logger.warning("LLM Strategy generation failed, using safety fallback model", error=str(e))
-                    memory.business_plan = self._generate_fallback_business_plan(
-=======
                     # Professional fallback in case LLM is unavailable
                     logger.warning(
                         "LLM Strategy generation failed, using safety fallback model",
                         error=str(e),
                     )
                     business_plan = self._generate_fallback_business_plan(
->>>>>>> Stashed changes
                         memory.project_config["business_idea"]
                     )
                     memory.business_plan = business_plan
@@ -500,8 +496,12 @@ class OrchestratorEngine:
                         ExecutionEvent(
                             "task_failed",
                             task.agent_role,
-                            f"[{task.agent_role}] Failed: {task.name} — {error_msg[0:100]}",
                             f"[{task.agent_role}] Failed: {task.name} - {str(e)[:100]}",
+                            data={
+                                "error_summary": error_msg[:100],
+                                "exception": str(e)[:100],
+                                "task": task.name,
+                            },
                             level="error",
                         )
                     )
@@ -593,7 +593,6 @@ class OrchestratorEngine:
 
         critique_msg = f"Evaluation complete: {task_count} tasks analyzed, {critiques_collected} reflections gathered. "
         critique_msg += f"Overall Quality Score: {avg_score:.1f}/10. Approvals: {approvals}/{critiques_collected}. "
-        critique_msg += f"Overall Quality Score: {avg_score:.1f}/10. "
 
         if total_cost > self.budget_usd:
             critique_msg += f"Budget exceeded (${total_cost:.2f} / ${self.budget_usd:.2f}) - optimization recommended."
@@ -618,20 +617,9 @@ class OrchestratorEngine:
                         else 0.0
                     ),
                     "reflections": reflections,
-<<<<<<< Updated upstream
-                    "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
-                    "total_cost": total_cost,
-                    "budget": self.budget_usd,
-                    "reflections_gathered": critiques_collected,
-                    "average_quality_score": round(avg_score, 2),
-                    "approval_rate": round(approvals / critiques_collected, 2) if critiques_collected else 0,
-                    "reflections": reflections,
-                    "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate",
-=======
                     "task_efficiency": (
                         "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
                     ),
->>>>>>> Stashed changes
                 },
                 level=level,
             )

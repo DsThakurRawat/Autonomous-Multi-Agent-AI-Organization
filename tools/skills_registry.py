@@ -6,7 +6,7 @@ Allows the AI to dynamically discover and download new execution skills to its s
 import importlib
 import os
 import sys
-from typing import Any, Dict
+from typing import Any
 
 import structlog
 
@@ -24,7 +24,7 @@ class SkillsRegistryTool(BaseTool):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.installed_skills: Dict[str, Any] = {}
+        self.installed_skills: dict[str, Any] = {}
         self.skills_dir = os.path.join(self.working_dir, ".skills")
         os.makedirs(self.skills_dir, exist_ok=True)
         # Ensure our temporary skills are importable

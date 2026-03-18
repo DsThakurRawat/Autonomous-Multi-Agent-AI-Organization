@@ -75,7 +75,7 @@ function StatusDot({ active }: { active: boolean }) {
     );
 }
 
-function SectionHeader({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
+function SectionHeader({ icon: Icon, title, subtitle }: { icon: import('lucide-react').LucideIcon; title: string; subtitle: string }) {
     return (
         <div className="mb-8 flex gap-4">
             <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/20 shadow-inner">
@@ -134,8 +134,12 @@ function LLMKeysSection() {
     };
 
     const handleDelete = async (id: string) => {
-        await apiFetch(`/v1/settings/keys/${id}`, { method: 'DELETE' });
-        await load();
+        try {
+            await apiFetch(`/v1/settings/keys/${id}`, { method: 'DELETE' });
+            await load();
+        } catch (e: any) {
+            setError(e.message || 'Delete failed');
+        }
     };
 
     const providers: Provider[] = ['bedrock', 'openai', 'anthropic', 'google'];
@@ -200,8 +204,9 @@ function LLMKeysSection() {
                                 {isAdding && (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Secret Key</label>
+                                            <label htmlFor="api_key" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Secret Key</label>
                                             <input
+                                                id="api_key"
                                                 type="password"
                                                 placeholder="sk-..."
                                                 value={form.api_key}
@@ -210,8 +215,9 @@ function LLMKeysSection() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Label</label>
+                                            <label htmlFor="key_label" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Label</label>
                                             <input
+                                                id="key_label"
                                                 type="text"
                                                 placeholder="e.g. Production, Testing"
                                                 value={form.label}
@@ -267,6 +273,7 @@ function AgentPrefsSection() {
     useEffect(() => { load(); }, [load]);
 
     const handleUpdate = async (pref: AgentPref, field: string, value: string) => {
+        const previousPrefs = [...prefs];
         const updated = { ...pref, [field]: value };
         setPrefs(ps => ps.map(p => p.agent_role === pref.agent_role ? updated : p));
 
@@ -281,6 +288,9 @@ function AgentPrefsSection() {
                     key_id: updated.key_id ?? '',
                 }),
             });
+        } catch (e) {
+            setPrefs(previousPrefs);
+            console.error('Failed to update agent preference:', e);
         } finally { setSaving(null); }
     };
 

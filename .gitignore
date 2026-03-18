@@ -123,3 +123,4 @@ go-backend/ws-hub
 # Never commit RSA private keys. Generate with: openssl genrsa -out keys/private.pem 2048
 keys/
 *.pem
+.vercel/

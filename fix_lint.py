@@ -7,18 +7,18 @@ for fpath in files:
 
     new_content = content
     # typing
-    new_content = new_content.replace("from typing import Any, Dict, List", "from typing import Any")
-    new_content = new_content.replace("from typing import Dict, List, Any", "from typing import Any")
-    new_content = new_content.replace("from typing import List, Dict, Any", "from typing import Any")
+    new_content = new_content.replace("from typing import Any", "from typing import Any")
+    new_content = new_content.replace("from typing import Any", "from typing import Any")
+    new_content = new_content.replace("from typing import Any", "from typing import Any")
 
-    new_content = new_content.replace("Dict[", "dict[")
-    new_content = new_content.replace("List[", "list[")
+    new_content = new_content.replace("dict[", "dict[")
+    new_content = new_content.replace("list[", "list[")
 
     # datetime utcnow
-    if "datetime.utcnow()" in new_content:
+    if "datetime.now(timezone.utc)" in new_content:
         if "from datetime import timezone" not in new_content:
             new_content = new_content.replace("from datetime import datetime", "from datetime import datetime, timezone")
-        new_content = new_content.replace("datetime.utcnow()", "datetime.now(timezone.utc)")
+        new_content = new_content.replace("datetime.now(timezone.utc)", "datetime.now(timezone.utc)")
 
     # Optional typing defaults
     new_content = new_content.replace("data: dict[str, Any] = None", "data: dict[str, Any] | None = None")

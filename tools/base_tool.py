@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import asyncio
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import structlog
 
@@ -24,8 +24,8 @@ class ToolResult:
         error: str | None = None,
         exit_code: int = 0,
         duration_ms: float = 0.0,
-        artifacts: List[str] | None = None,  # Paths to generated files
-        metadata: Dict[str, Any] | None = None,
+        artifacts: list[str] | None = None,  # Paths to generated files
+        metadata: dict[str, Any] | None = None,
     ):
         self.success = success
         self.output = output
@@ -35,7 +35,7 @@ class ToolResult:
         self.artifacts = artifacts or []
         self.metadata = metadata or {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "output": self.output[:5000] if self.output else "",  # Truncate for memory
@@ -121,9 +121,9 @@ class BaseTool(ABC):
 
     async def _run_subprocess(
         self,
-        cmd: List[str],
+        cmd: list[str],
         cwd: str | None = None,
-        env: Dict[str, str] | None = None,
+        env: dict[str, str] | None = None,
         timeout: int | None = None,
     ) -> ToolResult:
         """

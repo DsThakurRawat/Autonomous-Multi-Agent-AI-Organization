@@ -2,11 +2,19 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 
+const googleId = process.env.GOOGLE_CLIENT_ID;
+const googleSecret = process.env.GOOGLE_CLIENT_SECRET;
+const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+
+if (process.env.NODE_ENV === 'production' && (!googleId || !googleSecret || !nextAuthSecret)) {
+  throw new Error('Missing authentication environment variables in production.');
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || "mock_client_id",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "mock_client_secret",
+      clientId: googleId || "mock_client_id",
+      clientSecret: googleSecret || "mock_client_secret",
     }),
     Credentials({
       name: "Developer Account",
@@ -15,20 +23,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Mock login for local demo purposes
-        if (credentials?.username === "admin" && credentials?.password === "admin") {
-          return { 
-            id: "1", 
-            name: "Demo User", 
-            email: "demo@proximus-nova.ai", 
-            image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky" 
-          };
+        // Safeguard: Only allow mock login in development
+        if (process.env.NODE_ENV === 'development') {
+          if (credentials?.username === "admin" && credentials?.password === "admin") {
+            return { 
+              id: "1", 
+              name: "Demo User", 
+              email: "demo@proximus-nova.ai", 
+              image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky" 
+            };
+          }
         }
         return null;
       }
     })
   ],
-  secret: process.env.NEXTAUTH_SECRET || "super-secret-default-key-for-dev",
+  secret: nextAuthSecret || "super-secret-default-key-for-dev",
   pages: {
     signIn: "/",
   },

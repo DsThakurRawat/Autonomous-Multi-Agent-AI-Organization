@@ -3,6 +3,9 @@ Kafka Topic Definitions - Single source of truth for all topic names.
 """
 
 
+import typing
+
+
 class KafkaTopics:
     """All Kafka topic names used in the AI Organization system."""
 
@@ -50,7 +53,7 @@ class KafkaTopics:
 
     # -- Topic Configurations ----------------------------------------------─
     # Used when creating topics programmatically
-    TOPIC_CONFIGS = {
+    TOPIC_CONFIGS: typing.ClassVar[dict] = {
         TASKS: {"num_partitions": 12, "replication_factor": 3},
         RESULTS: {"num_partitions": 12, "replication_factor": 3},
         EVENTS: {"num_partitions": 6, "replication_factor": 3},

@@ -5,15 +5,14 @@ Provides REST API + WebSocket for real-time agent event streaming.
 """
 
 import asyncio
-import os
-import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+import os
+import time
 from typing import Any
 
 import boto3
-import structlog
 from dotenv import load_dotenv
 from fastapi import (
     Depends,
@@ -29,9 +28,9 @@ from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from google import genai
 from pydantic import BaseModel, Field
+import structlog
 
-from messaging.kafka_client import KafkaProducerClient
-
+from agents.base_agent import BaseAgent
 from agents.ceo_agent import CEOAgent
 from agents.cto_agent import CTOAgent
 from agents.devops_agent import DevOpsAgent
@@ -40,7 +39,7 @@ from agents.finance_agent import FinanceAgent
 from agents.model_registry import get_default
 from agents.qa_agent import QAAgent
 from agents.roles import AgentRole
-from agents.base_agent import BaseAgent
+from messaging.kafka_client import KafkaProducerClient
 from orchestrator.planner import ExecutionEvent, OrchestratorEngine
 
 logger = structlog.get_logger(__name__)
@@ -158,9 +157,6 @@ async def lifespan(app: FastAPI):
         return client, model, provider, kafka_producer
 
     # CEO
-    # CEO
-    client, model, provider = get_agent_config(AgentRole.CEO)
-    orchestrator.register_agent(AgentRole.CEO, CEOAgent(llm_client=client, model_name=model, provider=provider))
     client, model, provider, producer = get_agent_config(AgentRole.CEO)
     orchestrator.register_agent(AgentRole.CEO, CEOAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
@@ -185,8 +181,6 @@ async def lifespan(app: FastAPI):
     orchestrator.register_agent(AgentRole.DEVOPS, DevOpsAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
     # Finance
-    client, model, provider = get_agent_config(AgentRole.FINANCE)
-    orchestrator.register_agent(AgentRole.FINANCE, FinanceAgent(llm_client=client, model_name=model, provider=provider))
     client, model, provider, producer = get_agent_config(AgentRole.FINANCE)
     orchestrator.register_agent(AgentRole.FINANCE, FinanceAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
 
@@ -258,7 +252,6 @@ async def health():
         "status": "healthy",
         "timestamp": datetime.now(UTC).isoformat(),
         "uptime_seconds": 3600,  # Mock uptime
-        "uptime_seconds": 3600, # Mock uptime
         "agents": list(orchestrator._agent_registry.keys()),
         "active_projects": len(orchestrator._active_projects),
     }
@@ -298,7 +291,6 @@ async def start_project(request: StartProjectRequest, api_key: str = Depends(ver
         "tasks_total": 0,
         "tasks_done": 0,
         "created_at": datetime.now(UTC).isoformat(),
-        "created_at": datetime.now(UTC).isoformat()
     }
 
 
