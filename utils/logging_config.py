@@ -6,7 +6,7 @@ Structured JSON logging via structlog for CloudWatch compatibility.
 import logging
 import sys
 
-import structlog
+import structlog  # pyre-ignore
 
 
 def configure_logging(level: str = "INFO", json_output: bool = False):

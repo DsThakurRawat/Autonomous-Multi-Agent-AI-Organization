@@ -1,0 +1,11 @@
+{
+    "name": "ai-org-root",
+    "private": true,
+    "scripts": {
+        "dev": "npm run dev --prefix dashboard",
+        "build": "npm run build --prefix dashboard",
+        "pages:build": "npm run pages:build --prefix dashboard",
+        "lint": "npm run lint --prefix dashboard",
+        "type-check": "npm run type-check --prefix dashboard"
+    }
+}
