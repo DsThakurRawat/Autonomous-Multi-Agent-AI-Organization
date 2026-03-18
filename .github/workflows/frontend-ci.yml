@@ -39,3 +39,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Build (Cloudflare Pages)
+        run: npm run pages:build

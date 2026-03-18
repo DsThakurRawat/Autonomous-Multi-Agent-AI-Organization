@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "next dev -p 3000",
         "build": "next build",
-        "pages:build": "cloudflare-next-on-pages",
+        "pages:build": "npx @cloudflare/next-on-pages",
         "start": "next start -p 3000",
         "lint": "next lint",
         "type-check": "tsc --noEmit"

@@ -2,6 +2,7 @@
 const nextConfig = {
     experimental: {
         optimizePackageImports: ['lucide-react', 'recharts'],
+        serverComponentsExternalPackages: ['next-auth'],
     },
     images: {
         remotePatterns: [
