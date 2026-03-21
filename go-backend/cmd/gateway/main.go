@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gofiber/contrib/otelfiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/csrf"
@@ -23,6 +24,7 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/config"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/otel"
 	redisclient "github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/redis"
 )
 
@@ -43,6 +45,15 @@ func main() {
 	log := logger.L()
 
 	log.Info("gateway starting", zap.String("env", cfg.Env), zap.String("addr", cfg.Addr()))
+
+	// ── OpenTelemetry ────────────────────────────────────────────────────────
+	otelShutdown, err := otel.InitOTel(ctx, "gateway", cfg.Gateway.OTelEndpoint)
+	if err != nil {
+		log.Error("failed to initialize OTel", zap.Error(err))
+	} else {
+		defer otelShutdown(ctx)
+		log.Info("OpenTelemetry initialized", zap.String("endpoint", cfg.Gateway.OTelEndpoint))
+	}
 
 	// ── Dependencies ────────────────────────────────────────────────────────
 	pgPool, err := db.New(ctx, &cfg.Postgres)
@@ -90,10 +101,20 @@ func main() {
 		DisableStartupMessage: true,
 	})
 
+	app.Use(otelfiber.Middleware())
+
 	app.Use(recover.New())
 	app.Use(compress.New())
 	app.Use(middleware.CORS())
 	app.Use(middleware.RequestLogger())
+
+	// ── Phase 5: Reliability Middlewares ─────────────────────────────────────
+	app.Use(middleware.DistributedRateLimiter(redisClient, cfg.Gateway.RateLimitLimit, cfg.Gateway.RateLimitWindow))
+	app.Use(middleware.Idempotency(middleware.IdempotencyConfig{
+		RedisClient: redisClient,
+		TTL:         cfg.Gateway.IdempotencyTTL,
+	}))
+	app.Use(middleware.SecurityScrubber(cfg.Gateway.SecurityBinPath))
 
 	// ── CSRF Protection ──────────────────────────────────────────────────────
 	app.Use(csrf.New(csrf.Config{

@@ -44,7 +44,7 @@ export function useWebSocket({
         if (wsRef.current?.readyState === WebSocket.OPEN) return
 
         const url = projectId
-            ? `${wsUrl}/ws/${projectId}`
+            ? `${wsUrl}/ws/projects/${projectId}/events`
             : `${wsUrl}/ws/events`
 
         setStatus('connecting')

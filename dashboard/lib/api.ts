@@ -60,10 +60,12 @@ function getCsrfToken() {
     return match ? match[2] : '';
 }
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+async function apiFetch<T>(path: string, options?: RequestInit & { idempotencyKey?: string }): Promise<T> {
     const headers = new Headers(options?.headers);
     if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+    if (options?.idempotencyKey) headers.set('X-Idempotency-Key', options.idempotencyKey);
+    
     const token = getCsrfToken();
     if (token) headers.set('X-Csrf-Token', token);
 
@@ -94,6 +96,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
     if (!res.ok) {
         let errorMessage = `API Error (${res.status})`
+        if (res.status === 429) errorMessage = 'Rate limit exceeded. Please wait a moment.'
+        if (res.status === 409) errorMessage = 'Request is already being processed.'
+        
         try {
             const errorBody = await res.json()
             errorMessage = errorBody.error || errorBody.message || errorMessage
@@ -121,14 +126,14 @@ export const api = {
     getProject: (id: string) =>
         apiFetch<Project>(`/v1/projects/${id}`),
 
-    createProject: (data: CreateProjectRequest) =>
+    createProject: (data: CreateProjectRequest, idempotencyKey?: string) =>
         apiFetch<Project>('/v1/projects', {
             method: 'POST',
+            idempotencyKey,
             body: JSON.stringify({
                 idea: data.idea,
                 budget: { max_cost_usd: data.budget_usd },
                 name: data.name ?? '',
-                // user_id and tenant_id come from the JWT in the Go Gateway middleware
             }),
         }),
 

@@ -10,10 +10,15 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 import json
 import os
+import subprocess
 from typing import Any, cast
 
 from google.genai import types
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 import redis.asyncio as redis
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter
@@ -23,6 +28,24 @@ from messaging.kafka_client import KafkaProducerClient
 from tools.collaboration_tool import CollaborationTool
 
 logger = structlog.get_logger(__name__)
+
+# -- OpenTelemetry Initialization ----------------------------------
+def setup_otel(service_name: str):
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
+    resource = Resource(attributes={SERVICE_NAME: service_name})
+    provider = TracerProvider(resource=resource)
+    processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, insecure=True))
+    provider.add_span_processor(processor)
+    trace.set_tracer_provider(provider)
+
+if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+    setup_otel("agent_service")
+
+# -- LangSmith Initialization --------------------------------------
+if os.getenv("LANGCHAIN_API_KEY"):
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "ai-org-agents")
+
 tracer = trace.get_tracer(__name__)
 
 
@@ -135,15 +158,24 @@ class BaseAgent(ABC):
         # Start background heartbeat
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
-        try:
-            return await self.run(task=task, context=context)
-        finally:
-            # Stop background heartbeat
-            if self._heartbeat_task:
-                self._heartbeat_task.cancel()
-                self._heartbeat_task = None
-            self._current_task_id = None
-            self._current_project_id = None
+        with tracer.start_as_current_span(
+            "agent.execute_task",
+            attributes={
+                "agent.role": self.ROLE,
+                "task.id": task.id,
+                "task.name": task.name,
+                "project.id": self._current_project_id
+            }
+        ):
+            try:
+                return await self.run(task=task, context=context)
+            finally:
+                # Stop background heartbeat
+                if self._heartbeat_task:
+                    self._heartbeat_task.cancel()
+                    self._heartbeat_task = None
+                self._current_task_id = None
+                self._current_project_id = None
 
     async def suspend_for_approval(self, action_type: str, cost_estimate: float = 0.0, details: str = ""):
         """Suspend execution and wait for human approval via Redis PubSub."""
@@ -159,9 +191,12 @@ class BaseAgent(ABC):
             "agent_role": self.ROLE,
             "project_id": getattr(self, "_current_project_id", "demo"),
             "task_id": self._current_task_id,
-            "message": f"Suspended for human authorization. Action: {action_type}. Estimated cost: ${cost_estimate}",
+            "message": self._scrub_text(f"Suspended for human authorization. Action: {action_type}. Estimated cost: ${cost_estimate}"),
             "data": {
                 "intervention_id": intervention_id,
+                "project_id": getattr(self, "_current_project_id", "demo"),
+                "task_id": self._current_task_id,
+                "agent_role": self.ROLE,
                 "action_type": action_type,
                 "cost_estimate": cost_estimate,
                 "details": details,
@@ -174,8 +209,6 @@ class BaseAgent(ABC):
             key=self._current_task_id
         )
 
-        logger.info("Suspending execution for approval", intervention_id=intervention_id)
-        
         # Wait on Redis PubSub
         pubsub = self.redis_client.pubsub()
         await pubsub.subscribe(intervention_id)
@@ -223,6 +256,51 @@ class BaseAgent(ABC):
             heartbeat_topic, payload, key=self._current_task_id
         )
         logger.debug("Heartbeat sent", task_id=self._current_task_id)
+
+    async def _scrub_text(self, text: str) -> str:
+        """Call the Rust security-check to scrub PII from text."""
+        bin_path = os.getenv("SECURITY_BIN_PATH", "/usr/local/bin/security-check")
+        if not os.path.exists(bin_path):
+            return text
+            
+        try:
+            req = {"task": "scrub", "content": text}
+            proc = await asyncio.create_subprocess_exec(
+                bin_path,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            stdout, _ = await proc.communicate(json.dumps(req).encode())
+            if proc.returncode == 0:
+                resp = json.loads(stdout.decode())
+                return resp.get("result", text)
+        except Exception as e:
+            logger.warning("Log scrubbing failed", error=str(e))
+        return text
+
+    async def _validate_code_safety(self, code: str) -> tuple[bool, str]:
+        """Call the Rust security-check to validate Python code AST."""
+        bin_path = os.getenv("SECURITY_BIN_PATH", "/usr/local/bin/security-check")
+        if not os.path.exists(bin_path):
+            return True, "Validator not found, skipping (UNSAFE)"
+            
+        try:
+            req = {"task": "validate_python", "content": code}
+            proc = await asyncio.create_subprocess_exec(
+                bin_path,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            stdout, _ = await proc.communicate(json.dumps(req).encode())
+            if proc.returncode == 0:
+                resp = json.loads(stdout.decode())
+                return resp.get("safe", False), resp.get("message", "Unknown")
+        except Exception as e:
+            logger.warning("Code validation failed", error=str(e))
+            
+        return False, "Validation system error"
 
     # -- LLM Interface ----------------------------------------------
     async def call_llm(
@@ -467,16 +545,23 @@ class BaseAgent(ABC):
         logger.info("Tool called", agent=self.ROLE, tool=tool_name)
         tool_fn = self.tools[tool_name]
 
-        try:
-            if asyncio.iscoroutinefunction(tool_fn):
-                result = await tool_fn(**kwargs)
-            else:
-                result = await asyncio.to_thread(tool_fn, **kwargs)
-            logger.info("Tool succeeded", agent=self.ROLE, tool=tool_name)
-            return result
-        except Exception as e:
-            logger.error("Tool failed", agent=self.ROLE, tool=tool_name, error=str(e))
-            raise
+        with tracer.start_as_current_span(
+            "agent.use_tool",
+            attributes={
+                "tool.name": tool_name,
+                "agent.role": self.ROLE
+            }
+        ):
+            try:
+                if asyncio.iscoroutinefunction(tool_fn):
+                    result = await tool_fn(**kwargs)
+                else:
+                    result = await asyncio.to_thread(tool_fn, **kwargs)
+                logger.info("Tool succeeded", agent=self.ROLE, tool=tool_name)
+                return result
+            except Exception as e:
+                logger.error("Tool failed", agent=self.ROLE, tool=tool_name, error=str(e))
+                raise
 
     # -- Memory Access ----------------------------------------------
     def add_to_scratchpad(self, role: str, content: str):
