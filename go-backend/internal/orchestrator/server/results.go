@@ -108,7 +108,7 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 	}
 
 	// 2. Logic to "Advance the DAG"
-	// For this hackathon version, we hardcode the next step after CEO planning.
+	// We hardcode the next step after CEO planning.
 	// In the future, this would fetch the DAG and see what's ready.
 	if res.AgentRole == "CEO" && status == "done" {
 		return h.dispatchNextAfterCEO(ctx, res)

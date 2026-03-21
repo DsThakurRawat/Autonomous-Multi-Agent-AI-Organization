@@ -1,5 +1,5 @@
 """
-Browser Tool - Gives agents Headless Chrome capabilities via Amazon Nova Act.
+Browser Tool - Gives agents Headless Chrome capabilities via Browser Act.
 Allows agents to read documentation, debug UIs, perform form filling, and verify deployments
 autonomously using natural language `nova.act()` prompts.
 """
@@ -15,7 +15,7 @@ logger = structlog.get_logger(__name__)
 
 class BrowserTool(BaseTool):
     NAME = "browser_tool"
-    DESCRIPTION = "Automates browser UI workflows using Amazon Nova Act to extract text, test UIs, and navigate."
+    DESCRIPTION = "Automates browser UI workflows using Browser Act to extract text, test UIs, and navigate."
     TIMEOUT_S = 300
 
     def __init__(self, **kwargs):
@@ -31,22 +31,22 @@ class BrowserTool(BaseTool):
         """
         Main entrypoint.
         `action` can be "nova_act".
-        `prompt` is the natural language task for Nova Act (e.g. "search for rubber duck debugging").
+        `prompt` is the natural language task for Browser Act (e.g. "search for rubber duck debugging").
         """
         if action != "nova_act" and not prompt:
             return ToolResult(
                 success=False,
-                output="Must provide a 'prompt' for Nova Act.",
+                output="Must provide a 'prompt' for Browser Act.",
                 error="Missing prompt",
             )
 
-        logger.info("Executing Nova Act session", url=url, prompt=prompt)
+        logger.info("Executing Browser Act session", url=url, prompt=prompt)
 
         try:
             # We assume the `nova` package (Amazon Nova Act SDK) is installed.
             import nova
 
-            # Start a Nova Act session. If a URL is provided, open it first.
+            # Start a Browser Act session. If a URL is provided, open it first.
             session_kwargs = {"start_url": url} if url else {}
 
             def _execute_act():
@@ -64,11 +64,11 @@ class BrowserTool(BaseTool):
 
         except ImportError:
             logger.warning(
-                "amazon-nova package not installed, falling back to mock Nova Act implementation"
+                "amazon-nova package not installed, falling back to mock Browser Act implementation"
             )
             return self._mock_act(prompt, url)
         except Exception as e:
-            return ToolResult(success=False, output="", error=f"Nova Act failed: {e!s}")
+            return ToolResult(success=False, output="", error=f"Browser Act failed: {e!s}")
 
     def _mock_act(self, prompt: str, url: str | None) -> ToolResult:
         """Fallback mock for UI testing when the Nova Act SDK is unavailable locally."""
@@ -96,7 +96,7 @@ class BrowserTool(BaseTool):
                 output_text = f"\\n(Failed to fetch URL locally: {e!s})\\n"
 
         simulated_output = (
-            f"[Amazon Nova Act - Mock Execution]\\n"
+            f"[Browser Act - Mock Execution]\\n"
             f"Target URL: {url or 'New Browser Window'}\\n"
             f"Action Prompt: '{prompt}'\\n"
             f"Result: Successfully navigated the UI and extracted required text."

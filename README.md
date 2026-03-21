@@ -10,7 +10,7 @@
 [![Frontend CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml)
 [![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
-> A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** (March 2026) where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
+> A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered by **Amazon Nova** foundation models and **Nova Act** browser automation.
 > **Core Enterprise Infrastructure Features:**
 >
 - **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry** (Go, Python, Rust) and deep LLM reasoning visibility with **LangSmith**.
@@ -19,7 +19,7 @@
 - **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing** (MoE).
 - **Real-Time UX**: Live multi-agent task streaming via **WebSockets** and interactive **React Flow** DAG visualization.
 - **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and system health monitoring.
-- **Proximus-Nova CLI**: Unified launcher for instant setup, orchestration, and real-time observability.
+- **Proximus CLI**: Unified launcher for instant setup, orchestration, and real-time observability.
 .
 
 ---
@@ -97,10 +97,10 @@ flowchart TB
 
 | Command                 | Description                                                      |
 | :---------------------- | :--------------------------------------------------------------- |
-| `./proximus-nova start` | Launches the full platform (detached)                            |
-| `./proximus-nova stop`  | Gracefully stops all services                                    |
-| `./proximus-nova clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
-| `./proximus-nova tui`   | Launches the interactive Terminal UI                             |
+| `./proximus start` | Launches the full platform (detached)                            |
+| `./proximus stop`  | Gracefully stops all services                                    |
+| `./proximus clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
+| `./proximus tui`   | Launches the interactive Terminal UI                             |
 
 | Layer             | Technology                                                 |
 | ----------------- | ---------------------------------------------------------- |
@@ -121,7 +121,7 @@ flowchart TB
 
 ## Quick Start
 
-The fastest way to run Proximus-Nova is using the unified **CLI Launcher**.
+The fastest way to run Proximus is using the unified **CLI Launcher**.
 
 ### Prerequisites
 
@@ -149,7 +149,7 @@ cp .env.example .env
 
 ## Future Vision
 
-Post-hackathon development focuses on scaling to production, advanced self-healing, and visual intelligence. For the full technical vision, please see the [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md).
+Ongoing development focuses on scaling to production, advanced self-healing, and visual intelligence. For the full technical vision, please see the [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md).
 
 ---
 
@@ -296,7 +296,7 @@ Access at `http://localhost:3000`
 ## Project Structure
 
 ```text
-├── proximus-nova             Main CLI Launcher (Python/Bash)
+├── proximus                  Main CLI Launcher (Python/Bash)
 ├── tui.py                    Interactive Terminal UI (Textual)
 ├── go-backend/               Go microservices
 │   ├── cmd/
@@ -376,7 +376,7 @@ terraform plan
 terraform apply
 ```
 
-> **Note**: These files are currently managed and simulated by the DevOps agent locally. Real AWS deployment bindings will be fully integrated post-hackathon.
+> **Note**: These files are currently managed and simulated by the DevOps agent locally. Real AWS deployment bindings will be fully integrated.
 
 Provisions (Planned): ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, ALB.
 
