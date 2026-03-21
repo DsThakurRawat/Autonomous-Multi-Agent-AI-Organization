@@ -71,3 +71,4 @@ requests>=2.31.0
 filelock>=3.13.0
 textual>=0.52.0
 testcontainers[kafka]
+qdrant-client>=1.8.0

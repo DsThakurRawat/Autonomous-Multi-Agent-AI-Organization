@@ -18,6 +18,7 @@ import redis.asyncio as redis
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
+from agents.memory import SemanticCache
 from messaging.kafka_client import KafkaProducerClient
 from tools.collaboration_tool import CollaborationTool
 
@@ -82,6 +83,9 @@ class BaseAgent(ABC):
         self._iteration_count = 0
         self._heartbeat_task: asyncio.Task | None = None
         self._current_task_id: str | None = None
+        self._current_project_id: str | None = None
+
+        self._semantic_cache = SemanticCache()
 
         # Redis client for atomic budget gate
         redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
@@ -186,6 +190,22 @@ class BaseAgent(ABC):
         if self.llm_client is None:
             return self._mock_llm_response(messages)
 
+        # 1. Semantic Cache Check (Bypass API if exact thought was processed before)
+        # Using string representation of messages to hash the context
+        prompt_text = "\n".join([m["content"] for m in messages])
+        try:
+            cached_response = await self._semantic_cache.get_cached_response(
+                prompt_text
+            )
+            if cached_response:
+                logger.info(
+                    "⚡ Served LLM response directly from Semantic Cache!",
+                    agent=self.ROLE,
+                )
+                return cached_response
+        except Exception as e:
+            logger.debug("Failed to read from cache", error=str(e))
+
         # Pre-call budget gate
         try:
             used_str = await self.redis_client.get("budget:used")
@@ -212,6 +232,12 @@ class BaseAgent(ABC):
         with contextlib.suppress(Exception):
             # Assumes roughly $0.005 per turn as a flat generic estimate since we don't have token counts easily here
             await self.redis_client.incrbyfloat("budget:used", 0.005)
+
+        # 2. Store in Semantic Cache for future calls
+        try:
+            await self._semantic_cache.cache_response(prompt_text, text)
+        except Exception as e:
+            logger.debug("Failed to write to cache", error=str(e))
 
         return text
 

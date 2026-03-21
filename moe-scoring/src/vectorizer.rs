@@ -1,8 +1,20 @@
 use crate::models::Expert;
 use aws_sdk_bedrockruntime::Client as BedrockClient;
+use moka::future::Cache;
+use once_cell::sync::Lazy;
 use serde_json::json;
 use std::collections::HashMap;
-use tracing::{error, warn};
+use std::time::Duration;
+use tracing::{debug, error, warn};
+
+/// Thread-safe LRU cache for embeddings to avoid redundant Bedrock API calls.
+/// Keys are hash of task_type + context.
+static EMBEDDING_CACHE: Lazy<Cache<String, Vec<f64>>> = Lazy::new(|| {
+    Cache::builder()
+        .max_capacity(1000)
+        .time_to_live(Duration::from_secs(3600)) // 1 hour TTL
+        .build()
+});
 
 pub const VECTOR_DIM: usize = 1024; // Nova Embeddings are 1024 dims
 
@@ -51,12 +63,19 @@ pub async fn task_type_to_vector(
     client: &BedrockClient,
 ) -> Vec<f64> {
     let combined = format!("Task: {}\nContext: {}", task_type, context);
-    get_nova_embedding(&combined, client).await
-}
+    
+    // Check cache first
+    if let Some(vector) = EMBEDDING_CACHE.get(&combined).await {
+        debug!("Embedding cache HIT for {}", task_type);
+        return vector;
+    }
 
-#[inline]
-fn contains_any(haystack: &str, needles: &[&str]) -> bool {
-    needles.iter().any(|n| haystack.contains(n))
+    let vector = get_nova_embedding(&combined, client).await;
+    
+    // Store in cache
+    EMBEDDING_CACHE.insert(combined, vector.clone()).await;
+    
+    vector
 }
 
 // ── Built-in Expert Capability Vectors ───────────────────────────────────────
