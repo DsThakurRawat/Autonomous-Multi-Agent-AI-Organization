@@ -25,6 +25,8 @@ htmlcov/
 coverage.xml
 *.cover
 *.log
+build_log*.txt
+dashboard_build_log*.txt
 
 # ── Node / TypeScript / Next.js ─────────────────────────
 node_modules/
@@ -34,6 +36,7 @@ out/
 dist/
 .turbo/
 *.tsbuildinfo
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -67,6 +70,16 @@ output/
 generated/
 artifacts/
 tmp_repos/
+production_readiness_scorecard.html
+feedback.md
+learning_roadmap.md
+FUTURE_ROADMAP.md
+pr_orchestration_guide.md
+
+
+
+# ── Output / Binary ─────────────────────────────────────
+go-backend/mcp-server
 
 # ── Docker ──────────────────────────────────────────────
 *.dockerignore
@@ -80,6 +93,7 @@ docker-volumes/
 *.sublime-project
 *.sublime-workspace
 .vim/
+.zed/
 
 # ── OS ──────────────────────────────────────────────────
 .DS_Store
@@ -124,3 +138,4 @@ go-backend/ws-hub
 keys/
 *.pem
 .vercel/
+tmp_repos/
