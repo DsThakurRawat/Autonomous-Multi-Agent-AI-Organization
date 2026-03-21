@@ -30,13 +30,13 @@ from google import genai
 from pydantic import BaseModel, Field
 import structlog
 
+from agents.backend_agent import BackendAgent
 from agents.base_agent import BaseAgent
 from agents.ceo_agent import CEOAgent
 from agents.cto_agent import CTOAgent
 from agents.devops_agent import DevOpsAgent
-from agents.backend_agent import BackendAgent
-from agents.frontend_agent import FrontendAgent
 from agents.finance_agent import FinanceAgent
+from agents.frontend_agent import FrontendAgent
 from agents.model_registry import get_default
 from agents.qa_agent import QAAgent
 from agents.roles import AgentRole

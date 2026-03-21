@@ -184,7 +184,7 @@ class BaseAgent(ABC):
             return
 
         intervention_id = f"intervention:{self._current_task_id}"
-        
+
         # Publish event for dashboard
         payload = {
             "type": "phase_change",
@@ -212,7 +212,7 @@ class BaseAgent(ABC):
         # Wait on Redis PubSub
         pubsub = self.redis_client.pubsub()
         await pubsub.subscribe(intervention_id)
-        
+
         try:
             async for message in pubsub.listen():
                 if message["type"] == "message":
@@ -262,7 +262,7 @@ class BaseAgent(ABC):
         bin_path = os.getenv("SECURITY_BIN_PATH", "/usr/local/bin/security-check")
         if not os.path.exists(bin_path):
             return text
-            
+
         try:
             req = {"task": "scrub", "content": text}
             proc = await asyncio.create_subprocess_exec(
@@ -284,7 +284,7 @@ class BaseAgent(ABC):
         bin_path = os.getenv("SECURITY_BIN_PATH", "/usr/local/bin/security-check")
         if not os.path.exists(bin_path):
             return True, "Validator not found, skipping (UNSAFE)"
-            
+
         try:
             req = {"task": "validate_python", "content": code}
             proc = await asyncio.create_subprocess_exec(
@@ -299,7 +299,7 @@ class BaseAgent(ABC):
                 return resp.get("safe", False), resp.get("message", "Unknown")
         except Exception as e:
             logger.warning("Code validation failed", error=str(e))
-            
+
         return False, "Validation system error"
 
     # -- LLM Interface ----------------------------------------------
