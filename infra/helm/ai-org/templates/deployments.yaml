@@ -102,6 +102,9 @@ spec:
       labels:
         app: moe-scoring
     spec:
+      {{- if .Values.gvisor.enabled }}
+      runtimeClassName: {{ .Values.gvisor.runtimeClassName | default "gvisor" }}
+      {{- end }}
       containers:
         - name: moe-scoring
           image: "{{ .Values.image.repository }}-moe:{{ .Values.image.tag }}"
@@ -129,6 +132,9 @@ spec:
       labels:
         app: agent-{{ $key }}
     spec:
+      {{- if $.Values.gvisor.enabled }}
+      runtimeClassName: {{ $.Values.gvisor.runtimeClassName | default "gvisor" }}
+      {{- end }}
       containers:
         - name: agent
           image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"

@@ -11,7 +11,7 @@ import InterventionModal, { InterventionData } from '@/components/InterventionMo
 import {
     Plus, RefreshCw, Cpu, ChevronRight,
     CheckCircle2, Clock, AlertCircle, Loader2,
-    Braces, Github, Settings, Sparkles, Folder
+    Braces, Github, Settings, Sparkles, Folder, Activity
 } from 'lucide-react'
 import Link from 'next/link'
 import { clsx } from 'clsx'
@@ -224,7 +224,7 @@ export default function DashboardPage() {
         if (events.length === 0) return
         const latestEvent = events[0] // Newest event
 
-        // Instantly animate the DAG Viewer nodes without waiting for the 5-second polling interval
+        // 1. Instantly animate the DAG Viewer nodes
         if (['task_start', 'task_complete', 'task_failed'].includes(latestEvent.type)) {
             const taskId = latestEvent.data?.task_id as string | undefined
             if (taskId) {
@@ -232,9 +232,21 @@ export default function DashboardPage() {
                                   latestEvent.type === 'task_complete' ? 'completed' : 'failed'
                 setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t))
             } else {
-                // Fallback: refetch tasks entirely if event lacks explicit task_id
                 if (selectedProject) fetchTasks(selectedProject.id)
             }
+        }
+
+        // 2. Handle Human-in-the-Loop Interventions
+        if (latestEvent.type === 'phase_change' && latestEvent.data?.status === 'pending_approval') {
+            const d = latestEvent.data
+            setInterventionData({
+                projectId: (d.project_id || latestEvent.project_id) as string,
+                taskId: (d.task_id || '') as string,
+                agentRole: (d.agent_role || latestEvent.agent) as string,
+                actionType: d.action_type as string,
+                costEstimate: d.cost_estimate as number,
+                details: d.details as string
+            })
         }
     }, [events, selectedProject, fetchTasks])
 
@@ -284,6 +296,10 @@ export default function DashboardPage() {
 
                     <Link href="/settings" className="p-2 text-zinc-400 hover:text-white transition-colors" title="Settings">
                         <Settings size={16} />
+                    </Link>
+
+                    <Link href="/observability" className="p-2 text-zinc-400 hover:text-white transition-colors" title="System Health">
+                        <Activity size={16} />
                     </Link>
 
                     <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-sm font-medium transition-colors ml-2">

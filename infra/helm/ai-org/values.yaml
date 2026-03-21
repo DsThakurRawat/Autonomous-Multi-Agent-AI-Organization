@@ -97,4 +97,20 @@ kafka:
 # API Secrets (should ideally be sealed-secrets or via external secrets operator)
 secretKeys:
   openaiKey: "sk-..."
-  anthropicKey: "sk-ant-..."
+  anthropicKey: "sk-ant_..."
+
+# -- Phase 4: Hardening & Scalability --
+
+# gVisor Sandboxing
+# Requires gVisor runtime to be installed on the K8s nodes
+gvisor:
+  enabled: true
+  runtimeClassName: "gvisor"
+
+# KEDA Auto-scaling
+keda:
+  enabled: true
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 1
+  maxReplicaCount: 10

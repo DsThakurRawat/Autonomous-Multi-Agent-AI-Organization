@@ -92,6 +92,13 @@ class BackendAgent(BaseAgent):
                 try:
                     response_json = json.loads(response_json_str)
                     if isinstance(response_json, dict):
+                        # Security Check: AST Validation
+                        for path, code in response_json.items():
+                            if path.endswith(".py"):
+                                safe, msg = await self._validate_code_safety(code)
+                                if not safe:
+                                    logger.error("DANGEROUS CODE BLOCKED", file=path, reason=msg)
+                                    raise RuntimeError(f"Security Policy Violation in {path}: {msg}")
                         return response_json
                 except json.JSONDecodeError:
                     logger.error("Failed to parse Engineer backend LLM response")

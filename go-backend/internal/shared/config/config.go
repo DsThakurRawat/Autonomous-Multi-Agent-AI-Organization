@@ -24,6 +24,7 @@ type Config struct {
 	Auth     AuthConfig     `mapstructure:"auth"`
 	Observ   ObservConfig   `mapstructure:"observability"`
 	Budget   BudgetConfig   `mapstructure:"budget"`
+	Gateway  GatewayConfig  `mapstructure:"gateway"`
 }
 
 type ServerConfig struct {
@@ -84,6 +85,14 @@ type BudgetConfig struct {
 	EnforcementEnabled bool    `mapstructure:"enforcement_enabled"`
 }
 
+type GatewayConfig struct {
+	RateLimitLimit int64         `mapstructure:"rate_limit_limit"`
+	RateLimitWindow time.Duration `mapstructure:"rate_limit_window"`
+	IdempotencyTTL  time.Duration `mapstructure:"idempotency_ttl"`
+	SecurityBinPath string        `mapstructure:"security_bin_path"`
+	OTelEndpoint    string        `mapstructure:"otel_endpoint"`
+}
+
 // Load reads config from env vars and optional config.yaml.
 // Environment variables use the prefix "AI_ORG_" and "__" as delimiter
 // (e.g. AI_ORG_SERVER__PORT=8080 → Config.Server.Port=8080)
@@ -126,6 +135,11 @@ func Load(serviceName string) (*Config, error) {
 	v.SetDefault("budget.default_max_cost_usd", 10.0)
 	v.SetDefault("budget.default_max_tokens", 1000000)
 	v.SetDefault("budget.enforcement_enabled", true)
+	v.SetDefault("gateway.rate_limit_limit", 100)
+	v.SetDefault("gateway.rate_limit_window", "1m")
+	v.SetDefault("gateway.idempotency_ttl", "24h")
+	v.SetDefault("gateway.security_bin_path", "/usr/local/bin/security-check")
+	v.SetDefault("gateway.otel_endpoint", "otel-collector:4317")
 
 	// Load from optional YAML file
 	v.SetConfigName("config")
