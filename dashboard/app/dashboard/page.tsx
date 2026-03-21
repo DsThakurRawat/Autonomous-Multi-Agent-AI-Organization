@@ -217,6 +217,25 @@ export default function DashboardPage() {
         else setTasks([])
     }, [selectedProject, fetchTasks])
 
+    // ── Live Stream Synchronization ──────────────────────────────────
+    useEffect(() => {
+        if (events.length === 0) return
+        const latestEvent = events[0] // Newest event
+
+        // Instantly animate the DAG Viewer nodes without waiting for the 5-second polling interval
+        if (['task_start', 'task_complete', 'task_failed'].includes(latestEvent.type)) {
+            const taskId = latestEvent.data?.task_id as string | undefined
+            if (taskId) {
+                const newStatus = latestEvent.type === 'task_start' ? 'running' : 
+                                  latestEvent.type === 'task_complete' ? 'completed' : 'failed'
+                setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t))
+            } else {
+                // Fallback: refetch tasks entirely if event lacks explicit task_id
+                if (selectedProject) fetchTasks(selectedProject.id)
+            }
+        }
+    }, [events, selectedProject, fetchTasks])
+
     // ── Create project ──────────────────────────────────────────────
     const handleCreate = async (idea: string, budget: number) => {
         const project = await api.createProject({ idea, budget_usd: budget, name: idea.slice(0, 60) })
