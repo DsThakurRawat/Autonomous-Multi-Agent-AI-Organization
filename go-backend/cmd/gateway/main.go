@@ -51,7 +51,7 @@ func main() {
 	if err != nil {
 		log.Error("failed to initialize OTel", zap.Error(err))
 	} else {
-		defer otelShutdown(ctx)
+		defer func() { _ = otelShutdown(ctx) }()
 		log.Info("OpenTelemetry initialized", zap.String("endpoint", cfg.Gateway.OTelEndpoint))
 	}
 
