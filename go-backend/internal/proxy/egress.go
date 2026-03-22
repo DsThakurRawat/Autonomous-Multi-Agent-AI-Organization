@@ -120,12 +120,12 @@ func (p *EgressProxy) handleConnect(w http.ResponseWriter, r *http.Request) {
 	
 	go func() {
 		defer wg.Done()
-		io.Copy(destConn, clientConn)
+		_, _ = io.Copy(destConn, clientConn)
 	}()
 	
 	go func() {
 		defer wg.Done()
-		io.Copy(clientConn, destConn)
+		_, _ = io.Copy(clientConn, destConn)
 	}()
 	
 	wg.Wait()
@@ -155,5 +155,5 @@ func (p *EgressProxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_, _ = io.Copy(w, resp.Body)
 }
