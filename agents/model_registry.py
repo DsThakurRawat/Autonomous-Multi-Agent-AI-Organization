@@ -21,8 +21,8 @@ class ModelConfig(TypedDict):
 
 
 # -- Agent Defaults ------------------------------------------------------------
-# The system defaults to Amazon Bedrock models. The orchestration layer 
-# supports switching individual agents to Google (Gemini), Anthropic (Claude), 
+# The system defaults to Amazon Bedrock models. The orchestration layer
+# supports switching individual agents to Google (Gemini), Anthropic (Claude),
 # or OpenAI (GPT) for specific tasks dynamically via the settings API.
 AGENT_MODEL_DEFAULTS: dict[str, ModelConfig] = {
     # CEO - Strategic reasoning, structured JSON output
