@@ -87,7 +87,8 @@ async fn do_route(req: RouteRequest, state: &AppState) -> RouteResponse {
     }
 
     // ── Step 2: Compute task vector ──────────────────────────────────────
-    let task_vector = task_type_to_vector(task_type, &req.input_context, &state.bedrock_client).await;
+    let task_vector =
+        task_type_to_vector(task_type, &req.input_context, &state.bedrock_client).await;
 
     // Filter by required skills
     let experts_filtered: Vec<(String, Expert)> = if req.required_skills.is_empty() {
@@ -95,11 +96,7 @@ async fn do_route(req: RouteRequest, state: &AppState) -> RouteResponse {
     } else {
         experts_map
             .into_iter()
-            .filter(|(_, exp)| {
-                req.required_skills
-                    .iter()
-                    .any(|sk| exp.skills.contains(sk))
-            })
+            .filter(|(_, exp)| req.required_skills.iter().any(|sk| exp.skills.contains(sk)))
             .collect()
     };
 
@@ -219,7 +216,7 @@ async fn handle_batch_route(
         let state = state.clone();
         let batch_experts = batch_experts.clone();
         let batch_stats = batch_stats.clone();
-        
+
         async move {
             if t.experts.is_none() && !batch_experts.is_empty() {
                 t.experts = Some(batch_experts);
@@ -243,7 +240,10 @@ async fn handle_batch_route(
     )
 }
 
-async fn handle_vectorize(State(state): State<AppState>, Json(req): Json<models::VectorizeRequest>) -> impl IntoResponse {
+async fn handle_vectorize(
+    State(state): State<AppState>,
+    Json(req): Json<models::VectorizeRequest>,
+) -> impl IntoResponse {
     let vector = task_type_to_vector(&req.task_type, &req.context, &state.bedrock_client).await;
     JsonResponse(serde_json::json!({
         "task_type": req.task_type,

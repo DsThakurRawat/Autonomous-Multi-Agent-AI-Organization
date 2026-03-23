@@ -63,7 +63,7 @@ pub async fn task_type_to_vector(
     client: &BedrockClient,
 ) -> Vec<f64> {
     let combined = format!("Task: {}\nContext: {}", task_type, context);
-    
+
     // Check cache first
     if let Some(vector) = EMBEDDING_CACHE.get(&combined).await {
         debug!("Embedding cache HIT for {}", task_type);
@@ -71,10 +71,10 @@ pub async fn task_type_to_vector(
     }
 
     let vector = get_nova_embedding(&combined, client).await;
-    
+
     // Store in cache
     EMBEDDING_CACHE.insert(combined, vector.clone()).await;
-    
+
     vector
 }
 
@@ -130,7 +130,7 @@ pub async fn init_experts_with_nova(client: &BedrockClient) -> HashMap<String, E
     for (role, skills) in raw_experts {
         let skills_str = skills.join(", ");
         let prompt = format!("Expert Role: {}\nSkills: {}", role, skills_str);
-        
+
         // Fetch 1024D embedding
         let vector = get_nova_embedding(&prompt, client).await;
 
@@ -143,7 +143,7 @@ pub async fn init_experts_with_nova(client: &BedrockClient) -> HashMap<String, E
             },
         );
     }
-    
+
     experts
 }
 

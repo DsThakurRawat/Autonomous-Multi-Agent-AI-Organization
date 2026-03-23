@@ -1,8 +1,8 @@
 /// Prometheus metrics for the MoE scoring service.
 use once_cell::sync::Lazy;
 use prometheus::{
-    register_counter_vec, register_histogram_vec, register_int_counter,
-    CounterVec, HistogramVec, IntCounter, TextEncoder, Encoder,
+    register_counter_vec, register_histogram_vec, register_int_counter, CounterVec, Encoder,
+    HistogramVec, IntCounter, TextEncoder,
 };
 
 /// Total routing decisions by routing_type (direct | scored)
