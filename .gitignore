@@ -73,6 +73,11 @@ tmp_repos/
 production_readiness_scorecard.html
 merge_all.sh
 pr_maker.sh
+list_models.py
+test_bedrock_local.py
+check_routes.py
+fix_lint.py
+.agent_collaboration_board.json
 feedback.md
 learning_roadmap.md
 FUTURE_ROADMAP.md
