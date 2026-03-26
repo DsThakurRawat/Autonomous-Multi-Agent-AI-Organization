@@ -17,6 +17,7 @@
 - **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry** and deep LLM reasoning visibility with **LangSmith**.
 - **Production-Grade Shielding**: Kernel-level sandboxing with **gVisor** (`runsc`), and high-performance **Rust-based AST validation**.
 - **Distributed Reliability**: API Idempotency (Redis) and **Distributed Sagas** for atomic state transitions.
+- **MCP Sandboxing**: Native **Model Context Protocol (MCP)** server for secure, standardized tool execution and resource access.
 - **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing**.
 - **Real-Time UX**: Live multi-agent task streaming via **WebSockets** and interactive **React Flow** DAG visualization.
 - **Next.js Vibe Dashboard**: Premium animated UI for live task tracking and system health monitoring.
@@ -58,7 +59,7 @@ Proximus uses a microservices architecture with a Go-based core, Python AI agent
 
 | Layer             | Technology                                                 |
 | ----------------- | ---------------------------------------------------------- |
-| **API Gateway**   | Go 1.22 · Fiber v2                                         |
+| **API Gateway**   | Go 1.24.0 · Fiber v2                                       |
 | **Orchestrator**  | Go · gRPC · DAG engine                                     |
 | **WebSocket Hub** | Go · Redis Pub/Sub                                         |
 | **AI Agents**     | Python 3.12 · Amazon Bedrock / OpenAI / Anthropic / Google |
@@ -257,8 +258,10 @@ Access at `http://localhost:3000`
 │   ├── cmd/
 │   │   ├── gateway/          HTTP API (Fiber) — auth, routing, websockets
 │   │   ├── health-monitor/   System health monitoring
+│   │   ├── mcp-server/       Model Context Protocol (MCP) server
 │   │   ├── metrics-svc/      Metrics tracking service
 │   │   ├── orchestrator/     gRPC server — DAG planning, Kafka dispatch
+│   │   ├── proxy/            Egress proxy (domain allowlist enforcement)
 │   │   ├── tenant-svc/       Tenant management
 │   │   └── ws-hub/           WebSocket server — Redis pub/sub
 │   ├── internal/
@@ -287,6 +290,7 @@ Access at `http://localhost:3000`
 │   │   ├── dashboard/        Main dashboard
 │   │   └── settings/         LLM key + model preference management
 │   └── lib/api.ts            Typed API client
+├── security-check/           Rust — AST validation and PII scrubbing gRPC service
 ├── moe-scoring/              Rust — sub-ms expert routing engine
 ├── infra/
 │   ├── helm/                 Kubernetes Helm charts
