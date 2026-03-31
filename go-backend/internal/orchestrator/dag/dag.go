@@ -247,3 +247,32 @@ func (g *Graph) Validate() error {
 	}
 	return nil
 }
+
+// RequeueStaleTasks finds tasks that have been running longer than timeout
+// and transitions them to StatusFailed (which triggers a retry if under max).
+// Returns the list of task IDs that were re-queued to be re-dispatched.
+func (g *Graph) RequeueStaleTasks(timeout time.Duration) []string {
+	var stale []string
+	
+	g.mu.RLock()
+	now := time.Now()
+	for id, t := range g.Tasks {
+		if t.Status == StatusRunning && t.StartedAt != nil {
+			if now.Sub(*t.StartedAt) > timeout {
+				stale = append(stale, id)
+			}
+		}
+	}
+	g.mu.RUnlock()
+
+	var retried []string
+	for _, id := range stale {
+		msg := fmt.Sprintf("Timeout: execution exceeded %s", timeout)
+		retry, _ := g.MarkFailed(id, msg)
+		if retry {
+			retried = append(retried, id)
+		}
+	}
+
+	return retried
+}

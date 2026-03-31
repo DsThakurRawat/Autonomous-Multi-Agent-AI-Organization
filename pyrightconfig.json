@@ -2,7 +2,7 @@
   "include": [
     "agents",
     "orchestrator",
-    "moe",
+    ,
     "tools",
     "utils",
     "api",
@@ -15,7 +15,7 @@
     "node_modules",
     "dashboard",
     "go-backend",
-    "moe-scoring",
+    ,
     "**/__pycache__"
   ],
   "extraPaths": [

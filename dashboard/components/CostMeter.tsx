@@ -128,7 +128,7 @@ export default function CostMeter({ budgetUsd, spentUsd, history = [], projectId
                             <Tooltip
                                 contentStyle={{ background: '#16161f', border: '1px solid #252535', borderRadius: 8, fontSize: 11 }}
                                 labelStyle={{ color: '#94a3b8' }}
-                                formatter={(v: number) => [formatCost(v), 'Spent']}
+                                formatter={(v: any) => [formatCost(v), 'Spent']}
                             />
                             <Area
                                 type="monotone"

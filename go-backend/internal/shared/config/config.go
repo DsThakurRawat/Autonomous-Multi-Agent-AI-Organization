@@ -24,6 +24,7 @@ type Config struct {
 	Auth     AuthConfig     `mapstructure:"auth"`
 	Observ   ObservConfig   `mapstructure:"observability"`
 	Budget   BudgetConfig   `mapstructure:"budget"`
+	Gateway  GatewayConfig  `mapstructure:"gateway"`
 }
 
 type ServerConfig struct {
@@ -64,7 +65,8 @@ type KafkaConfig struct {
 type AuthConfig struct {
 	JWTPrivateKeyPath  string        `mapstructure:"jwt_private_key_path"`
 	JWTPublicKeyPath   string        `mapstructure:"jwt_public_key_path"`
-	JWTExpiry          time.Duration `mapstructure:"jwt_expiry"`
+	JWTAccessExpiry    time.Duration `mapstructure:"jwt_access_expiry"`
+	JWTRefreshExpiry   time.Duration `mapstructure:"jwt_refresh_expiry"`
 	GoogleClientID     string        `mapstructure:"google_client_id"`
 	GoogleClientSecret string        `mapstructure:"google_client_secret"`
 	GoogleRedirectURL  string        `mapstructure:"google_redirect_url"`
@@ -81,6 +83,14 @@ type BudgetConfig struct {
 	DefaultMaxCostUSD  float64 `mapstructure:"default_max_cost_usd"`
 	DefaultMaxTokens   int64   `mapstructure:"default_max_tokens"`
 	EnforcementEnabled bool    `mapstructure:"enforcement_enabled"`
+}
+
+type GatewayConfig struct {
+	RateLimitLimit int64         `mapstructure:"rate_limit_limit"`
+	RateLimitWindow time.Duration `mapstructure:"rate_limit_window"`
+	IdempotencyTTL  time.Duration `mapstructure:"idempotency_ttl"`
+	SecurityBinPath string        `mapstructure:"security_bin_path"`
+	OTelEndpoint    string        `mapstructure:"otel_endpoint"`
 }
 
 // Load reads config from env vars and optional config.yaml.
@@ -117,13 +127,19 @@ func Load(serviceName string) (*Config, error) {
 	v.SetDefault("kafka.topic_events", "ai-org-events")
 	v.SetDefault("kafka.topic_heartbeats", "ai-org-heartbeats")
 
-	v.SetDefault("auth.jwt_expiry", "24h")
+	v.SetDefault("auth.jwt_access_expiry", "15m")
+	v.SetDefault("auth.jwt_refresh_expiry", "168h")
 	v.SetDefault("observability.trace_sample_rate", 0.1)
 	v.SetDefault("observability.log_level", "info")
 	v.SetDefault("observability.log_json", false)
 	v.SetDefault("budget.default_max_cost_usd", 10.0)
 	v.SetDefault("budget.default_max_tokens", 1000000)
 	v.SetDefault("budget.enforcement_enabled", true)
+	v.SetDefault("gateway.rate_limit_limit", 100)
+	v.SetDefault("gateway.rate_limit_window", "1m")
+	v.SetDefault("gateway.idempotency_ttl", "24h")
+	v.SetDefault("gateway.security_bin_path", "/usr/local/bin/security-check")
+	v.SetDefault("gateway.otel_endpoint", "otel-collector:4317")
 
 	// Load from optional YAML file
 	v.SetConfigName("config")

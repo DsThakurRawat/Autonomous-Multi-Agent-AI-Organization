@@ -1,5 +1,7 @@
 'use client'
 
+export const runtime = 'edge';
+
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
@@ -88,7 +90,7 @@ export default function ProjectPreview() {
                     </button>
                     <div className="flex items-center gap-2 text-sm font-mono text-zinc-500 bg-white/5 px-3 py-1 rounded-full border border-white/5">
                         <Globe size={14} className="text-emerald-500" />
-                        <span>preview.{params.id}.proximus-nova.net</span>
+                        <span>preview.{params.id}.proximus.net</span>
                     </div>
                 </div>
                 

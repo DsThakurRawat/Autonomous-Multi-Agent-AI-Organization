@@ -15,9 +15,11 @@ import json
 import os
 from typing import Any
 
+from opentelemetry import trace
 import structlog  # pyre-ignore[21]
 
 logger = structlog.get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 
 # Try importing kafka-python; fall back to a mock for local dev without Kafka
 try:
@@ -322,15 +324,24 @@ class KafkaConsumerClient:
 
             while retry <= max_retries and not success:
                 try:
-                    await handler(
-                        msg["value"],
-                        {
-                            "topic": msg.get("topic"),
-                            "key": msg.get("key"),
-                            "headers": msg.get("headers", {}),
-                            "timestamp": msg.get("timestamp"),
+                    with tracer.start_as_current_span(
+                        "kafka.consume",
+                        attributes={
+                            "messaging.system": "kafka",
+                            "messaging.destination": msg.get("topic", "unknown"),
+                            "messaging.operation": "receive",
+                            "messaging.group_id": self.group_id,
                         },
-                    )
+                    ):
+                        await handler(
+                            msg["value"],
+                            {
+                                "topic": msg.get("topic"),
+                                "key": msg.get("key"),
+                                "headers": msg.get("headers", {}),
+                                "timestamp": msg.get("timestamp"),
+                            },
+                        )
                     success = True
 
                     # Commit offset after successful processing

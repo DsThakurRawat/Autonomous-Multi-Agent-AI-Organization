@@ -11,7 +11,7 @@ from typing import Any
 import uuid
 
 import networkx as nx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 import structlog
 
 from agents.roles import AgentRole
@@ -52,14 +52,13 @@ class Task(BaseModel):
     error_message: str | None = None
     retry_count: int = 0
     max_retries: int = 3
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
     estimated_duration_seconds: int = 60
     tags: list[str] = []
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     @property
     def duration_seconds(self) -> float | None:

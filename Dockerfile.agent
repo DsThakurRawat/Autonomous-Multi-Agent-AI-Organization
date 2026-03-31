@@ -14,20 +14,36 @@ ARG AGENT_ROLE=generic
 
 WORKDIR /build
 
-# Install build dependencies (needed for some pip packages)
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create standard python virtual environment for safe multi-stage transfer
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Copy only requirements first — Docker layer cache optimization
 COPY requirements.txt .
 
-# Install into a prefix for easy copying
+# Install dependencies into virtual environment
 RUN pip install --upgrade pip && \
-    pip install --prefix=/install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
+# Copy application source explicitly for pruning
+COPY agents/ ./source/agents/
+COPY messaging/ ./source/messaging/
+COPY observability/ ./source/observability/
+COPY tools/ ./source/tools/
+COPY utils/ ./source/utils/
+COPY orchestrator/ ./source/orchestrator/
+
+# Prune unneeded agent roles to minimize attack surface and image size
+RUN if [ "$AGENT_ROLE" != "generic" ]; then \
+        find ./source/agents/ -name '*_agent.py' ! -name 'base_agent.py' ! -name "${AGENT_ROLE}_agent.py" -delete; \
+    fi
 
 # ── Stage 2: Runtime ────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
@@ -52,18 +68,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 1001 --gid 0 --home /app aiorg
 
-# Copy installed packages from builder
-COPY --from=builder /install /usr/local
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
 
-# Copy application source
-COPY agents/ ./agents/
-COPY orchestrator/ ./orchestrator/
-COPY messaging/ ./messaging/
-COPY moe/ ./moe/
-COPY observability/ ./observability/
-COPY tools/ ./tools/
-COPY utils/ ./utils/
-COPY api/ ./api/
+# Activate virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy exactly what we need from builder source
+COPY --from=builder /build/source/agents/ ./agents/
+COPY --from=builder /build/source/messaging/ ./messaging/
+COPY --from=builder /build/source/observability/ ./observability/
+COPY --from=builder /build/source/tools/ ./tools/
+COPY --from=builder /build/source/utils/ ./utils/
+COPY --from=builder /build/source/orchestrator/ ./orchestrator/
 
 # Set ownership
 RUN chown -R 1001:0 /app
@@ -81,11 +98,10 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Health check — agents expose a simple /health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8083/health || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Use dumb-init to handle signals correctly (PID 1 problem)
 ENTRYPOINT ["dumb-init", "--"]
 
 # Default command — runs the agent service
-# Each agent container overrides AGENT_ROLE via env
 CMD ["python", "-m", "agents.agent_service"]

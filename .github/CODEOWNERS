@@ -1,0 +1,24 @@
+# This file controls automated code review requests.
+# It uses the same pattern matching as .gitignore
+
+# ── Global Owners ─────────────────────────────────────
+# By default, the core maintainer owns everything.
+*       @DsThakurRawat
+
+# ── Component Specific Owners ─────────────────────────
+# Currently assigning the primary maintainer to all key components.
+# In the future, specialized contributors can be added here.
+
+# Dashboard (React/Next.js)
+/dashboard/    @DsThakurRawat
+
+# Backend (Go Microservices)
+/go-backend/   @DsThakurRawat
+
+# Agents & AI Modules (Python)
+/agents/       @DsThakurRawat
+/api/          @DsThakurRawat
+
+# Infrastructure & CI/CD
+/infra/        @DsThakurRawat
+/.github/      @DsThakurRawat

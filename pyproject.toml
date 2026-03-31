@@ -50,7 +50,7 @@ indent-width   = 4
 target-version = "py311"     # lowest supported runtime (Docker image)
 
 # Directories to lint
-src = ["agents", "orchestrator", "api", "moe", "moe_scoring", "messaging", "tools", "utils"]
+src = ["agents", "orchestrator", "api", "messaging", "tools", "utils"]
 
 # Never lint these
 exclude = [
@@ -74,7 +74,6 @@ exclude = [
     "k8s",
     "dashboard",
     "go-backend",
-    "moe-scoring",
 ]
 
 [tool.ruff.lint]
@@ -153,7 +152,6 @@ known-first-party = [
     "agents",
     "orchestrator",
     "api",
-    "moe",
     "messaging",
     "tools",
     "utils",
@@ -306,7 +304,7 @@ filterwarnings = [
 
 # Coverage settings (used when --cov is passed)
 [tool.coverage.run]
-source    = ["agents", "orchestrator", "api", "moe", "messaging", "tools", "utils"]
+source    = ["agents", "orchestrator", "api", "messaging", "tools", "utils"]
 omit      = [
     "venv/*",
     ".venv/*",
@@ -357,11 +355,11 @@ venv                   = "venv"
 typeCheckingMode       = "basic"
 
 # Source roots
-include = ["agents", "orchestrator", "api", "moe", "messaging", "tools", "utils"]
+include = ["agents", "orchestrator", "api", "messaging", "tools", "utils"]
 exclude = [
     "venv", ".venv", "__pycache__", "node_modules",
     "build", "dist", "output", "tmp_repos",
-    "go-backend", "moe-scoring", "dashboard", "infra", "k8s",
+    "go-backend", "dashboard", "infra", "k8s",
 ]
 
 # Diagnostics — basic mode with a few promotions to errors
@@ -391,7 +389,7 @@ reportUnknownParameterType     = "none"
 # CLI:  bandit -r agents/ orchestrator/ api/ moe/ messaging/ tools/ -ll
 # ──────────────────────────────────────────────────────────────────────────────
 [tool.bandit]
-targets   = ["agents", "orchestrator", "api", "moe", "messaging", "tools", "utils"]
+targets   = ["agents", "orchestrator", "api", "messaging", "tools", "utils"]
 exclude   = ["/venv", "/.venv", "/tests", "/output", "/tmp_repos"]
 # Skip these checks that are noisy / intentional in this codebase
 skips = [

@@ -15,6 +15,7 @@ import (
 
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/config"
@@ -56,10 +57,16 @@ func (r *registry) broadcast(projectID string, msg any) {
 	data, _ := json.Marshal(msg)
 	for conn := range conns {
 		if err := conn.WriteMessage(1 /* TextMessage */, data); err != nil {
-			// Dead connection — Fiber handles cleanup via defer
 			logger.L().Debug("ws write failed", zap.Error(err))
 		}
 	}
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
 
 func main() {
@@ -75,6 +82,10 @@ func main() {
 	}
 	defer logger.Sync()
 	log := logger.L()
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: getEnv("REDIS_ADDR", "localhost:6379"),
+	})
 
 	reg := newRegistry()
 
@@ -96,6 +107,16 @@ func main() {
 			}
 
 			reg.broadcast(projectID, event)
+
+			// Store in Redis Stream for replay (last 100 events)
+			err := rdb.XAdd(ctx, &redis.XAddArgs{
+				Stream: "events:" + projectID,
+				MaxLen: 100,
+				Values: map[string]interface{}{"payload": string(msg.Value)},
+			}).Err()
+			if err != nil {
+				log.Warn("failed to store event in redis stream", zap.Error(err))
+			}
 
 			log.Debug("event broadcast",
 				zap.String("project_id", projectID),
@@ -126,10 +147,21 @@ func main() {
 
 	app.Get("/ws/projects/:id/events", websocket.New(func(conn *websocket.Conn) {
 		projectID := conn.Params("id")
+		
+		// Replay historical events on connect
+		events, err := rdb.XRange(context.Background(), "events:"+projectID, "-", "+").Result()
+		if err == nil {
+			for _, e := range events {
+				if payload, ok := e.Values["payload"].(string); ok {
+					_ = conn.WriteMessage(1, []byte(payload))
+				}
+			}
+		}
+
 		reg.add(projectID, conn)
 		defer reg.remove(projectID, conn)
 
-		log.Info("ws client connected", zap.String("project_id", projectID))
+		log.Info("ws client connected & replayed", zap.String("project_id", projectID))
 
 		// Keep alive — wait for client disconnect or error
 		for {

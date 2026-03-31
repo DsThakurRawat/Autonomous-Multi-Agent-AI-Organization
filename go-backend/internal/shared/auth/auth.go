@@ -20,19 +20,21 @@ import (
 
 // Claims is the JWT payload embedded in every access token.
 type Claims struct {
-	UserID   string `json:"uid"`
-	TenantID string `json:"tid"`
-	Email    string `json:"email"`
-	Role     string `json:"role"`
+	UserID    string `json:"uid"`
+	TenantID  string `json:"tid"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	TokenType string `json:"typ"` // "access" or "refresh"
 	jwt.RegisteredClaims
 }
 
 // Service handles JWT and Google OAuth operations.
 type Service struct {
-	privateKey  *rsa.PrivateKey
-	publicKey   *rsa.PublicKey
-	expiry      time.Duration
-	oauthConfig *oauth2.Config
+	privateKey    *rsa.PrivateKey
+	publicKey     *rsa.PublicKey
+	accessExpiry  time.Duration
+	refreshExpiry time.Duration
+	oauthConfig   *oauth2.Config
 }
 
 // New loads RSA keys from disk and builds the auth service.
@@ -70,35 +72,48 @@ func New(cfg *config.AuthConfig) (*Service, error) {
 	}
 
 	return &Service{
-		privateKey:  privKey,
-		publicKey:   pubKey,
-		expiry:      cfg.JWTExpiry,
-		oauthConfig: oauthCfg,
+		privateKey:    privKey,
+		publicKey:     pubKey,
+		accessExpiry:  cfg.JWTAccessExpiry,
+		refreshExpiry: cfg.JWTRefreshExpiry,
+		oauthConfig:   oauthCfg,
 	}, nil
 }
 
-// IssueToken creates and signs a JWT for the given user.
-func (s *Service) IssueToken(userID, tenantID, email, role string) (string, error) {
+// IssueTokens creates and signs an access and refresh JWT for the given user.
+func (s *Service) IssueTokens(userID, tenantID, email, role string) (string, string, error) {
 	now := time.Now()
-	claims := Claims{
-		UserID:   userID,
-		TenantID: tenantID,
-		Email:    email,
-		Role:     role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   userID,
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.expiry)),
-			Issuer:    "autonomous-org",
-		},
+	
+	createToken := func(typ string, exp time.Duration) (string, error) {
+		claims := Claims{
+			UserID:    userID,
+			TenantID:  tenantID,
+			Email:     email,
+			Role:      role,
+			TokenType: typ,
+			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:   userID,
+				IssuedAt:  jwt.NewNumericDate(now),
+				ExpiresAt: jwt.NewNumericDate(now.Add(exp)),
+				Issuer:    "autonomous-org",
+			},
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+		return token.SignedString(s.privateKey)
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	signed, err := token.SignedString(s.privateKey)
+	accessToken, err := createToken("access", s.accessExpiry)
 	if err != nil {
-		return "", fmt.Errorf("auth: sign token: %w", err)
+		return "", "", fmt.Errorf("auth: sign access token: %w", err)
 	}
-	return signed, nil
+
+	refreshToken, err := createToken("refresh", s.refreshExpiry)
+	if err != nil {
+		return "", "", fmt.Errorf("auth: sign refresh token: %w", err)
+	}
+
+	return accessToken, refreshToken, nil
 }
 
 // ValidateToken parses and validates a JWT string.

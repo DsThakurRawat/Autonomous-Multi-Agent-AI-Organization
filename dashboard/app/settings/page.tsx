@@ -28,7 +28,7 @@ interface AgentPref {
 }
 
 const PROVIDER_LABELS: Record<Provider, string> = {
-    bedrock: 'Amazon Bedrock (Nova)',
+    bedrock: 'Amazon Bedrock',
     openai: 'OpenAI',
     anthropic: 'Anthropic',
     google: 'Google Gemini',
@@ -55,11 +55,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+function getCsrfToken() {
+    if (typeof document === 'undefined') return '';
+    const match = document.cookie.match(new RegExp('(^| )csrf_=([^;]+)'));
+    return match ? match[2] : '';
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+    const headers = new Headers(options?.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    const token = getCsrfToken();
+    if (token) headers.set('X-Csrf-Token', token);
+
     const res = await fetch(`${API_BASE}${path}`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         ...options,
+        headers,
+        credentials: 'include',
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
@@ -473,7 +484,7 @@ export default function SettingsPage() {
                     
                     <div className="text-center py-12 border-t border-white/5">
                         <p className="text-xs text-slate-600 font-bold uppercase tracking-[0.2em] italic">
-                            Platform keys are managed by Proximus-Nova admin • Personal overrides take precedence
+                            Platform keys are managed by Proximus admin • Personal overrides take precedence
                         </p>
                     </div>
                 </div>

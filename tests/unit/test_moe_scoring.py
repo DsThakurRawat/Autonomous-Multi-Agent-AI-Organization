@@ -3,8 +3,6 @@ Unit Tests - MoE Scoring Engine
 Tests cosine similarity, expert ranking, and routing score computation.
 """
 
-import pytest
-
 from moe.scoring import (
     compute_expert_score,
     cosine_similarity,
@@ -12,6 +10,7 @@ from moe.scoring import (
     should_use_ensemble,
     task_type_to_vector,
 )
+import pytest
 
 
 class TestCosineSimilarity:

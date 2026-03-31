@@ -164,9 +164,17 @@ export default function ChatPage() {
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                             <Sparkles size={16} />
                         </div>
-                        <span className="font-bold">Proximus-Nova</span>
+                        <span className="font-bold">Proximus</span>
                     </div>
                 </header>
+
+                {/* Connection Status Banner */}
+                {(wsStatus === 'disconnected' || wsStatus === 'error' || wsStatus === 'connecting') && activeProject && (
+                    <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-center gap-2 text-amber-500 text-xs font-medium w-full z-50">
+                        <Loader2 size={14} className="animate-spin" />
+                        {wsStatus === 'connecting' ? 'Connecting to orchestrator...' : 'Connection lost. Reconnecting...'}
+                    </div>
+                )}
 
                 {/* Chat History */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-12 space-y-8 scroll-smooth">

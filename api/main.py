@@ -30,12 +30,13 @@ from google import genai
 from pydantic import BaseModel, Field
 import structlog
 
+from agents.backend_agent import BackendAgent
 from agents.base_agent import BaseAgent
 from agents.ceo_agent import CEOAgent
 from agents.cto_agent import CTOAgent
 from agents.devops_agent import DevOpsAgent
-from agents.engineer_agent import EngineerAgent
 from agents.finance_agent import FinanceAgent
+from agents.frontend_agent import FrontendAgent
 from agents.model_registry import get_default
 from agents.qa_agent import QAAgent
 from agents.roles import AgentRole
@@ -200,8 +201,7 @@ async def lifespan(app: FastAPI):
     client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_BACKEND)
     orchestrator.register_agent(
         AgentRole.ENGINEER_BACKEND,
-        EngineerAgent(
-            mode="backend",
+        BackendAgent(
             llm_client=client,
             model_name=model,
             provider=provider,
@@ -213,8 +213,7 @@ async def lifespan(app: FastAPI):
     client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_FRONTEND)
     orchestrator.register_agent(
         AgentRole.ENGINEER_FRONTEND,
-        EngineerAgent(
-            mode="frontend",
+        FrontendAgent(
             llm_client=client,
             model_name=model,
             provider=provider,
@@ -305,12 +304,18 @@ async def rate_limit_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+class BudgetConfig(BaseModel):
+    max_cost_usd: float = Field(
+        200.0, ge=1.0, le=10000.0, description="Maximum budget allowed for the project"
+    )
+
+
 # -- Request/Response Models ----------------------------------------
 class StartProjectRequest(BaseModel):
     idea: str = Field(
         ..., min_length=5, max_length=1000, description="The core business idea"
     )
-    budget: dict[str, Any] = Field(default_factory=lambda: {"max_cost_usd": 200.0})
+    budget: BudgetConfig = Field(default_factory=BudgetConfig)
     name: str | None = Field(default="", max_length=100)
     constraints: dict[str, Any] | None = None
 
@@ -355,7 +360,9 @@ async def start_project(
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
-        business_idea=request.idea, user_constraints=request.constraints or {}
+        business_idea=request.idea,
+        user_constraints=request.constraints or {},
+        budget_usd=request.budget.max_cost_usd,
     )
 
     # Subscribe the event broadcaster for this project
@@ -368,7 +375,7 @@ async def start_project(
         "name": request.name or "New Project",
         "description": request.idea,
         "status": "running",
-        "budget_usd": request.budget.get("max_cost_usd", 200.0),
+        "budget_usd": request.budget.max_cost_usd,
         "spent_usd": 0.0,
         "progress_pct": 0,
         "tasks_total": 0,

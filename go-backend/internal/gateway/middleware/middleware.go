@@ -8,7 +8,6 @@ package middleware
 import (
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/auth"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	redisclient "github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/redis"
 )
 
 // LocalMode returns true when AUTH_DISABLED=true is set in the environment.
@@ -125,6 +125,17 @@ func JWTAuth(authSvc *auth.Service) fiber.Handler {
 			})
 		}
 
+		if claims.TokenType != "access" {
+			logger.L().Warn("wrong token type presented to API",
+				zap.String("type", claims.TokenType),
+				zap.String("trace_id", c.Locals("trace_id").(string)),
+			)
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":    "expected access token",
+				"trace_id": c.Locals("trace_id"),
+			})
+		}
+
 		c.Locals("user_id", claims.UserID)
 		c.Locals("tenant_id", claims.TenantID)
 		c.Locals("email", claims.Email)
@@ -151,50 +162,29 @@ func RequireRole(minRole string) fiber.Handler {
 	}
 }
 
-// RateLimiter applies an in-memory token bucket rate limit.
-// For distributed enforcement across pods, swap with Redis sliding window.
-func RateLimiter(maxRPS int) fiber.Handler {
-	type entry struct {
-		tokens    float64
-		lastCheck time.Time
-	}
-	// NOTE: In production, replace with Redis sliding window (see redisclient.SlidingWindowLimit)
-	// This in-memory version works per-pod and is fine for initial deployment.
-	store := make(map[string]*entry)
-	var mu sync.Mutex
-
+// DistributedRateLimiter applies a Redis-backed sliding window rate limit.
+func DistributedRateLimiter(rc *redisclient.Client, limit int64, window time.Duration) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Use user_id from JWT if available, fall back to IP
 		key, _ := c.Locals("user_id").(string)
 		if key == "" {
 			key = c.IP()
 		}
+		key = "rate_limit:" + key
 
-		mu.Lock()
-		defer mu.Unlock()
-
-		now := time.Now()
-		e, exists := store[key]
-		if !exists {
-			e = &entry{tokens: float64(maxRPS), lastCheck: now}
-			store[key] = e
+		allowed, count, err := rc.SlidingWindowLimit(c.Context(), key, limit, window)
+		if err != nil {
+			logger.L().Error("redis rate limit error", zap.Error(err))
+			return c.Next() // Fail open to avoid blocking users
 		}
 
-		// Refill tokens based on time elapsed
-		elapsed := now.Sub(e.lastCheck)
-		e.tokens += elapsed.Seconds() * float64(maxRPS)
-		if e.tokens > float64(maxRPS) {
-			e.tokens = float64(maxRPS)
-		}
-		e.lastCheck = now
-
-		if e.tokens < 1 {
+		if !allowed {
+			logger.L().Warn("rate limit exceeded", zap.String("key", key), zap.Int64("count", count))
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
 				"error": "rate limit exceeded",
+				"limit": limit,
 			})
 		}
 
-		e.tokens--
 		return c.Next()
 	}
 }

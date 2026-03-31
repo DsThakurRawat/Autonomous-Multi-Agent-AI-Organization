@@ -54,24 +54,57 @@ export interface TaskNode {
 
 // ── Fetch helper ─────────────────────────────────────────────────────
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(options?.headers as Record<string, string>),
-        },
+function getCsrfToken() {
+    if (typeof document === 'undefined') return '';
+    const match = document.cookie.match(new RegExp('(^| )csrf_=([^;]+)'));
+    return match ? match[2] : '';
+}
+
+async function apiFetch<T>(path: string, options?: RequestInit & { idempotencyKey?: string }): Promise<T> {
+    const headers = new Headers(options?.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+    if (options?.idempotencyKey) headers.set('X-Idempotency-Key', options.idempotencyKey);
+    
+    const token = getCsrfToken();
+    if (token) headers.set('X-Csrf-Token', token);
+
+    let res = await fetch(`${API_BASE}${path}`, {
         ...options,
+        headers,
+        credentials: 'include',
     })
+
+    if (res.status === 401 && !path.includes('/auth/refresh')) {
+        try {
+            const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include',
+            })
+            if (refreshRes.ok) {
+                // Retry original request
+                res = await fetch(`${API_BASE}${path}`, {
+                    ...options,
+                    headers,
+                    credentials: 'include',
+                })
+            }
+        } catch (e) {
+            console.error('Optional token refresh failed', e)
+        }
+    }
 
     if (!res.ok) {
         let errorMessage = `API Error (${res.status})`
+        if (res.status === 429) errorMessage = 'Rate limit exceeded. Please wait a moment.'
+        if (res.status === 409) errorMessage = 'Request is already being processed.'
+        
         try {
             const errorBody = await res.json()
             errorMessage = errorBody.error || errorBody.message || errorMessage
         } catch {
             const text = await res.text()
-            errorMessage = text || errorMessage
+            if (text) errorMessage = text
         }
         throw new Error(errorMessage)
     }
@@ -93,14 +126,14 @@ export const api = {
     getProject: (id: string) =>
         apiFetch<Project>(`/v1/projects/${id}`),
 
-    createProject: (data: CreateProjectRequest) =>
+    createProject: (data: CreateProjectRequest, idempotencyKey?: string) =>
         apiFetch<Project>('/v1/projects', {
             method: 'POST',
+            idempotencyKey,
             body: JSON.stringify({
                 idea: data.idea,
                 budget: { max_cost_usd: data.budget_usd },
                 name: data.name ?? '',
-                // user_id and tenant_id come from the JWT in the Go Gateway middleware
             }),
         }),
 
@@ -113,6 +146,12 @@ export const api = {
     // Tasks / DAG — Go Gateway: /v1/projects/:id/tasks
     getProjectTasks: (projectId: string) =>
         apiFetch<TaskNode[]>(`/v1/projects/${projectId}/tasks`),
+
+    postIntervention: (projectId: string, taskId: string, approved: boolean) =>
+        apiFetch<void>(`/v1/projects/${projectId}/tasks/${taskId}/intervene`, {
+            method: 'POST',
+            body: JSON.stringify({ approved }),
+        }),
 
     // Cost report — Go Gateway: /v1/projects/:id/cost
     getProjectCost: (projectId: string) =>

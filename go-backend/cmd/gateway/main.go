@@ -10,8 +10,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gofiber/contrib/otelfiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/csrf"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"go.uber.org/zap"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/config"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/otel"
 	redisclient "github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/redis"
 )
 
@@ -42,6 +45,15 @@ func main() {
 	log := logger.L()
 
 	log.Info("gateway starting", zap.String("env", cfg.Env), zap.String("addr", cfg.Addr()))
+
+	// ── OpenTelemetry ────────────────────────────────────────────────────────
+	otelShutdown, err := otel.InitOTel(ctx, "gateway", cfg.Gateway.OTelEndpoint)
+	if err != nil {
+		log.Error("failed to initialize OTel", zap.Error(err))
+	} else {
+		defer func() { _ = otelShutdown(ctx) }()
+		log.Info("OpenTelemetry initialized", zap.String("endpoint", cfg.Gateway.OTelEndpoint))
+	}
 
 	// ── Dependencies ────────────────────────────────────────────────────────
 	pgPool, err := db.New(ctx, &cfg.Postgres)
@@ -76,6 +88,7 @@ func main() {
 	hdlr := handler.NewHandler(orchClient, pgPool)
 	settingsHdlr := handler.NewSettingsHandler(pgPool)
 	tasksHdlr := handler.NewTasksHandler(pgPool)
+	interventionsHdlr := handler.NewInterventionsHandler(redisClient)
 	var oauthHdlr *handler.OAuthHandler
 	if authSvc != nil {
 		oauthHdlr = handler.NewOAuthHandler(authSvc, pgPool)
@@ -88,28 +101,39 @@ func main() {
 		DisableStartupMessage: true,
 	})
 
+	app.Use(otelfiber.Middleware())
+
 	app.Use(recover.New())
 	app.Use(compress.New())
 	app.Use(middleware.CORS())
 	app.Use(middleware.RequestLogger())
 
-	// ── Auth middleware — two modes ───────────────────────────────────────────
-	if middleware.LocalMode() {
-		// LOCAL MODE: AUTH_DISABLED=true
-		// No login required. Every request gets a fixed local-user identity injected.
-		// Perfect for self-hosted / personal use — just set API keys in .env.
-		log.Info("⚠️  AUTH_DISABLED=true — running in local mode (no login required)")
-		app.Use(middleware.LocalAuth())
-	} else {
-		// SAAS MODE: Google OAuth + RS256 JWT cookie
-		// Register OAuth endpoints BEFORE JWTAuth so they are accessible without a token.
-		if authSvc != nil && oauthHdlr != nil {
-			app.Get("/auth/google", oauthHdlr.GoogleLogin)
-			app.Get("/auth/google/callback", oauthHdlr.GoogleCallback)
-		}
-		if authSvc != nil {
-			app.Use(middleware.JWTAuth(authSvc))
-		}
+	// ── Phase 5: Reliability Middlewares ─────────────────────────────────────
+	app.Use(middleware.DistributedRateLimiter(redisClient, cfg.Gateway.RateLimitLimit, cfg.Gateway.RateLimitWindow))
+	app.Use(middleware.Idempotency(middleware.IdempotencyConfig{
+		RedisClient: redisClient,
+		TTL:         cfg.Gateway.IdempotencyTTL,
+	}))
+	app.Use(middleware.SecurityScrubber(cfg.Gateway.SecurityBinPath))
+
+	// ── CSRF Protection ──────────────────────────────────────────────────────
+	app.Use(csrf.New(csrf.Config{
+		KeyLookup:      "header:X-Csrf-Token",
+		CookieName:     "csrf_",
+		CookieSameSite: "Strict",
+		CookieHTTPOnly: false, // Must be false so Next.js frontend can read document.cookie
+	}))
+
+	// ── Auth middleware ───────────────────────────────────────────────────────
+	// SAAS MODE: Google OAuth + RS256 JWT cookie
+	// Register OAuth endpoints BEFORE JWTAuth so they are accessible without a token.
+	if authSvc != nil && oauthHdlr != nil {
+		app.Get("/auth/google", oauthHdlr.GoogleLogin)
+		app.Get("/auth/google/callback", oauthHdlr.GoogleCallback)
+		app.Post("/auth/refresh", oauthHdlr.RefreshToken)
+	}
+	if authSvc != nil {
+		app.Use(middleware.JWTAuth(authSvc))
 	}
 
 	v1 := app.Group("/v1")
@@ -121,6 +145,7 @@ func main() {
 	projects.Get("/:id/cost", hdlr.GetCostReport)
 	projects.Get("/:id/tasks", tasksHdlr.GetProjectTasks)
 	projects.Get("/:id/events", tasksHdlr.GetProjectEvents)
+	projects.Post("/:id/tasks/:task_id/intervene", interventionsHdlr.PostIntervention)
 
 	// Settings — LLM key management + agent model prefs
 	settings := v1.Group("/settings")

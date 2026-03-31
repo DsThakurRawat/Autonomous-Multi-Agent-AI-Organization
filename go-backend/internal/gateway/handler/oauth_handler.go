@@ -11,7 +11,8 @@
 //  3. Google → 302 back to /auth/google/callback?code=...&state=...
 //  4. Gateway → exchange code → get email + sub from Google userinfo API
 //  5. Gateway → upsert user row in users table (by google_sub)
-//  6. Gateway → issue RS256 JWT, set HttpOnly cookie, redirect to /dashboard
+//  6. Gateway → issue RS256 access and refresh JWTs, set HttpOnly cookies, redirect to /dashboard
+//  POST /auth/refresh            → exchange refresh token for new access token
 package handler
 
 import (
@@ -95,17 +96,26 @@ func (h *OAuthHandler) GoogleCallback(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Code: 500, Error: "user creation failed"})
 	}
 
-	// 4. Issue JWT
-	jwtToken, err := h.authSvc.IssueToken(userID, tenantID, email, "user")
+	// 4. Issue access and refresh JWTs
+	accessToken, refreshToken, err := h.authSvc.IssueTokens(userID, tenantID, email, "user")
 	if err != nil {
 		log.Error("jwt issue failed", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Code: 500, Error: "token issue failed"})
 	}
 
-	// 5. Set HttpOnly JWT cookie — 7 days
+	// 5. Set HttpOnly JWT cookies (access: 15m, refresh: 7d)
 	c.Cookie(&fiber.Cookie{
 		Name:     "auth_token",
-		Value:    jwtToken,
+		Value:    accessToken,
+		Expires:  time.Now().Add(15 * time.Minute),
+		HTTPOnly: true,
+		SameSite: "Lax",
+		Secure:   false, // set true behind TLS in production
+	})
+	
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
 		Expires:  time.Now().Add(7 * 24 * time.Hour),
 		HTTPOnly: true,
 		SameSite: "Lax",
@@ -140,4 +150,53 @@ func generateState() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// RefreshToken handles POST /auth/refresh
+// Validates the refresh_token cookie and issues a new auth_token cookie.
+func (h *OAuthHandler) RefreshToken(c *fiber.Ctx) error {
+	log := logger.L().With(zap.String("handler", "RefreshToken"))
+	
+	refreshTokenStr := c.Cookies("refresh_token")
+	if refreshTokenStr == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Code: 401, Error: "missing refresh token"})
+	}
+
+	claims, err := h.authSvc.ValidateToken(refreshTokenStr)
+	if err != nil {
+		log.Warn("refresh token validation failed", zap.Error(err))
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Code: 401, Error: "invalid refresh token"})
+	}
+
+	if claims.TokenType != "refresh" {
+		log.Warn("invalid token type for refresh", zap.String("type", claims.TokenType))
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Code: 401, Error: "expected refresh token"})
+	}
+
+	// Issue new tokens (rolling refresh token)
+	accessToken, newRefreshToken, err := h.authSvc.IssueTokens(claims.UserID, claims.TenantID, claims.Email, claims.Role)
+	if err != nil {
+		log.Error("token issue failed on refresh", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Code: 500, Error: "failed to issue new tokens"})
+	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "auth_token",
+		Value:    accessToken,
+		Expires:  time.Now().Add(15 * time.Minute),
+		HTTPOnly: true,
+		SameSite: "Lax",
+		Secure:   false,
+	})
+	
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    newRefreshToken,
+		Expires:  time.Now().Add(7 * 24 * time.Hour),
+		HTTPOnly: true,
+		SameSite: "Lax",
+		Secure:   false,
+	})
+
+	return c.JSON(fiber.Map{"status": "ok"})
 }

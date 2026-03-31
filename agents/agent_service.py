@@ -35,8 +35,8 @@ logger = structlog.get_logger(__name__)
 AGENT_REGISTRY: dict[str, tuple] = {
     AgentRole.CEO: ("agents.ceo_agent", "CEOAgent"),
     AgentRole.CTO: ("agents.cto_agent", "CTOAgent"),
-    AgentRole.ENGINEER_BACKEND: ("agents.engineer_agent", "EngineerAgent"),
-    AgentRole.ENGINEER_FRONTEND: ("agents.engineer_agent", "EngineerAgent"),
+    AgentRole.ENGINEER_BACKEND: ("agents.backend_agent", "BackendAgent"),
+    AgentRole.ENGINEER_FRONTEND: ("agents.frontend_agent", "FrontendAgent"),
     AgentRole.QA: ("agents.qa_agent", "QAAgent"),
     AgentRole.DEVOPS: ("agents.devops_agent", "DevOpsAgent"),
     AgentRole.FINANCE: ("agents.finance_agent", "FinanceAgent"),
@@ -134,11 +134,12 @@ def _load_agent(role: str, llm_client=None):
     module = importlib.import_module(module_path)
     AgentClass = getattr(module, class_name)
 
-    # Pass the role variant (e.g. Engineer_Frontend vs Engineer_Backend)
+    # Instantiate the agent
     try:
-        agent = AgentClass(llm_client=llm_client, role_variant=role)
-    except TypeError:
         agent = AgentClass(llm_client=llm_client)
+    except TypeError:
+        # Fallback if the agent doesn't accept llm_client in init
+        agent = AgentClass()
 
     logger.info("Agent loaded", role=role, class_name=class_name)
     return agent
@@ -232,11 +233,17 @@ class AgentMicroservice:
             import contextlib
 
             with contextlib.suppress(Exception):
-                # Read just enough to clear the buffer loosely
-                await asyncio.wait_for(reader.read(1024), timeout=1.0)
-            response = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
-            writer.write(response)
-            await writer.drain()
+                request_line = await asyncio.wait_for(
+                    reader.readuntil(b"\r\n"), timeout=1.0
+                )
+                if b"GET /health" in request_line:
+                    response = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+                else:
+                    response = (
+                        b"HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found"
+                    )
+                writer.write(response)
+                await writer.drain()
             writer.close()
 
         server = await asyncio.start_server(handle_request, "0.0.0.0", port)
@@ -291,7 +298,7 @@ class AgentMicroservice:
                         producer = self.producer
                         assert producer is not None
                         await producer.publish_json(
-                            "ai-org.dlq", dlq_payload, key="parse-error"
+                            "ai-org-dlq", dlq_payload, key="parse-error"
                         )
                     except Exception as pub_err:
                         logger.error("Failed to publish to DLQ", error=str(pub_err))
@@ -450,12 +457,14 @@ class AgentMicroservice:
                 role=self.role,
             )
 
+            is_final_failure = task_msg.retry_count >= task_msg.max_retries
+
             result = ResultMessage(
                 task_id=task_msg.task_id,
                 task_name=task_msg.task_name,
                 agent_role=self.role,
                 project_id=task_msg.project_id,
-                status="failed",
+                status="failed" if not is_final_failure else "fatal",
                 error_message=err_str,
                 duration_ms=duration_ms,
                 trace_id=task_msg.trace_id,
@@ -463,10 +472,23 @@ class AgentMicroservice:
 
             if self.producer is None:
                 raise RuntimeError("Producer not initialized") from None
-            result_topic = KafkaTopics.results_topic(task_msg.project_id)
-            await self.producer.publish_model(  # type: ignore[union-attr]
-                result_topic, result, key=task_msg.task_id
-            )
+
+            if is_final_failure:
+                dlq_payload = {
+                    "task_id": task_msg.task_id,
+                    "error": err_str,
+                    "final_failure": True,
+                    "trace_id": task_msg.trace_id,
+                    "original_payload": task_msg.model_dump(),
+                }
+                await self.producer.publish_json(
+                    "ai-org-dlq", dlq_payload, key=task_msg.task_id
+                )
+            else:
+                result_topic = KafkaTopics.results_topic(task_msg.project_id)
+                await self.producer.publish_model(
+                    result_topic, result, key=task_msg.task_id
+                )
 
             await self._emit_event(
                 project_id=task_msg.project_id,

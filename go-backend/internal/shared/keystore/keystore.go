@@ -18,6 +18,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
@@ -68,18 +72,49 @@ var AgentDefaults = map[string]LLMConfig{
 
 // ── Encryption ────────────────────────────────────────────────────────────────
 
-// masterKey returns the 32-byte AES-256 key from env.
-// Panics on startup if not set — fail fast to prevent unencrypted writes.
+var (
+	cachedMasterKey []byte
+	masterKeyOnce   sync.Once
+	masterKeyErr    error
+)
+
+// masterKey returns the 32-byte AES-256 key.
+// Fetches from AWS Secrets Manager, falling back to ENV for local development.
 func masterKey() ([]byte, error) {
-	hexKey := os.Getenv("KEY_ENCRYPTION_KEY")
-	if hexKey == "" {
-		return nil, errors.New("KEY_ENCRYPTION_KEY env var is not set")
-	}
-	raw, err := hex.DecodeString(hexKey)
-	if err != nil || len(raw) != 32 {
-		return nil, fmt.Errorf("KEY_ENCRYPTION_KEY must be a 64-char hex string (32 bytes): %w", err)
-	}
-	return raw, nil
+	masterKeyOnce.Do(func() {
+		hexKey := os.Getenv("KEY_ENCRYPTION_KEY")
+		// If not in env, attempt AWS Secrets Manager
+		if hexKey == "" {
+			secretName := os.Getenv("AWS_SECRET_NAME")
+			if secretName == "" {
+				secretName = "ai-org/key-encryption-key"
+			}
+
+			cfg, err := config.LoadDefaultConfig(context.TODO())
+			if err == nil {
+				client := secretsmanager.NewFromConfig(cfg)
+				out, err := client.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
+					SecretId: &secretName,
+				})
+				if err == nil && out.SecretString != nil {
+					hexKey = *out.SecretString
+				}
+			}
+		}
+
+		if hexKey == "" {
+			masterKeyErr = errors.New("KEY_ENCRYPTION_KEY not set in environment or AWS Secrets Manager")
+			return
+		}
+
+		raw, err := hex.DecodeString(hexKey)
+		if err != nil || len(raw) != 32 {
+			masterKeyErr = fmt.Errorf("KEY_ENCRYPTION_KEY must be a 64-char hex string (32 bytes): %w", err)
+			return
+		}
+		cachedMasterKey = raw
+	})
+	return cachedMasterKey, masterKeyErr
 }
 
 // Encrypt encrypts plaintext using AES-256-GCM.

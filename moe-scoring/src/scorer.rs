@@ -125,15 +125,19 @@ pub fn should_use_ensemble(top_score: f64, second_score: f64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+    use crate::models::{Expert, ExpertStats};
+
+    // ── Cosine Similarity ────────────────────────────────────────────────
 
     #[test]
-    fn test_cosine_identical() {
+    fn test_cosine_identical_vectors() {
         let v = vec![1.0, 0.0, 0.5, 0.0];
         assert!((cosine_similarity(&v, &v) - 1.0).abs() < 1e-9);
     }
 
     #[test]
-    fn test_cosine_orthogonal() {
+    fn test_cosine_orthogonal_vectors() {
         let a = vec![1.0, 0.0, 0.0, 0.0];
         let b = vec![0.0, 1.0, 0.0, 0.0];
         assert_eq!(cosine_similarity(&a, &b), 0.0);
@@ -147,16 +151,176 @@ mod tests {
     }
 
     #[test]
-    fn test_expert_score_weights_sum() {
+    fn test_cosine_opposite_vectors() {
+        let a = vec![1.0, 0.0];
+        let b = vec![-1.0, 0.0];
+        // Clamped to [0.0, 1.0] so negative similarity becomes 0
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn test_cosine_partial_overlap() {
+        let a = vec![1.0, 1.0, 0.0, 0.0];
+        let b = vec![1.0, 0.0, 0.0, 0.0];
+        let sim = cosine_similarity(&a, &b);
+        // cos(45°) ≈ 0.707
+        assert!((sim - 0.7071).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_cosine_different_lengths_truncated() {
+        let a = vec![1.0, 0.0, 0.5];
+        let b = vec![1.0, 0.0]; // Only 2 dims
+        let sim = cosine_similarity(&a, &b);
+        // Should use min(3,2)=2 dimensions → both are [1,0] → sim=1.0
+        assert!((sim - 1.0).abs() < 1e-9);
+    }
+
+    // ── Scoring Weights ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_expert_score_weights_sum_to_one() {
         assert!(
             (WEIGHT_SIMILARITY + WEIGHT_LOAD + WEIGHT_SUCCESS + WEIGHT_COST - 1.0).abs() < 1e-9
         );
     }
 
     #[test]
-    fn test_ensemble_trigger() {
-        assert!(should_use_ensemble(0.65, 0.60)); // below threshold
+    fn test_perfect_expert_gets_max_score() {
+        let score = compute_expert_score(
+            &vec![1.0, 0.0, 0.0, 0.0],  // task vector
+            &vec![1.0, 0.0, 0.0, 0.0],  // identical expert vector
+            0.0,   // idle
+            1.0,   // 100% success
+            0.01,  // cheapest
+            0.10,  // max cost range
+        );
+        // sim=1.0, load=1.0, success=1.0, cost≈0.9 → high composite
+        assert!(score.composite > 0.9, "Perfect expert should score >0.9, got {}", score.composite);
+    }
+
+    #[test]
+    fn test_overloaded_expert_gets_low_score() {
+        let score = compute_expert_score(
+            &vec![1.0, 0.0, 0.0, 0.0],
+            &vec![1.0, 0.0, 0.0, 0.0],  // Same capability
+            1.0,   // fully loaded
+            1.0,   // good success
+            0.01,
+            0.10,
+        );
+        let idle_score = compute_expert_score(
+            &vec![1.0, 0.0, 0.0, 0.0],
+            &vec![1.0, 0.0, 0.0, 0.0],
+            0.0,   // idle
+            1.0,
+            0.01,
+            0.10,
+        );
+        assert!(score.composite < idle_score.composite,
+            "Overloaded expert should score lower than idle one");
+    }
+
+    // ── Expert Ranking ───────────────────────────────────────────────────
+
+    fn build_test_experts() -> Vec<(String, Expert)> {
+        vec![
+            ("CTO".to_string(), Expert {
+                role: "CTO".to_string(),
+                vector: vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                skills: vec!["architecture".to_string()],
+            }),
+            ("Engineer_Backend".to_string(), Expert {
+                role: "Engineer_Backend".to_string(),
+                vector: vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                skills: vec!["backend".to_string()],
+            }),
+            ("DevOps".to_string(), Expert {
+                role: "DevOps".to_string(),
+                vector: vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                skills: vec!["devops".to_string()],
+            }),
+        ]
+    }
+
+    fn build_test_stats() -> HashMap<String, ExpertStats> {
+        let mut stats = HashMap::new();
+        stats.insert("CTO".to_string(), ExpertStats {
+            load_factor: 0.3, success_rate: 0.95, avg_cost_usd: 0.08,
+        });
+        stats.insert("Engineer_Backend".to_string(), ExpertStats {
+            load_factor: 0.5, success_rate: 0.90, avg_cost_usd: 0.05,
+        });
+        stats.insert("DevOps".to_string(), ExpertStats {
+            load_factor: 0.1, success_rate: 0.98, avg_cost_usd: 0.03,
+        });
+        stats
+    }
+
+    #[test]
+    fn test_rank_experts_returns_sorted() {
+        let experts = build_test_experts();
+        let stats = build_test_stats();
+        let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // architecture
+
+        let rankings = rank_experts(&task_vec, &experts, &stats, false);
+        assert!(!rankings.is_empty());
+        // CTO should be ranked first (perfect vector match for architecture)
+        assert_eq!(rankings[0].role, "CTO");
+    }
+
+    #[test]
+    fn test_rank_experts_excludes_overloaded() {
+        let experts = build_test_experts();
+        let mut stats = build_test_stats();
+        stats.get_mut("CTO").unwrap().load_factor = 1.0; // Saturated
+
+        let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+
+        let rankings = rank_experts(&task_vec, &experts, &stats, true);
+        assert!(rankings.iter().all(|r| r.role != "CTO"),
+            "Overloaded CTO should be excluded");
+    }
+
+    #[test]
+    fn test_rank_experts_includes_overloaded_when_not_excluded() {
+        let experts = build_test_experts();
+        let mut stats = build_test_stats();
+        stats.get_mut("CTO").unwrap().load_factor = 1.0;
+
+        let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+
+        let rankings = rank_experts(&task_vec, &experts, &stats, false);
+        assert!(rankings.iter().any(|r| r.role == "CTO"),
+            "Overloaded CTO should still appear when exclusion is off");
+    }
+
+    // ── Ensemble Decision ────────────────────────────────────────────────
+
+    #[test]
+    fn test_ensemble_trigger_below_threshold() {
+        assert!(should_use_ensemble(0.65, 0.60)); // below ENSEMBLE_THRESHOLD
+    }
+
+    #[test]
+    fn test_ensemble_trigger_close_gap() {
         assert!(should_use_ensemble(0.80, 0.75)); // gap < 0.10
-        assert!(!should_use_ensemble(0.90, 0.75)); // high confidence, big gap
+    }
+
+    #[test]
+    fn test_no_ensemble_high_confidence_big_gap() {
+        assert!(!should_use_ensemble(0.90, 0.75)); // confident, big gap
+    }
+
+    #[test]
+    fn test_ensemble_boundary_exact_threshold() {
+        // At exactly ENSEMBLE_THRESHOLD, top_score < threshold is false
+        assert!(!should_use_ensemble(ENSEMBLE_THRESHOLD, ENSEMBLE_THRESHOLD - 0.15));
+    }
+
+    #[test]
+    fn test_ensemble_boundary_large_gap() {
+        // Gap 0.90-0.75 = 0.15     → clearly >= 0.10 → should NOT trigger
+        assert!(!should_use_ensemble(0.90, 0.75));
     }
 }

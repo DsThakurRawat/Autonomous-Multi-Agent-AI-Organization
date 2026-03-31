@@ -68,7 +68,8 @@ func main() {
 	// Optionally wait for readiness before moving further in production
 	// healthOrch.WaitUntilReady(ctx, 10*time.Second) 
 
-	resultHandler := server.NewResultHandler(pgPool, redisClient, producer)
+	sagaCoord := server.NewSagaCoordinator(pgPool, producer)
+	resultHandler := server.NewResultHandler(pgPool, redisClient, producer, sagaCoord)
 
 	// ── Kafka Consumer (for consuming results) ────────────────────────────
 	resultConsumer, err := kafka.NewConsumerGroup(
@@ -124,7 +125,7 @@ func main() {
 	reflection.Register(grpcServer)
 
 	// ── Lease Monitor (background cleanup) ──────────────────────────────
-	monitor := server.NewLeaseMonitor(pgPool, redisClient)
+	monitor := server.NewLeaseMonitor(pgPool, redisClient, producer)
 	go monitor.Start(ctx, 30*time.Second)
 
 	go func() {

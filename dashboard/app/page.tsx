@@ -24,7 +24,7 @@ export default function LandingPage() {
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-md">
                         <Sparkles size={16} className="text-white" />
                     </div>
-                    <span className="font-bold text-slate-900 tracking-tight text-xl">Proximus-Nova</span>
+                    <span className="font-bold text-slate-900 tracking-tight text-xl">Proximus</span>
                 </div>
                 
                 <nav className="hidden md:flex items-center gap-10 text-sm font-semibold text-slate-600">
@@ -56,7 +56,7 @@ export default function LandingPage() {
 
                     <div className="badge mb-10 text-purple-600 border-purple-100 bg-white/50 backdrop-blur-sm">
                         <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                        AMAZON NOVA HACKATHON LIVE
+                        PROXIMUS PLATFORM LIVE
                     </div>
 
                     <h1 className="text-6xl md:text-[5.5rem] font-extrabold tracking-tight text-slate-900 mb-6 max-w-4xl leading-[1.05]">
@@ -223,7 +223,7 @@ export default function LandingPage() {
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                                 <Sparkles size={16} className="text-white" />
                             </div>
-                            Proximus-Nova
+                            Proximus
                         </div>
                         <div className="text-slate-400 text-sm font-medium">
                             © 2026 Proximus Org. All rights reserved.

@@ -1,0 +1,53 @@
+name: "\U0001F680 Feature Request"
+description: Suggest an idea, enhancement, or new feature for the project.
+title: "feat: [Short Title]"
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a feature! 
+        Before creating a new request, please check if a similar feature has already been requested.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Which component does this feature target?
+      options:
+        - "Dashboard (Next.js / Frontend)"
+        - "Go API Gateway (Backend)"
+        - "Python Agents / Orchestrator"
+        - "MoE Rust Scorer"
+        - "Infrastructure (Docker/K8s/DB)"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem? Please describe.
+      description: A clear and concise description of what the problem is.
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context or screenshots about the feature request here.

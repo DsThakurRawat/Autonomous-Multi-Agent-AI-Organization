@@ -7,10 +7,11 @@ import AgentFeed from '@/components/AgentFeed'
 import DagViewer from '@/components/DagViewer'
 import CostMeter from '@/components/CostMeter'
 import MetricsPanel from '@/components/MetricsPanel'
+import InterventionModal, { InterventionData } from '@/components/InterventionModal'
 import {
     Plus, RefreshCw, Cpu, ChevronRight,
     CheckCircle2, Clock, AlertCircle, Loader2,
-    Braces, Github, Settings, Sparkles, Folder
+    Braces, Github, Settings, Sparkles, Folder, Activity
 } from 'lucide-react'
 import Link from 'next/link'
 import { clsx } from 'clsx'
@@ -175,6 +176,7 @@ export default function DashboardPage() {
     const [tasks, setTasks] = useState<TaskNode[]>([])
     const [selectedProject, setSelectedProject] = useState<Project | null>(null)
     const [showModal, setShowModal] = useState(false)
+    const [interventionData, setInterventionData] = useState<InterventionData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [apiOnline, setApiOnline] = useState(false)
 
@@ -217,6 +219,37 @@ export default function DashboardPage() {
         else setTasks([])
     }, [selectedProject, fetchTasks])
 
+    // ── Live Stream Synchronization ──────────────────────────────────
+    useEffect(() => {
+        if (events.length === 0) return
+        const latestEvent = events[0] // Newest event
+
+        // 1. Instantly animate the DAG Viewer nodes
+        if (['task_start', 'task_complete', 'task_failed'].includes(latestEvent.type)) {
+            const taskId = latestEvent.data?.task_id as string | undefined
+            if (taskId) {
+                const newStatus = latestEvent.type === 'task_start' ? 'running' : 
+                                  latestEvent.type === 'task_complete' ? 'completed' : 'failed'
+                setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t))
+            } else {
+                if (selectedProject) fetchTasks(selectedProject.id)
+            }
+        }
+
+        // 2. Handle Human-in-the-Loop Interventions
+        if (latestEvent.type === 'phase_change' && latestEvent.data?.status === 'pending_approval') {
+            const d = latestEvent.data
+            setInterventionData({
+                projectId: (d.project_id || latestEvent.project_id) as string,
+                taskId: (d.task_id || '') as string,
+                agentRole: (d.agent_role || latestEvent.agent) as string,
+                actionType: d.action_type as string,
+                costEstimate: d.cost_estimate as number,
+                details: d.details as string
+            })
+        }
+    }, [events, selectedProject, fetchTasks])
+
     // ── Create project ──────────────────────────────────────────────
     const handleCreate = async (idea: string, budget: number) => {
         const project = await api.createProject({ idea, budget_usd: budget, name: idea.slice(0, 60) })
@@ -237,7 +270,7 @@ export default function DashboardPage() {
                         <Sparkles size={16} className="text-white" />
                     </div>
                     <div>
-                        <h1 className="text-sm font-semibold tracking-tight text-white">Proximus-Nova</h1>
+                        <h1 className="text-sm font-semibold tracking-tight text-white">Proximus</h1>
                         <p className="text-[10px] text-emerald-400 font-medium">Live Orchestrator</p>
                     </div>
                 </div>
@@ -265,12 +298,24 @@ export default function DashboardPage() {
                         <Settings size={16} />
                     </Link>
 
+                    <Link href="/observability" className="p-2 text-zinc-400 hover:text-white transition-colors" title="System Health">
+                        <Activity size={16} />
+                    </Link>
+
                     <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-sm font-medium transition-colors ml-2">
                         <Plus size={16} />
                         New Project
                     </button>
                 </div>
             </header>
+
+            {/* Offline Banner */}
+            {(wsStatus === 'disconnected' || wsStatus === 'error' || wsStatus === 'connecting') && activeProject && (
+                <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 flex items-center justify-center gap-2 text-amber-500 text-xs font-medium w-full z-40 relative">
+                    <Loader2 size={12} className="animate-spin flex-shrink-0" />
+                    <span>{wsStatus === 'connecting' ? 'Connecting to orchestrator...' : 'Connection lost. Trying to reconnect...'}</span>
+                </div>
+            )}
 
             {/* ── Body ───────────────────────────────────────────────── */}
             <div className="flex flex-1 overflow-hidden relative">
@@ -346,11 +391,18 @@ export default function DashboardPage() {
                 </main>
             </div>
 
-            {/* Modal */}
+            {/* Modals */}
             {showModal && (
                 <NewProjectModal
                     onClose={() => setShowModal(false)}
                     onCreate={handleCreate}
+                />
+            )}
+            
+            {interventionData && (
+                <InterventionModal
+                    data={interventionData}
+                    onClose={() => setInterventionData(null)}
                 />
             )}
         </div>

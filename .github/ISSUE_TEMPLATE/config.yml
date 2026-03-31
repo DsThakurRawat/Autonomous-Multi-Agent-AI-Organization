@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Ask a question or get help
+    url: https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/discussions
+    about: Please ask and answer questions here rather than creating an issue.
+  - name: 🐛 Report a security vulnerability
+    url: https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/security/advisories/new
+    about: Please securely report vulnerability rather than creating a public issue.

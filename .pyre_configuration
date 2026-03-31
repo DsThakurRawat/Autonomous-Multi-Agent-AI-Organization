@@ -5,7 +5,7 @@
   ],
   "search_path": [
     ".",
-    "/Users/arshverma/GitHub/Autonomous-Multi-Agent-AI-Organization/.venv/lib/python3.12/site-packages"
+    "venv/lib/python3.12/site-packages"
   ],
   "exclude": [
     "dashboard",

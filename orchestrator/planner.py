@@ -120,7 +120,10 @@ class OrchestratorEngine:
 
     # -- Project Bootstrap ------------------------------------------
     async def start_project(
-        self, business_idea: str, user_constraints: dict[str, Any] | None = None
+        self,
+        business_idea: str,
+        user_constraints: dict[str, Any] | None = None,
+        budget_usd: float | None = None,
     ) -> str:
         """
         Entry point: Given a business idea, spin up the entire AI company.
@@ -135,7 +138,8 @@ class OrchestratorEngine:
         # Initialize shared memory systems
         memory = ProjectMemory(project_id=project_id)
         decision_log = DecisionLog(project_id=project_id)
-        cost_ledger = CostLedger(project_id=project_id, budget_usd=self.budget_usd)
+        project_budget = budget_usd or self.budget_usd
+        cost_ledger = CostLedger(project_id=project_id, budget_usd=project_budget)
 
         # Hook budget alerts to real-time events
         async def budget_callback(total: float, budget: float):
@@ -157,7 +161,7 @@ class OrchestratorEngine:
 
         memory.project_config = {
             "business_idea": business_idea,
-            "budget_usd": self.budget_usd,
+            "budget_usd": project_budget,
             "cloud_provider": "AWS",
             "started_at": datetime.now(UTC).isoformat(),
             **(user_constraints or {}),

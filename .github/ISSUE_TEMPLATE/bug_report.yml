@@ -1,0 +1,83 @@
+name: "\U0001F41B Bug Report"
+description: Create a bug report to help us improve the Autonomous Multi-Agent AI Organization
+title: "bug: [Short Title]"
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! 
+        Before creating a new issue, please ensure a similar issue does not already exist.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I have searched for duplicate or closed bugs and could not find anything similar.
+          required: true
+        - label: I have read the `CONTRIBUTING.md` guidelines.
+          required: true
+        - label: I am using the latest version of the repository.
+          required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Which component is affected?
+      description: Select the primary module where the bug is occurring.
+      options:
+        - "Dashboard (Next.js / Frontend)"
+        - "Go API Gateway (Backend)"
+        - "Python Agents / Orchestrator"
+        - "MoE Rust Scorer"
+        - "Infrastructure (Docker/K8s/DB)"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Included Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Enter the description here...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps To Reproduce
+      description: What steps did you take to encounter the bug?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs or Screenshots
+      description: Paste any relevant logs, tracebacks, or attach screenshots. (Use code blocks for logs)
+      render: shell
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment Info
+      description: OS version, Node/Python/Go version, Docker version, etc.
+      placeholder: "OS: Ubuntu 22.04, Python 3.11, Docker v24"
+    validations:
+      required: true

@@ -25,7 +25,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (process.env.NODE_ENV !== 'production') {
           if (credentials?.username === "admin" && credentials?.password === "admin") {
-             return { id: "1", name: "Demo User", email: "demo@proximus-nova.ai", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky" };
+             return { id: "1", name: "Demo User", email: "demo@proximus.ai", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky" };
           }
         }
         return null;

@@ -18,13 +18,15 @@ type ResultHandler struct {
 	db       *db.Pool
 	redis    *db.Redis
 	producer *kafka.Producer
+	saga     *SagaCoordinator
 }
 
-func NewResultHandler(pool *db.Pool, rds *db.Redis, prod *kafka.Producer) *ResultHandler {
+func NewResultHandler(pool *db.Pool, rds *db.Redis, prod *kafka.Producer, saga *SagaCoordinator) *ResultHandler {
 	return &ResultHandler{
 		db:       pool,
 		redis:    rds,
 		producer: prod,
+		saga:     saga,
 	}
 }
 
@@ -53,6 +55,9 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 		log.Error("failed to unmarshal result message", zap.Error(err), zap.ByteString("payload", msg.Value))
 		return err
 	}
+
+	// Register/initialize saga for this project if not present
+	h.saga.RegisterSaga(res.ProjectID, res.OutputData)
 
 	log.Info("processing result", 
 		zap.String("project_id", res.ProjectID), 
@@ -103,7 +108,7 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 	}
 
 	// 2. Logic to "Advance the DAG"
-	// For this hackathon version, we hardcode the next step after CEO planning.
+	// We hardcode the next step after CEO planning.
 	// In the future, this would fetch the DAG and see what's ready.
 	if res.AgentRole == "CEO" && status == "done" {
 		return h.dispatchNextAfterCEO(ctx, res)
@@ -119,8 +124,16 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 		return nil
 	}
 
+	// Advance the saga locally
+	if status == "done" {
+		h.saga.Advance(res.ProjectID, res.AgentRole)
+	}
+
 	if status == "failed" {
-		_, _ = h.db.Exec(ctx, `UPDATE projects SET status = 'failed' WHERE id = $1`, res.ProjectID)
+		log.Warn("step failed, triggering saga compensation", zap.String("agent", res.AgentRole))
+		_ = h.saga.HandleFailure(ctx, res.ProjectID, res.AgentRole)
+		_, _ = h.db.Exec(ctx, `UPDATE projects SET status = 'recovering' WHERE id = $1`, res.ProjectID)
+		return nil
 	}
 
 	return nil
