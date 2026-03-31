@@ -5,7 +5,7 @@ Finance agent reads/writes here; all agents can query budget availability.
 """
 
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import  datetime
 from typing import Any
 
 import structlog
@@ -27,7 +27,7 @@ class CostEntry:
         self.amount_usd = amount_usd
         self.agent_role = agent_role
         self.metadata = metadata or {}
-        self.timestamp = datetime.now(UTC)
+        self.timestamp = datetime.now(timezone.utc)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -114,7 +114,7 @@ class CostLedger:
         if not self._entries:
             return 0.0
         elapsed_hours = (
-            datetime.now(UTC) - self._entries[0].timestamp
+            datetime.now(timezone.utc) - self._entries[0].timestamp
         ).total_seconds() / 3600
 
         # Don't linearly project costs if the project has run for less than 1 hour, to avoid extreme edge cases (Issue #17)

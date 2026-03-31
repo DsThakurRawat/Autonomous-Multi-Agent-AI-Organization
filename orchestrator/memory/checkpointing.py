@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import  datetime
 import json
 import os
 from typing import Any
@@ -109,7 +109,7 @@ class CheckpointManager:
         msg = (
             f"Checkpoint: {task_name}\n"
             f"Agent: {agent_role}\n"
-            f"Timestamp: {datetime.now(UTC).isoformat()}\n"
+            f"Timestamp: {datetime.now(timezone.utc).isoformat()}\n"
             f"Project: {self.project_id}\n"
             f"Status: snapshot_verified"
         )

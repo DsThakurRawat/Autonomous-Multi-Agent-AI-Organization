@@ -4,7 +4,7 @@ Redis-backed short-term session memory + DynamoDB long-term storage.
 Maintains global shared context accessible by all agents.
 """
 
-from datetime import UTC, datetime
+from datetime import  datetime
 import json
 from typing import Any
 
@@ -79,7 +79,7 @@ class ProjectMemory:
     async def set_agent_state(self, agent_id: str, state: dict[str, Any]):
         self.agent_states[agent_id] = {
             **state,
-            "updated_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         await self.set(f"agent:{agent_id}", self.agent_states[agent_id])
 
@@ -97,7 +97,7 @@ class ProjectMemory:
                 "node_type": node_type,  # Decision, File, Error, Architecture
                 "node_id": node_id,
                 "properties": properties,
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -118,7 +118,7 @@ class ProjectMemory:
                 "target": target_id,
                 "relationship": relationship,
                 "properties": properties,
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
             }
         )
 

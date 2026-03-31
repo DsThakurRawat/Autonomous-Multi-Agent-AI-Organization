@@ -5,7 +5,7 @@ Supports parallel execution, dependency resolution, and real-time status.
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum, StrEnum
 from typing import Any
 import uuid
@@ -40,6 +40,9 @@ class TaskPriority(int, Enum):
 class Task(BaseModel):
     """Represents a single unit of work in the task graph."""
 
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: str
@@ -63,40 +66,63 @@ class Task(BaseModel):
     @property
     def duration_seconds(self) -> float | None:
         if self.started_at and self.completed_at:
-            return (self.completed_at - self.started_at).total_seconds()
+            from typing import cast
+            from datetime import datetime
+            st = cast(datetime, self.started_at)
+            ct = cast(datetime, self.completed_at)
+            delta = ct - st
+            return delta.total_seconds()
         return None
 
     def can_retry(self) -> bool:
         return self.retry_count < self.max_retries
 
-    def mark_started(self):
+    def record_start(self):
         self.status = TaskStatus.IN_PROGRESS
-        self.started_at = datetime.now(UTC)
+        self.started_at = datetime.now(timezone.utc)
 
-    def mark_completed(self, output: dict[str, Any]):
+    def record_complete(self, output: Any = None):
         self.status = TaskStatus.COMPLETED
-        self.completed_at = datetime.now(UTC)
+        self.completed_at = datetime.now(timezone.utc)
         self.output_data = output
 
-    def mark_failed(self, error: str):
+    def record_fail(self, error: str):
         self.status = TaskStatus.FAILED
+        self.completed_at = datetime.now(timezone.utc)
         self.error_message = error
-        self.completed_at = datetime.now(UTC)
+        self.retry_count += 1
 
+    def transition_to(self, new_status: TaskStatus):
+        self.status = new_status
+        if new_status == TaskStatus.IN_PROGRESS and not self.started_at:
+            self.started_at = datetime.now(timezone.utc)
+        elif new_status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+            self.completed_at = datetime.now(timezone.utc)
 
-class TaskGraph:
-    """
-    DAG-based task orchestration engine.
-    Handles dependency resolution, parallel execution, and real-time status.
-    """
+# -- Task Graph ----------------------------------------------------
 
-    def __init__(self, project_id: str):
-        self.project_id = project_id
-        self.graph = nx.DiGraph()
-        self.tasks: dict[str, Task] = {}
+class TaskGraph(BaseModel):
+    """A directed acyclic graph (DAG) of tasks representing a project plan."""
+    project_id: str
+    tasks: dict[str, Task] = Field(default_factory=dict)
+    graph: Any = Field(default_factory=nx.DiGraph, exclude=True)
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
         self._lock = asyncio.Lock()
         self._completion_event = asyncio.Event()
-        logger.info("TaskGraph initialized", project_id=project_id)
+        # Rebuild graph from tasks if loading from serialized state
+        if not self.graph:
+            self.graph = nx.DiGraph()
+        for task in self.tasks.values():
+            if task.id not in self.graph:
+                self.graph.add_node(task.id, task=task)
+            for dep_id in task.dependencies:
+                self.graph.add_edge(dep_id, task.id)
+        logger.info("TaskGraph initialized", project_id=self.project_id)
 
     def add_task(self, task: Task) -> str:
         """Add a task node to the DAG."""
@@ -106,19 +132,24 @@ class TaskGraph:
         # Add dependency edges
         for dep_id in task.dependencies:
             if dep_id not in self.tasks:
-                raise ValueError(f"Dependency task '{dep_id}' not found in graph")
-            self.graph.add_edge(dep_id, task.id)  # dep -> task
+                # Ghost dependency handling
+                pass
+            else:
+                self.graph.add_edge(dep_id, task.id)
 
         # Validate no cycles
         if not nx.is_directed_acyclic_graph(self.graph):
             self.graph.remove_node(task.id)
-            del self.tasks[task.id]
+            self.tasks.pop(task.id, None)
             raise ValueError(
                 f"Adding task '{task.name}' creates a cycle in the task graph"
             )
 
         logger.info("Task added to graph", task_id=task.id, task_name=task.name)
         return task.id
+
+    def get_task(self, task_id: str) -> Task | None:
+        return self.tasks.get(task_id)
 
     def get_ready_tasks(self) -> list[Task]:
         """Return tasks whose all dependencies are completed and are PENDING."""
@@ -176,18 +207,19 @@ class TaskGraph:
             return []
 
     def get_status_summary(self) -> dict[str, Any]:
-        counts = dict.fromkeys(TaskStatus, 0)
+        counts: dict[str, int] = {str(s): 0 for s in TaskStatus}
         for task in self.tasks.values():
-            counts[task.status] += 1
+            status_key = str(task.status)
+            counts[status_key] += 1
         total = len(self.tasks)
-        completed = counts[TaskStatus.COMPLETED]
+        completed = counts.get(str(TaskStatus.COMPLETED), 0)
         return {
             "total": total,
             "completed": completed,
-            "failed": counts[TaskStatus.FAILED],
-            "in_progress": counts[TaskStatus.IN_PROGRESS],
-            "pending": counts[TaskStatus.PENDING],
-            "progress_pct": round((completed / total) * 100, 1) if total > 0 else 0,
+            "failed": counts.get(str(TaskStatus.FAILED), 0),
+            "in_progress": counts.get(str(TaskStatus.IN_PROGRESS), 0),
+            "pending": counts.get(str(TaskStatus.PENDING), 0),
+            "progress_pct": float(int(completed / total * 1000) / 10.0) if total > 0 else 0.0,
         }
 
     def to_dict(self) -> dict[str, Any]:

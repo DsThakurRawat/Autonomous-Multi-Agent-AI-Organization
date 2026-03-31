@@ -4,7 +4,7 @@ Standardized health check responses for Kubernetes liveness/readiness probes
 and external monitoring systems.
 """
 
-from datetime import UTC, datetime
+from datetime import  datetime
 import os
 import time
 from typing import Any
@@ -147,7 +147,7 @@ def build_health_response(
         "status": overall,
         "service": service_name,
         "version": version,
-        "timestamp": datetime.now(UTC).isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "uptime_seconds": uptime_seconds,
         "components": {name: c.to_dict() for name, c in components.items()},
         **(extra_info or {}),
@@ -162,7 +162,7 @@ def get_readiness_response(ready: bool, reason: str = "") -> dict[str, Any]:
     return {
         "ready": ready,
         "reason": reason,
-        "timestamp": datetime.now(UTC).isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
 
 
@@ -174,5 +174,5 @@ def get_liveness_response() -> dict[str, Any]:
     return {
         "alive": True,
         "pid": os.getpid(),
-        "timestamp": datetime.now(UTC).isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }

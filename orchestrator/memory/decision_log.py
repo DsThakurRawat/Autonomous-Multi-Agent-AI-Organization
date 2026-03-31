@@ -4,7 +4,7 @@ Immutable audit trail of every agent decision.
 Used for explainability, rollback, and continuous improvement.
 """
 
-from datetime import UTC, datetime
+from datetime import  datetime
 from typing import Any
 import uuid
 
@@ -38,7 +38,7 @@ class DecisionRecord:
         self.confidence = confidence
         self.alternatives_considered = alternatives_considered or []
         self.tags = tags or []
-        self.timestamp = datetime.now(UTC)
+        self.timestamp = datetime.now(timezone.utc)
         self.superseded_by: str | None = None  # ID of newer decision
 
     def to_dict(self) -> dict[str, Any]:

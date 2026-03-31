@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import UTC, datetime
+from datetime import  datetime
 from typing import Any
 import uuid
 
@@ -166,5 +166,5 @@ class KafkaEventPublisher:
             agent_role=agent_role,
             event_type=event_type,
             data=data,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )

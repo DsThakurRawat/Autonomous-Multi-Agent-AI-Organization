@@ -5,7 +5,11 @@
   ],
   "search_path": [
     ".",
+<<<<<<< Updated upstream
     "venv/lib/python3.12/site-packages"
+=======
+    ".venv/lib/python3.12/site-packages"
+>>>>>>> Stashed changes
   ],
   "exclude": [
     "dashboard",

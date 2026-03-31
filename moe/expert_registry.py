@@ -5,7 +5,7 @@ for all registered agent experts.
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import  datetime
 from typing import Any
 
 import structlog
@@ -165,7 +165,7 @@ class ExpertStats:
         async with self._lock:
             self.current_load += 1
             self.total_tasks += 1
-            self.last_active = datetime.now(UTC)
+            self.last_active = datetime.now(timezone.utc)
 
     async def record_complete(self, latency_ms: float, cost_usd: float, tokens: int):
         async with self._lock:

@@ -4,7 +4,7 @@ Pydantic models for all message types flowing through the Kafka bus.
 Every message carries a trace_id for distributed tracing correlation.
 """
 
-from datetime import UTC, datetime
+from datetime import  datetime
 from enum import StrEnum
 from typing import Any
 import uuid
@@ -38,7 +38,7 @@ class TaskMessage(BaseModel):
     retry_count: int = 0
     trace_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     span_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_kafka_payload(self) -> bytes:
         return self.model_dump_json().encode("utf-8")
@@ -68,7 +68,7 @@ class ResultMessage(BaseModel):
     model_used: str | None = None
     trace_id: str = ""
     span_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    completed_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    completed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_kafka_payload(self) -> bytes:
         return self.model_dump_json().encode("utf-8")
@@ -92,7 +92,7 @@ class EventMessage(BaseModel):
     data: dict[str, Any] = {}
     level: str = "info"  # "info" | "success" | "warning" | "error"
     trace_id: str = ""
-    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_kafka_payload(self) -> bytes:
         return self.model_dump_json().encode("utf-8")
@@ -130,7 +130,7 @@ class ErrorMessage(BaseModel):
     retry_count: int = 0
     is_fatal: bool = False
     trace_id: str = ""
-    occurred_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    occurred_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_kafka_payload(self) -> bytes:
         return self.model_dump_json().encode("utf-8")
@@ -152,7 +152,7 @@ class MetricMessage(BaseModel):
     value: float
     unit: str  # "tokens" | "ms" | "usd" | "count"
     labels: dict[str, str] = {}
-    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_kafka_payload(self) -> bytes:
         return self.model_dump_json().encode("utf-8")
@@ -176,7 +176,7 @@ class MoERouteRequest(BaseModel):
     priority: MessagePriority = MessagePriority.MEDIUM
     ensemble_mode: bool = False  # Request multiple experts
     trace_id: str = ""
-    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_kafka_payload(self) -> bytes:
         return self.model_dump_json().encode("utf-8")
@@ -192,7 +192,7 @@ class MoERouteDecision(BaseModel):
     routing_reason: str  # Human-readable explanation
     ensemble_mode: bool = False
     confidence: float  # 0.0 - 1.0
-    routed_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    routed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_kafka_payload(self) -> bytes:
         return self.model_dump_json().encode("utf-8")

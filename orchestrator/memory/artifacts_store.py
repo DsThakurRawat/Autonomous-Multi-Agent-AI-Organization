@@ -4,7 +4,7 @@ Manages all generated files, URLs, and deliverables produced by the system.
 Backed by local filesystem (dev) and S3 (production).
 """
 
-from datetime import UTC, datetime
+from datetime import  datetime
 import json
 import os
 from typing import Any
@@ -24,14 +24,14 @@ class Artifact:
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
     ):
-        self.id = f"{artifact_type}_{name}_{int(datetime.now(UTC).timestamp())}"
+        self.id = f"{artifact_type}_{name}_{int(datetime.now(timezone.utc).timestamp())}"
         self.artifact_type = artifact_type
         self.name = name
         self.content = content
         self.agent_role = agent_role
         self.tags = tags or []
         self.metadata = metadata or {}
-        self.created_at = datetime.now(UTC)
+        self.created_at = datetime.now(timezone.utc)
         self.s3_uri: str | None = None
         self.local_path: str | None = None
 
