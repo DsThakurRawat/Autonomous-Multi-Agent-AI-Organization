@@ -397,6 +397,21 @@ make logs-agents
 
 ---
 
+## Contributing
+
+We welcome contributions from the community! Whether you're fixing a bug, adding a feature, or improving documentation, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on our PR workflow and coding standards.
+
+---
+
+## Branding & Identity
+
+**Proximus** is the official identity of the Autonomous Multi-Agent AI Organization. When contributing:
+
+- Use **Proximus** when referring to the platform as a whole.
+- Maintain the specialized agent roles (CEO, CTO, etc.) as the core organizational units.
+
+---
+
 ## License
 
 MIT — see `LICENSE` for details.

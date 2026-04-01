@@ -1,4 +1,4 @@
-# Contributing to Autonomous Multi-Agent AI Organization
+# Contributing to Proximus — Autonomous Multi-Agent AI Organization
 
 ## Branch Naming Convention
 
@@ -70,20 +70,26 @@ lang(rust): add fast cosine similarity service
 
 ---
 
-## Local Setup
+## Developer PR Workflow
 
-See [SETUP.md](./SETUP.md) for cross-platform installation instructions.
+To maintain a clean and reliable history, we follow a strict Pull Request (PR) workflow:
+
+1. **Create Feature Branch**: Use the standard `type/description` naming.
+2. **Commit with Scope**: Use conventional commits (e.g., `feat(agents): ...`).
+3. **Raise PR**: Push your branch to GitHub and open a Pull Request against `main`.
+4. **Pass Checks**: Ensure CI/CD passes for Go, Python, and Rust.
+5. **Merge**: Once approved, merge via PR. **Do not commit directly to `main`.**
 
 ---
 
-## Tech Stack (No Restrictions)
+## Tech Stack (Recommended Proficiencies)
 
-This project uses the best tool for each job:
+Proximus is a polyglot system designed for performance and scalability:
 
-- **Python** — Orchestrator, Agents, API
-- **TypeScript / Next.js** — Dashboard
-- **Rust** — High-performance services (future: fast MoE scoring, Kafka consumer)
-- **Docker** — Cross-platform packaging
-- **Terraform** — Infrastructure as Code
-- **Kafka** — Distributed messaging
-- **PostgreSQL + Redis** — Persistence and caching
+- **Go 1.24.0** — API Gateway, Orchestrator, health monitoring, and system-level microservices.
+- **Python 3.12** — AI Agents (Amazon Bedrock/Nova), TUI, and observability integrations.
+- **Rust** — High-performance scoring (MoE) and security-critical services (AST validation).
+- **TypeScript / Next.js 14** — Real-time analytics dashboard and React Flow visualization.
+- **Apache Kafka** — Main event bus for agent-to-orchestrator communication.
+- **PostgreSQL 15 & Redis 7** — Structured data persistence and low-latency caching/PubSub.
+- **Docker & Terraform** — Containerization and Infrastructure as Code.
