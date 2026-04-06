@@ -9,6 +9,7 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/kafka"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/otel"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -102,7 +103,7 @@ func (sc *SagaCoordinator) HandleFailure(ctx context.Context, projectID string, 
 		},
 	}
 
-	_, _, err := sc.producer.PublishJSON("ai-org-tasks", projectID, taskPayload)
+	_, _, err := sc.producer.PublishJSON("ai-org-tasks", projectID, taskPayload, otel.InjectTracing(ctx))
 	return err
 }
 

@@ -15,13 +15,17 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/o
 FROM alpine:latest
 
 # Install runtime dependencies for health checks and HTTPS
-RUN apk add --no-cache ca-certificates wget
+RUN apk add --no-cache ca-certificates wget \
+    && addgroup -S aiorg && adduser -S aiorg -G aiorg
 
 # Copy the static binary
-COPY --from=builder /go/bin/orchestrator /orchestrator
+COPY --from=builder --chown=aiorg:aiorg /go/bin/orchestrator /orchestrator
 
 EXPOSE 9090
 EXPOSE 9091
+
+# Non-root user (security best practice)
+USER aiorg
 
 ENTRYPOINT ["/orchestrator"]
 

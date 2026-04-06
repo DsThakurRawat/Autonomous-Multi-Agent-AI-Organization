@@ -12,6 +12,7 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/kafka"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/keystore"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/otel"
 	pb "github.com/DsThakurRawat/autonomous-org/go-backend/proto/gen/orchestrator"
 )
 
@@ -112,7 +113,7 @@ func (s *OrchestratorServer) CreateProject(ctx context.Context, req *pb.CreatePr
 		},
 	}
 
-	_, _, err = s.producer.PublishJSON("ai-org-tasks", projectID, taskPayload)
+	_, _, err = s.producer.PublishJSON("ai-org-tasks", projectID, taskPayload, otel.InjectTracing(ctx))
 	if err != nil {
 		log.Error("failed to publish task to kafka", zap.Error(err))
 		return nil, err
@@ -167,7 +168,7 @@ func (s *OrchestratorServer) CancelProject(ctx context.Context, req *pb.CancelPr
 		"project_id": req.GetProjectId(),
 		"reason":     req.GetReason(),
 	}
-	_, _, _ = s.producer.PublishJSON("ai-org-events", req.GetProjectId(), cancelEvent)
+	_, _, _ = s.producer.PublishJSON("ai-org-events", req.GetProjectId(), cancelEvent, otel.InjectTracing(ctx))
 
 	return &pb.StatusResponse{Success: true, Message: "Project cancelled"}, nil
 }

@@ -21,12 +21,17 @@ from typing import Any, cast
 
 import structlog
 
+from opentelemetry import propagate, trace
+from opentelemetry.trace import Status, StatusCode
+
 from agents.model_registry import get_default
 from agents.roles import AgentRole
 from messaging.kafka_client import KafkaConsumerClient, KafkaProducerClient
 from messaging.schemas import EventMessage, ResultMessage, TaskMessage
 from messaging.topics import KafkaTopics
 from utils.logging_config import setup_logging
+
+tracer = trace.get_tracer(__name__)
 
 logger = structlog.get_logger(__name__)
 
@@ -316,7 +321,26 @@ class AgentMicroservice:
                 trace_id=task_msg.trace_id,
             )
 
-            await self._process_task(task_msg)
+            # Extract Trace Context from Kafka headers for multi-hop propagation
+            headers = raw_msg.get("_headers", {})
+            context = propagate.extract(headers)
+
+            with tracer.start_as_current_span(
+                f"agent.{self.role}.process_task", 
+                context=context,
+                attributes={
+                    "agent.role": self.role,
+                    "task.id": task_msg.task_id,
+                    "project.id": task_msg.project_id
+                }
+            ) as span:
+                try:
+                    await self._process_task(task_msg, headers=headers)
+                    span.set_status(Status(StatusCode.OK))
+                except Exception as ex:
+                    span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(ex)
+                    raise
 
         logger.info(
             "Consumer loop exited",
@@ -325,8 +349,12 @@ class AgentMicroservice:
             failed=self._tasks_failed,
         )
 
-    async def _process_task(self, task_msg: TaskMessage):
+    async def _process_task(self, task_msg: TaskMessage, headers: dict | None = None):
         """Execute one task and publish the result."""
+        # Inject current context into headers for downstream publishing
+        tracing_headers = {}
+        propagate.inject(tracing_headers)
+        
         start_ms = time.time() * 1000
 
         # -- Resolve LLM client per-task from Kafka payload ----------------
@@ -370,6 +398,7 @@ class AgentMicroservice:
             },
             level="info",
             trace_id=task_msg.trace_id,
+            headers=headers,
         )
 
         try:
@@ -425,7 +454,7 @@ class AgentMicroservice:
                 raise RuntimeError("Producer not initialized") from None
 
             result_topic = KafkaTopics.results_topic(task_msg.project_id)
-            await producer.publish_model(result_topic, result, key=task_msg.task_id)
+            await producer.publish_model(result_topic, result, key=task_msg.task_id, headers=tracing_headers)
 
             # Emit completion event
             await self._emit_event(
@@ -435,6 +464,7 @@ class AgentMicroservice:
                 data={"task_id": task_msg.task_id, "duration_ms": duration_ms},
                 level="success",
                 trace_id=task_msg.trace_id,
+                headers=headers,
             )
 
             logger.info(
@@ -487,7 +517,7 @@ class AgentMicroservice:
             else:
                 result_topic = KafkaTopics.results_topic(task_msg.project_id)
                 await self.producer.publish_model(
-                    result_topic, result, key=task_msg.task_id
+                    result_topic, result, key=task_msg.task_id, headers=tracing_headers
                 )
 
             await self._emit_event(
@@ -497,6 +527,7 @@ class AgentMicroservice:
                 data={"task_id": task_msg.task_id, "error": err_str},
                 level="error",
                 trace_id=task_msg.trace_id,
+                headers=headers,
             )
 
     async def _emit_error_event(
@@ -506,6 +537,7 @@ class AgentMicroservice:
         error: str,
         data: dict[str, Any] | None = None,
         trace_id: str = "",
+        headers: dict | None = None,
     ):
         """Standardized error event emitter for parsing/system failures."""
         await self._emit_event(
@@ -515,6 +547,7 @@ class AgentMicroservice:
             data={"error": error, **(data or {})},
             level="error",
             trace_id=trace_id,
+            headers=headers,
         )
 
     async def _emit_event(
@@ -525,8 +558,13 @@ class AgentMicroservice:
         data: dict[str, Any] | None = None,
         level: str = "info",
         trace_id: str = "",
+        headers: dict | None = None,
     ):
         """Publish an EventMessage to the project's event topic."""
+        # Use provided headers or inject new tracing context
+        final_headers = headers.copy() if headers else {}
+        propagate.inject(final_headers)
+
         try:
             event = EventMessage(
                 event_type=event_type,
@@ -540,7 +578,7 @@ class AgentMicroservice:
             topic = KafkaTopics.events_topic(project_id)
             producer = self.producer
             if producer is not None:
-                await producer.publish_model(topic, event, key=event_type)
+                await producer.publish_model(topic, event, key=event_type, headers=final_headers)
         except Exception as e:
             logger.warning("Failed to emit event", error=str(e))
 

@@ -172,8 +172,8 @@ pub fn should_use_ensemble(top_score: f64, second_score: f64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use crate::models::{Expert, ExpertStats, Strategy};
+    use std::collections::HashMap;
 
     // ── Cosine Similarity ────────────────────────────────────────────────
 
@@ -232,15 +232,19 @@ mod tests {
             p95_latency_ms: 50.0,
         };
         let score = compute_expert_score(
-            &vec![1.0, 0.0, 0.0, 0.0],  // task vector
-            &vec![1.0, 0.0, 0.0, 0.0],  // identical expert vector
+            &vec![1.0, 0.0, 0.0, 0.0], // task vector
+            &vec![1.0, 0.0, 0.0, 0.0], // identical expert vector
             &stat,
             0.10,  // max cost range
             500.0, // max latency range
             Strategy::Balanced,
         );
         // sim=1.0, load=1.0, success=1.0, cost≈0.9, latency≈0.9 → high composite
-        assert!(score.composite > 0.9, "Perfect expert should score >0.9, got {}", score.composite);
+        assert!(
+            score.composite > 0.9,
+            "Perfect expert should score >0.9, got {}",
+            score.composite
+        );
     }
 
     #[test]
@@ -257,7 +261,7 @@ mod tests {
             avg_cost_usd: 0.01,
             p95_latency_ms: 100.0,
         };
-        
+
         let score_loaded = compute_expert_score(
             &vec![1.0, 0.0, 0.0, 0.0],
             &vec![1.0, 0.0, 0.0, 0.0],
@@ -274,43 +278,72 @@ mod tests {
             500.0,
             Strategy::Balanced,
         );
-        assert!(score_loaded.composite < score_idle.composite,
-            "Overloaded expert should score lower than idle one");
+        assert!(
+            score_loaded.composite < score_idle.composite,
+            "Overloaded expert should score lower than idle one"
+        );
     }
 
     // ── Expert Ranking ───────────────────────────────────────────────────
 
     fn build_test_experts() -> Vec<(String, Expert)> {
         vec![
-            ("CTO".to_string(), Expert {
-                role: "CTO".to_string(),
-                vector: vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                skills: vec!["architecture".to_string()],
-            }),
-            ("Engineer_Backend".to_string(), Expert {
-                role: "Engineer_Backend".to_string(),
-                vector: vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                skills: vec!["backend".to_string()],
-            }),
-            ("DevOps".to_string(), Expert {
-                role: "DevOps".to_string(),
-                vector: vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                skills: vec!["devops".to_string()],
-            }),
+            (
+                "CTO".to_string(),
+                Expert {
+                    role: "CTO".to_string(),
+                    vector: vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    skills: vec!["architecture".to_string()],
+                },
+            ),
+            (
+                "Engineer_Backend".to_string(),
+                Expert {
+                    role: "Engineer_Backend".to_string(),
+                    vector: vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    skills: vec!["backend".to_string()],
+                },
+            ),
+            (
+                "DevOps".to_string(),
+                Expert {
+                    role: "DevOps".to_string(),
+                    vector: vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                    skills: vec!["devops".to_string()],
+                },
+            ),
         ]
     }
 
     fn build_test_stats() -> HashMap<String, ExpertStats> {
         let mut stats = HashMap::new();
-        stats.insert("CTO".to_string(), ExpertStats {
-            load_factor: 0.3, success_rate: 0.95, avg_cost_usd: 0.08, p95_latency_ms: 300.0,
-        });
-        stats.insert("Engineer_Backend".to_string(), ExpertStats {
-            load_factor: 0.5, success_rate: 0.90, avg_cost_usd: 0.05, p95_latency_ms: 200.0,
-        });
-        stats.insert("DevOps".to_string(), ExpertStats {
-            load_factor: 0.1, success_rate: 0.98, avg_cost_usd: 0.03, p95_latency_ms: 100.0,
-        });
+        stats.insert(
+            "CTO".to_string(),
+            ExpertStats {
+                load_factor: 0.3,
+                success_rate: 0.95,
+                avg_cost_usd: 0.08,
+                p95_latency_ms: 300.0,
+            },
+        );
+        stats.insert(
+            "Engineer_Backend".to_string(),
+            ExpertStats {
+                load_factor: 0.5,
+                success_rate: 0.90,
+                avg_cost_usd: 0.05,
+                p95_latency_ms: 200.0,
+            },
+        );
+        stats.insert(
+            "DevOps".to_string(),
+            ExpertStats {
+                load_factor: 0.1,
+                success_rate: 0.98,
+                avg_cost_usd: 0.03,
+                p95_latency_ms: 100.0,
+            },
+        );
         stats
     }
 
@@ -335,8 +368,10 @@ mod tests {
         let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
         let rankings = rank_experts(&task_vec, &experts, &stats, true, Strategy::Balanced);
-        assert!(rankings.iter().all(|r| r.role != "CTO"),
-            "Overloaded CTO should be excluded");
+        assert!(
+            rankings.iter().all(|r| r.role != "CTO"),
+            "Overloaded CTO should be excluded"
+        );
     }
 
     #[test]
@@ -348,8 +383,10 @@ mod tests {
         let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
         let rankings = rank_experts(&task_vec, &experts, &stats, false, Strategy::Balanced);
-        assert!(rankings.iter().any(|r| r.role == "CTO"),
-            "Overloaded CTO should still appear when exclusion is off");
+        assert!(
+            rankings.iter().any(|r| r.role == "CTO"),
+            "Overloaded CTO should still appear when exclusion is off"
+        );
     }
 
     // ── Ensemble Decision ────────────────────────────────────────────────
@@ -372,7 +409,10 @@ mod tests {
     #[test]
     fn test_ensemble_boundary_exact_threshold() {
         // At exactly ENSEMBLE_THRESHOLD, top_score < threshold is false
-        assert!(!should_use_ensemble(ENSEMBLE_THRESHOLD, ENSEMBLE_THRESHOLD - 0.15));
+        assert!(!should_use_ensemble(
+            ENSEMBLE_THRESHOLD,
+            ENSEMBLE_THRESHOLD - 0.15
+        ));
     }
 
     #[test]

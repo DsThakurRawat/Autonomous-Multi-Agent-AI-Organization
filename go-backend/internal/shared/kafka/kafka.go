@@ -46,9 +46,9 @@ func NewProducer(cfg *config.KafkaConfig) (*Producer, error) {
 	return &Producer{sp: sp}, nil
 }
 
-// PublishJSON serialises v to JSON and publishes to topic with optional key.
+// PublishJSON serialises v to JSON and publishes to topic with optional key and headers.
 // Returns partition and offset on success.
-func (p *Producer) PublishJSON(topic, key string, v any) (int32, int64, error) {
+func (p *Producer) PublishJSON(topic, key string, v any, headers map[string]string) (int32, int64, error) {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return 0, 0, fmt.Errorf("kafka: marshal: %w", err)
@@ -61,6 +61,17 @@ func (p *Producer) PublishJSON(topic, key string, v any) (int32, int64, error) {
 	}
 	if key != "" {
 		msg.Key = sarama.StringEncoder(key)
+	}
+
+	// Inject headers if provided (e.g., for Tracing context)
+	if len(headers) > 0 {
+		msg.Headers = make([]sarama.RecordHeader, 0, len(headers))
+		for k, v := range headers {
+			msg.Headers = append(msg.Headers, sarama.RecordHeader{
+				Key:   []byte(k),
+				Value: []byte(v),
+			})
+		}
 	}
 
 	partition, offset, err := p.sp.SendMessage(msg)
@@ -92,6 +103,7 @@ type Message struct {
 	Key       string
 	Value     []byte
 	Timestamp time.Time
+	Headers   map[string]string
 }
 
 // HandlerFunc is the callback invoked for each consumed message.
@@ -170,6 +182,11 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			Key:       string(msg.Key),
 			Value:     msg.Value,
 			Timestamp: msg.Timestamp,
+			Headers:   make(map[string]string),
+		}
+
+		for _, h := range msg.Headers {
+			m.Headers[string(h.Key)] = string(h.Value)
 		}
 
 		if err := h.fn(session.Context(), m); err != nil {

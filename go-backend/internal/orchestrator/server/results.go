@@ -11,6 +11,7 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/kafka"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/otel"
 )
 
 // ResultHandler processes task results from Kafka and advances the DAG.
@@ -169,7 +170,7 @@ func (h *ResultHandler) dispatchNextAfterCEO(ctx context.Context, res ResultMess
 		},
 	}
 
-	_, _, err = h.producer.PublishJSON("ai-org-tasks", res.ProjectID, taskPayload)
+	_, _, err = h.producer.PublishJSON("ai-org-tasks", res.ProjectID, taskPayload, otel.InjectTracing(ctx))
 	if err != nil {
 		log.Error("failed to publish CTO task to kafka", zap.Error(err))
 		return err
@@ -207,7 +208,7 @@ func (h *ResultHandler) dispatchNext(ctx context.Context, res ResultMessage, age
 		},
 	}
 
-	_, _, err = h.producer.PublishJSON("ai-org-tasks", res.ProjectID, taskPayload)
+	_, _, err = h.producer.PublishJSON("ai-org-tasks", res.ProjectID, taskPayload, otel.InjectTracing(ctx))
 	if err != nil {
 		log.Error("failed to publish task to kafka", zap.Error(err))
 		return err

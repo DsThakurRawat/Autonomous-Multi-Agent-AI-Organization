@@ -396,6 +396,11 @@ class KafkaConsumerClient:
                 if isinstance(raw_value, (bytes, bytearray)):
                     raw_value = raw_value.decode("utf-8")
                 data = json.loads(raw_value)
+                
+                # Inject headers so agents can extract Trace ID
+                if isinstance(data, dict):
+                    data["_headers"] = msg.get("headers", {})
+                
                 yield data
             except Exception as e:
                 logger.error("consume_stream parse error", error=str(e))

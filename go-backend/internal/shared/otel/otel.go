@@ -62,3 +62,17 @@ func InitOTel(ctx context.Context, serviceName string, endpoint string) (func(co
 
 	return shutdown, nil
 }
+
+// InjectTracing serializes the current span context into a map of strings
+// suitable for Kafka headers.
+func InjectTracing(ctx context.Context) map[string]string {
+	headers := make(map[string]string)
+	otel.GetTextMapPropagator().Inject(ctx, propagation.MapCarrier(headers))
+	return headers
+}
+
+// ExtractTracing deserializes a trace context from Kafka headers into a new
+// context based on the provided base context.
+func ExtractTracing(ctx context.Context, headers map[string]string) context.Context {
+	return otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(headers))
+}

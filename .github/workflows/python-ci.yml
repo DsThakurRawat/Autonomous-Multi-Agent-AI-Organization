@@ -43,6 +43,7 @@ jobs:
 
       - name: Lint check
         run: |
-          pip install ruff black
+          pip install ruff black bandit
           ruff check .
           black --check .
+          bandit -r . -v -ll -c pyproject.toml || bandit -r . -v -ll

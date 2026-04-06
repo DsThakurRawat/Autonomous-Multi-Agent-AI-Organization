@@ -9,6 +9,7 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/kafka"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/otel"
 )
 
 // LeaseMonitor scans for dead tasks (running but no active Redis lease).
@@ -104,7 +105,7 @@ func (m *LeaseMonitor) checkLeases(ctx context.Context) {
 				}
 
 				if m.producer != nil {
-					_, _, err = m.producer.PublishJSON("ai-org-tasks", projectID, taskPayload)
+					_, _, err = m.producer.PublishJSON("ai-org-tasks", projectID, taskPayload, otel.InjectTracing(ctx))
 					if err != nil {
 						log.Error("lease_monitor: failed to republish task to kafka", zap.Error(err))
 					}
