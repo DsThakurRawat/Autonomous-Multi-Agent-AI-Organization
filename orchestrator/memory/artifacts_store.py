@@ -61,16 +61,21 @@ class ArtifactsStore:
     Provides typed storage and fast lookup by type, tag, or agent.
     """
 
-    def __init__(self, project_id: str, output_dir: str = "./output", s3_client=None):
+    def __init__(self, project_id: str, output_dir: str = "./output", s3_client=None, mirror_dir: str | None = "./deliverables"):
         self.project_id = project_id
         self.output_dir = os.path.join(output_dir, project_id)
+        self.mirror_dir = os.path.join(mirror_dir, project_id) if mirror_dir else None
         self._s3 = s3_client
         self._artifacts: dict[str, Artifact] = {}
         os.makedirs(self.output_dir, exist_ok=True)
+        if self.mirror_dir:
+            os.makedirs(self.mirror_dir, exist_ok=True)
+        
         logger.info(
             "ArtifactsStore initialized",
             project_id=project_id,
             output_dir=self.output_dir,
+            mirror_dir=self.mirror_dir
         )
 
     def save(
@@ -100,6 +105,14 @@ class ArtifactsStore:
                 f.write(str(content))
 
         artifact.local_path = local_path
+        
+        # Sync to deliverables mirror if it's a code file
+        if self.mirror_dir and artifact_type == "code":
+            mirror_path = os.path.join(self.mirror_dir, name)
+            os.makedirs(os.path.dirname(mirror_path), exist_ok=True)
+            with open(mirror_path, "w", encoding="utf-8") as f:
+                f.write(str(content))
+
         self._artifacts[artifact.id] = artifact
 
         logger.info(

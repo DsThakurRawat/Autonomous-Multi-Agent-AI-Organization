@@ -70,6 +70,24 @@ class GitTool(BaseTool):
         )
 
     async def _push(self, remote: str = "origin", branch: str = "main") -> ToolResult:
+        """Push to remote, supporting GITHUB_TOKEN authentication."""
+        token = os.getenv("GITHUB_TOKEN")
+        if token:
+            # Mask token in logs manually if needed, but _run_subprocess logs are handled
+            logger.info("Pushing to GitHub using token authentication", remote=remote, branch=branch)
+            # We check if 'origin' is set to a HTTPS URL and inject the token
+            status_res = await self._run_subprocess(["git", "remote", "get-url", remote], cwd=self.repo_path)
+            if status_res.success:
+                url = status_res.output.strip()
+                if url.startswith("https://github.com/"):
+                    authed_url = url.replace("https://github.com/", f"https://{token}@github.com/")
+                    # Temporarily update remote URL for push
+                    await self._run_subprocess(["git", "remote", "set-url", remote, authed_url], cwd=self.repo_path)
+                    res = await self._run_subprocess(["git", "push", remote, branch], cwd=self.repo_path)
+                    # Restore original URL
+                    await self._run_subprocess(["git", "remote", "set-url", remote, url], cwd=self.repo_path)
+                    return res
+
         return await self._run_subprocess(
             ["git", "push", remote, branch], cwd=self.repo_path
         )

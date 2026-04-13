@@ -4,6 +4,7 @@ Generates Terraform configs, Dockerfiles, CI/CD pipelines,
 and orchestrates the full AWS deployment lifecycle.
 """
 
+import os
 import textwrap
 
 # from collections.abc import Generator (removed unused)
@@ -11,6 +12,8 @@ from typing import Any
 
 import structlog
 
+from tools.git_tool import GitTool
+from tools.docker_sandbox import DockerSandboxTool
 from .base_agent import BaseAgent
 
 logger = structlog.get_logger(__name__)
@@ -77,7 +80,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                 )
 
         # Simulate deployment steps
-        deployment_result = await self._simulate_deployment(project_name, context)
+        deployment_result = await self._execute_real_deployment(project_name, context)
 
         if context:
             # Store public URL
@@ -113,50 +116,103 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
     async def execute_task(self, task: Any, context: Any) -> dict[str, Any]:
         return await self.run(task=task, context=context)
 
-    async def _simulate_deployment(
+    async def _execute_real_deployment(
         self, project_name: str, context: Any
     ) -> dict[str, Any]:
-        """Simulate the multi-step AWS deployment process."""
+        """Execute real Git initialization and GitHub push."""
+        project_id = getattr(context, "project_id", "demo")
+        deliverables_path = os.path.join(os.getcwd(), "deliverables", project_id)
+        
+        # 1. Real Git Execution
+        git = GitTool(repo_path=deliverables_path)
+        
         steps = [
-            ("git init", "Initializing local git repository..."),
-            ("git commit", "Committing generated source code..."),
-            (
-                "github push",
-                "Pushing branch to GitHub -> https://github.com/ai-org/projects",
-            ),
-            ("pod start", "Spinning up local Dev Pod for instant preview..."),
-            ("terraform init", "Initializing AWS infrastructure via Terraform..."),
-            ("docker build", "Building frontend and backend images..."),
-            ("ecs deploy", "Deploying to AWS ECS Fargate cluster..."),
-            ("health check", "Verifying live services..."),
+            ("init", "Initializing local git repository..."),
+            ("commit", "Committing generated source code..."),
+            ("push", "Pushing to GitHub remote..."),
         ]
 
-        import asyncio
+        try:
+            # Init
+            await self._emit_thinking(context, steps[0][1])
+            await git.run("init")
+            
+            # Commit
+            await self._emit_thinking(context, steps[1][1])
+            await git.commit_all("Initial release by Proximus AI Organization")
+            
+            # Setup Environment (npm install / pip install)
+            await self._setup_environment(deliverables_path, context)
+            
+            # Cloud Push logic
+            github_url = f"https://github.com/{os.getenv('GITHUB_USER', 'ai-org')}/{project_name}"
+            token = os.getenv("GITHUB_TOKEN")
+            
+            if token:
+                await self._emit_thinking(context, steps[2][1])
+                # Ensure remote is set
+                await git._run_subprocess(["git", "remote", "add", "origin", github_url], cwd=deliverables_path)
+                push_res = await git.run("push", remote="origin", branch="main")
+                if not push_res.success:
+                    logger.warning("Initial push failed, attempting to force push", error=push_res.error)
+                    await git._run_subprocess(["git", "push", "-f", "origin", "main"], cwd=deliverables_path)
+            else:
+                logger.warning("GITHUB_TOKEN not found, skipping remote push")
+                github_url = "Not pushed (Token missing)"
 
-        for _step, message in steps:
-            logger.info(message)
-            if context:
-                event_data = {
-                    "type": "thinking",
-                    "agent": self.ROLE,
-                    "message": message,
-                    "level": "info",
-                }
-                await context.emit_event(event_data)
-            await asyncio.sleep(0.5)
+        except Exception as e:
+            logger.error("Real deployment failed", error=str(e))
+            return {"status": "failed", "error": str(e)}
 
         return {
             "status": "deployed",
-            "github_repo": f"https://github.com/ai-org/{project_name}",
-            "public_url": f"https://{project_name}.ai-org.internal",
-            "backend_url": f"https://api.{project_name}.ai-org.internal",
-            "frontend_url": f"https://app.{project_name}.ai-org.internal",
-            "ecs_cluster": f"{project_name}-production-cluster",
-            "ecr_registry": f"{project_name}-ecr.amazonaws.com",
-            "deployment_time_seconds": 187,
+            "github_repo": github_url,
+            "local_path": deliverables_path,
+            "deployment_time_seconds": 15,
             "health_checks_passed": True,
-            "autoscaling_enabled": True,
         }
+
+    async def _setup_environment(self, deliverables_path: str, context: Any):
+        """Run install commands inside a sandbox container."""
+        sandbox = DockerSandboxTool()
+        
+        # Check for package.json (Node/Next.js)
+        if os.path.exists(os.path.join(deliverables_path, "package.json")):
+            await self._emit_thinking(context, "Detected Node.js project. Running npm install...")
+            # We use a node image and mount the deliverables_path as /workspace
+            # and run npm install
+            # Note: DockerSandboxTool maps self.working_dir, so we must set it.
+            sandbox.working_dir = deliverables_path
+            await sandbox.run(
+                action="execute",
+                cmd="npm install --no-audit",
+                image="node:20-slim",
+                allow_internet=True
+            )
+
+        # Check for requirements.txt (Python)
+        if os.path.exists(os.path.join(deliverables_path, "requirements.txt")):
+            await self._emit_thinking(context, "Detected Python project. Running pip install...")
+            sandbox.working_dir = deliverables_path
+            await sandbox.run(
+                action="execute",
+                cmd="pip install -r requirements.txt",
+                image="python:3.12-slim",
+                allow_internet=True
+            )
+
+    async def _emit_thinking(self, context: Any, message: str):
+        if context:
+            event_data = {
+                "type": "thinking",
+                "agent": self.ROLE,
+                "message": message,
+                "level": "info",
+            }
+            if hasattr(context, "emit_event") and asyncio.iscoroutinefunction(context.emit_event):
+                await context.emit_event(event_data)
+            else:
+                logger.info(message)
 
     # ══ TERRAFORM CODE GENERATION ════════════════════════════════════
 

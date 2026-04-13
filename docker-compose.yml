@@ -334,6 +334,8 @@ services:
       PROMETHEUS_PORT: "9095"
     ports:
       - "9095:9095"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   devops-agent:
     <<: *agent-defaults
@@ -343,6 +345,8 @@ services:
       PROMETHEUS_PORT: "9096"
     ports:
       - "9096:9096"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
   finance-agent:
     <<: *agent-defaults
