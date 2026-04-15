@@ -32,7 +32,6 @@ impl Default for ExpertStats {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expert {
     pub role: String,
@@ -75,7 +74,6 @@ pub struct RouteRequest {
     pub stats: Option<HashMap<String, ExpertStats>>,
 }
 
-
 fn default_priority() -> String {
     "medium".to_string()
 }
@@ -92,7 +90,6 @@ pub struct ExpertScore {
     pub cost: f64,
     pub latency: f64,
 }
-
 
 #[derive(Debug, Serialize)]
 pub struct RouteResponse {

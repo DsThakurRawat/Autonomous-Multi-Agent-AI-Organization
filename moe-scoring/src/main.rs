@@ -115,7 +115,6 @@ async fn do_route(req: RouteRequest, state: &AppState) -> RouteResponse {
         req.strategy,
     );
 
-
     if rankings.is_empty() {
         // All overloaded — last-resort fallback
         let fallback = experts_to_rank
