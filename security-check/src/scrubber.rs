@@ -1,5 +1,5 @@
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 
 lazy_static! {
     static ref RE_EMAIL: Regex = Regex::new(r"(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}").unwrap();
@@ -9,16 +9,20 @@ lazy_static! {
 
 pub fn scrub_pii(input: &str) -> String {
     let mut result = input.to_string();
-    
+
     // Redact Emails
-    result = RE_EMAIL.replace_all(&result, "[REDACTED_EMAIL]").to_string();
-    
+    result = RE_EMAIL
+        .replace_all(&result, "[REDACTED_EMAIL]")
+        .to_string();
+
     // Redact API Keys
-    result = RE_API_KEY.replace_all(&result, "[REDACTED_KEY]").to_string();
-    
+    result = RE_API_KEY
+        .replace_all(&result, "[REDACTED_KEY]")
+        .to_string();
+
     // Redact IP Addresses (Optional, can be strict)
     result = RE_IPV4.replace_all(&result, "[REDACTED_IP]").to_string();
-    
+
     result
 }
 
