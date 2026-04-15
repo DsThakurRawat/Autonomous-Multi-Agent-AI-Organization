@@ -1,0 +1,56 @@
+name: Deploy to Oracle Cloud
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────
+  # Deploy: SSH into Oracle VM and pull + restart via docker compose
+  # ─────────────────────────────────────────────────────────────────────
+  deploy:
+    name: 🚀 Deploy to Oracle Cloud VM
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ secrets.ORACLE_DOMAIN }}
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "==> Pulling latest code..."
+            cd /opt/ai-org
+            git pull origin main
+
+            echo "==> Writing env file from secrets..."
+            # Env file is managed directly on the server - no secret injection needed here
+
+            echo "==> Building and restarting containers..."
+            docker compose pull || true
+            docker compose build --parallel
+            docker compose up -d --remove-orphans
+
+            echo "==> Waiting for health checks..."
+            sleep 15
+            docker compose ps
+
+            echo "==> Health check..."
+            curl -f http://localhost:8080/health || (echo "FAIL: API Gateway not healthy" && exit 1)
+            curl -f http://localhost:9091/healthz || (echo "FAIL: Orchestrator not healthy" && exit 1)
+
+            echo "✅ Deployment complete!"
+
+      - name: Notify success
+        if: success()
+        run: echo "::notice::Deployed to Oracle Cloud successfully"
+
+      - name: Notify failure
+        if: failure()
+        run: echo "::error::Oracle Cloud deployment failed - check SSH logs"
