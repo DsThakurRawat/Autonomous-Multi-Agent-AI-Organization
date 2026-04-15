@@ -1,6 +1,7 @@
-import type { NextAuthOptions } from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
-import CredentialsProvider from "next-auth/providers/credentials"
+import NextAuth from "next-auth"
+import Google from "next-auth/providers/google"
+import Credentials from "next-auth/providers/credentials"
+import type { NextAuthConfig } from "next-auth"
 
 const googleId = process.env.GOOGLE_CLIENT_ID;
 const googleSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -10,13 +11,13 @@ if (process.env.NODE_ENV === 'production' && (!googleId || !googleSecret || !nex
   console.warn('Missing authentication environment variables in production. Falling back to mock values.');
 }
 
-export const authOptions: NextAuthOptions = {
+export const config = {
   providers: [
-    GoogleProvider({
+    Google({
       clientId: googleId || "mock_client_id",
       clientSecret: googleSecret || "mock_client_secret",
     }),
-    CredentialsProvider({
+    Credentials({
       name: "Developer Account",
       credentials: {
         username: { label: "Username", type: "text", placeholder: "developer" },
@@ -42,8 +43,10 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }: any) {
-      if (token?.user) { session.user = token.user; }
+      if (token?.user) { session.user = token.user as any; }
       return session;
     }
   }
-}
+} satisfies NextAuthConfig
+
+export const { handlers, auth, signIn, signOut } = NextAuth(config)

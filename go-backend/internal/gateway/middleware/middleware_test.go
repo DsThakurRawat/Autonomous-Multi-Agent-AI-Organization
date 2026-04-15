@@ -122,7 +122,7 @@ func TestRequireRole_NoRoleIsForbidden(t *testing.T) {
 
 func TestCORS_SetsHeaders(t *testing.T) {
 	app := fiber.New()
-	app.Use(CORS())
+	app.Use(CORS("*"))
 	app.Get("/test", func(c *fiber.Ctx) error {
 		return c.SendString("ok")
 	})
@@ -137,7 +137,7 @@ func TestCORS_SetsHeaders(t *testing.T) {
 
 func TestCORS_OptionsReturnsNoContent(t *testing.T) {
 	app := fiber.New()
-	app.Use(CORS())
+	app.Use(CORS("*"))
 	app.Options("/test", func(c *fiber.Ctx) error {
 		return c.SendString("should not reach")
 	})

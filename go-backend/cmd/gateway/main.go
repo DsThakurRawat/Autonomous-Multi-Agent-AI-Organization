@@ -105,7 +105,7 @@ func main() {
 
 	app.Use(recover.New())
 	app.Use(compress.New())
-	app.Use(middleware.CORS())
+	app.Use(middleware.CORS(cfg.Gateway.CORSOrigins))
 	app.Use(middleware.RequestLogger())
 
 	// ── Phase 5: Reliability Middlewares ─────────────────────────────────────

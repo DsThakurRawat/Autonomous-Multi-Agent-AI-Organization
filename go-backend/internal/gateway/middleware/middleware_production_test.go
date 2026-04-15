@@ -106,7 +106,7 @@ func TestLocalAuth_AllLocalsSet(t *testing.T) {
 
 func TestCORS_AllMethodsPresent(t *testing.T) {
 	app := fiber.New()
-	app.Use(CORS())
+	app.Use(CORS("*"))
 	app.Get("/test", func(c *fiber.Ctx) error {
 		return c.SendString("ok")
 	})
@@ -123,7 +123,7 @@ func TestCORS_AllMethodsPresent(t *testing.T) {
 
 func TestCORS_AuthHeaderAllowed(t *testing.T) {
 	app := fiber.New()
-	app.Use(CORS())
+	app.Use(CORS("*"))
 	app.Get("/test", func(c *fiber.Ctx) error {
 		return c.SendString("ok")
 	})
@@ -144,7 +144,7 @@ func TestRequestLogger_TraceIDPersistsAcrossMiddleware(t *testing.T) {
 	// Production scenario: trace ID must survive the full middleware chain
 	app := fiber.New()
 	app.Use(RequestLogger())
-	app.Use(CORS())
+	app.Use(CORS("*"))
 	app.Get("/chained", func(c *fiber.Ctx) error {
 		traceID := c.Locals("trace_id")
 		return c.JSON(fiber.Map{"trace_id": traceID})
@@ -195,7 +195,7 @@ func TestMiddlewareChain_FullStack(t *testing.T) {
 	// Production scenario: the full middleware stack that runs in production
 	app := fiber.New()
 	app.Use(RequestLogger())
-	app.Use(CORS())
+	app.Use(CORS("*"))
 	app.Use(LocalAuth())
 	app.Get("/api/projects", RequireRole("member"), func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{

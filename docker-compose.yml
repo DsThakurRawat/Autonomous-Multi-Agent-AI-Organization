@@ -272,7 +272,7 @@ services:
       <<: *go-env
       AI_ORG_SERVER__PORT: 8080
       AI_ORG_ORCHESTRATOR_TARGET: orchestrator:9090
-      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}"
     ports:
       - "${API_PORT:-8080}:8080"
     healthcheck:
@@ -428,6 +428,21 @@ services:
       - "4318:4318" # OTLP HTTP
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - ai-org-net
+
+  # ══════════════════════════════════════════════════════════════════════
+  # CLOUDFLARE SECURE TUNNEL
+  # ══════════════════════════════════════════════════════════════════════
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    profiles:
+      - tunnel
     networks:
       - ai-org-net
 
