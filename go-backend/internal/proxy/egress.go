@@ -97,7 +97,7 @@ func (p *EgressProxy) handleConnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	defer destConn.Close()
+	defer destConn.Close() //nolint:errcheck
 
 	w.WriteHeader(http.StatusOK)
 	
@@ -112,7 +112,7 @@ func (p *EgressProxy) handleConnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	defer clientConn.Close()
+	defer clientConn.Close() //nolint:errcheck
 
 	// Bidirectional pipe
 	var wg sync.WaitGroup
@@ -145,7 +145,7 @@ func (p *EgressProxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Copy response headers
 	for k, vv := range resp.Header {

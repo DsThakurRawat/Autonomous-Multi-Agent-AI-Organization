@@ -66,7 +66,7 @@ func main() {
 	if err != nil {
 		log.Fatal("redis connection failed", zap.Error(err))
 	}
-	defer redisClient.Close()
+	defer redisClient.Close() //nolint:errcheck
 
 	authSvc, err := auth.New(&cfg.Auth)
 	if err != nil {
@@ -83,7 +83,7 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to connect to orchestrator", zap.Error(err))
 	}
-	defer orchClient.Close()
+	defer orchClient.Close() //nolint:errcheck
 
 	hdlr := handler.NewHandler(orchClient, pgPool)
 	settingsHdlr := handler.NewSettingsHandler(pgPool)

@@ -55,14 +55,14 @@ func main() {
 	if err != nil {
 		log.Fatal("redis failed", zap.Error(err))
 	}
-	defer redisClient.Close()
+	defer redisClient.Close() //nolint:errcheck
 
 	// ── Kafka Producer (for publishing tasks) ────────────────────────────
 	producer, err := kafka.NewProducer(&cfg.Kafka)
 	if err != nil {
 		log.Fatal("kafka producer failed", zap.Error(err))
 	}
-	defer producer.Close()
+	defer producer.Close() //nolint:errcheck
 	
 	healthOrch := health.NewHealthOrchestrator(pgPool, redisClient)
 	// Optionally wait for readiness before moving further in production
