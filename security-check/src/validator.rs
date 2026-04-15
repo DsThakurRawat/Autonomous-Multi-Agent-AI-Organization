@@ -45,15 +45,12 @@ fn is_dangerous_statement(stmt: &ast::Statement) -> bool {
 
 fn is_dangerous_expr(expr: &ast::Expression) -> bool {
     use ast::ExpressionType::*;
-    match &expr.node {
-        Call { function, .. } => {
-            if let Identifier { name } = &function.node {
-                if name == "eval" || name == "exec" || name == "compile" || name == "getattr" || name == "open" {
-                    return true;
-                }
+    if let Call { function, .. } = &expr.node {
+        if let Identifier { name } = &function.node {
+            if name == "eval" || name == "exec" || name == "compile" || name == "getattr" || name == "open" {
+                return true;
             }
         }
-        _ => {}
     }
     false
 }

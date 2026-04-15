@@ -14,25 +14,25 @@ import (
 // ---------- LocalMode() ----------
 
 func TestLocalMode_Enabled(t *testing.T) {
-	os.Setenv("AUTH_DISABLED", "true")
-	defer os.Unsetenv("AUTH_DISABLED")
+	os.Setenv("AUTH_DISABLED", "true") //nolint:errcheck
+	defer os.Unsetenv("AUTH_DISABLED")  //nolint:errcheck
 	assert.True(t, LocalMode())
 }
 
 func TestLocalMode_CaseInsensitive(t *testing.T) {
-	os.Setenv("AUTH_DISABLED", "TRUE")
-	defer os.Unsetenv("AUTH_DISABLED")
+	os.Setenv("AUTH_DISABLED", "TRUE") //nolint:errcheck
+	defer os.Unsetenv("AUTH_DISABLED")  //nolint:errcheck
 	assert.True(t, LocalMode())
 }
 
 func TestLocalMode_Disabled(t *testing.T) {
-	os.Setenv("AUTH_DISABLED", "false")
-	defer os.Unsetenv("AUTH_DISABLED")
+	os.Setenv("AUTH_DISABLED", "false") //nolint:errcheck
+	defer os.Unsetenv("AUTH_DISABLED")  //nolint:errcheck
 	assert.False(t, LocalMode())
 }
 
 func TestLocalMode_Unset(t *testing.T) {
-	os.Unsetenv("AUTH_DISABLED")
+	os.Unsetenv("AUTH_DISABLED") //nolint:errcheck
 	assert.False(t, LocalMode())
 }
 
