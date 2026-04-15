@@ -4,6 +4,7 @@ Generates Terraform configs, Dockerfiles, CI/CD pipelines,
 and orchestrates the full AWS deployment lifecycle.
 """
 
+import asyncio
 import os
 import textwrap
 
@@ -12,8 +13,9 @@ from typing import Any
 
 import structlog
 
-from tools.git_tool import GitTool
 from tools.docker_sandbox import DockerSandboxTool
+from tools.git_tool import GitTool
+
 from .base_agent import BaseAgent
 
 logger = structlog.get_logger(__name__)
@@ -122,10 +124,10 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         """Execute real Git initialization and GitHub push."""
         project_id = getattr(context, "project_id", "demo")
         deliverables_path = os.path.join(os.getcwd(), "deliverables", project_id)
-        
+
         # 1. Real Git Execution
         git = GitTool(repo_path=deliverables_path)
-        
+
         steps = [
             ("init", "Initializing local git repository..."),
             ("commit", "Committing generated source code..."),
@@ -136,26 +138,34 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
             # Init
             await self._emit_thinking(context, steps[0][1])
             await git.run("init")
-            
+
             # Commit
             await self._emit_thinking(context, steps[1][1])
             await git.commit_all("Initial release by Proximus AI Organization")
-            
+
             # Setup Environment (npm install / pip install)
             await self._setup_environment(deliverables_path, context)
-            
+
             # Cloud Push logic
             github_url = f"https://github.com/{os.getenv('GITHUB_USER', 'ai-org')}/{project_name}"
             token = os.getenv("GITHUB_TOKEN")
-            
+
             if token:
                 await self._emit_thinking(context, steps[2][1])
                 # Ensure remote is set
-                await git._run_subprocess(["git", "remote", "add", "origin", github_url], cwd=deliverables_path)
+                await git._run_subprocess(
+                    ["git", "remote", "add", "origin", github_url],
+                    cwd=deliverables_path,
+                )
                 push_res = await git.run("push", remote="origin", branch="main")
                 if not push_res.success:
-                    logger.warning("Initial push failed, attempting to force push", error=push_res.error)
-                    await git._run_subprocess(["git", "push", "-f", "origin", "main"], cwd=deliverables_path)
+                    logger.warning(
+                        "Initial push failed, attempting to force push",
+                        error=push_res.error,
+                    )
+                    await git._run_subprocess(
+                        ["git", "push", "-f", "origin", "main"], cwd=deliverables_path
+                    )
             else:
                 logger.warning("GITHUB_TOKEN not found, skipping remote push")
                 github_url = "Not pushed (Token missing)"
@@ -175,10 +185,12 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
     async def _setup_environment(self, deliverables_path: str, context: Any):
         """Run install commands inside a sandbox container."""
         sandbox = DockerSandboxTool()
-        
+
         # Check for package.json (Node/Next.js)
         if os.path.exists(os.path.join(deliverables_path, "package.json")):
-            await self._emit_thinking(context, "Detected Node.js project. Running npm install...")
+            await self._emit_thinking(
+                context, "Detected Node.js project. Running npm install..."
+            )
             # We use a node image and mount the deliverables_path as /workspace
             # and run npm install
             # Note: DockerSandboxTool maps self.working_dir, so we must set it.
@@ -187,18 +199,20 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                 action="execute",
                 cmd="npm install --no-audit",
                 image="node:20-slim",
-                allow_internet=True
+                allow_internet=True,
             )
 
         # Check for requirements.txt (Python)
         if os.path.exists(os.path.join(deliverables_path, "requirements.txt")):
-            await self._emit_thinking(context, "Detected Python project. Running pip install...")
+            await self._emit_thinking(
+                context, "Detected Python project. Running pip install..."
+            )
             sandbox.working_dir = deliverables_path
             await sandbox.run(
                 action="execute",
                 cmd="pip install -r requirements.txt",
                 image="python:3.12-slim",
-                allow_internet=True
+                allow_internet=True,
             )
 
     async def _emit_thinking(self, context: Any, message: str):
@@ -209,7 +223,9 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                 "message": message,
                 "level": "info",
             }
-            if hasattr(context, "emit_event") and asyncio.iscoroutinefunction(context.emit_event):
+            if hasattr(context, "emit_event") and asyncio.iscoroutinefunction(
+                context.emit_event
+            ):
                 await context.emit_event(event_data)
             else:
                 logger.info(message)

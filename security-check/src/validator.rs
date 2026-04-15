@@ -1,8 +1,7 @@
-use rustpython_parser::{ast, parser, mode::Mode};
+use rustpython_parser::{ast, mode::Mode, parser};
 
 pub fn validate_python_ast(code: &str) -> Result<bool, String> {
-    let top = parser::parse(code, Mode::Program)
-        .map_err(|e| format!("Parsing error: {}", e))?;
+    let top = parser::parse(code, Mode::Program).map_err(|e| format!("Parsing error: {}", e))?;
 
     if let ast::Top::Program(program) = top {
         for statement in program.statements {
@@ -19,7 +18,7 @@ fn is_dangerous_statement(stmt: &ast::Statement) -> bool {
     match &stmt.node {
         Import { names } | ImportFrom { names, .. } => {
             for name in names {
-                let n = &name.symbol; 
+                let n = &name.symbol;
                 if n == "os" || n == "subprocess" || n == "shutil" || n == "sh" || n == "tempfile" {
                     return true;
                 }
@@ -31,10 +30,20 @@ fn is_dangerous_statement(stmt: &ast::Statement) -> bool {
             }
         }
         If { test, body, orelse } => {
-            if is_dangerous_expr(test) { return true; }
-            for s in body { if is_dangerous_statement(s) { return true; } }
+            if is_dangerous_expr(test) {
+                return true;
+            }
+            for s in body {
+                if is_dangerous_statement(s) {
+                    return true;
+                }
+            }
             if let Some(o) = orelse {
-                for s in o { if is_dangerous_statement(s) { return true; } }
+                for s in o {
+                    if is_dangerous_statement(s) {
+                        return true;
+                    }
+                }
             }
         }
         // Recursively check other blocks if needed, but for a baseline this is good.
@@ -47,7 +56,12 @@ fn is_dangerous_expr(expr: &ast::Expression) -> bool {
     use ast::ExpressionType::*;
     if let Call { function, .. } = &expr.node {
         if let Identifier { name } = &function.node {
-            if name == "eval" || name == "exec" || name == "compile" || name == "getattr" || name == "open" {
+            if name == "eval"
+                || name == "exec"
+                || name == "compile"
+                || name == "getattr"
+                || name == "open"
+            {
                 return true;
             }
         }
