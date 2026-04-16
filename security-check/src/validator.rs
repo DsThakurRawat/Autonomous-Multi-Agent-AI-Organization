@@ -24,15 +24,11 @@ fn is_dangerous_statement(stmt: &ast::Statement) -> bool {
                 }
             }
         }
-        Expression { expression } => {
-            if is_dangerous_expr(expression) {
-                return true;
-            }
-        }
-        If { test, body, orelse } => {
-            if is_dangerous_expr(test) {
-                return true;
-            }
+        Expression { expression } if is_dangerous_expr(expression) => return true,
+        Expression { .. } => {}
+
+        If { test, .. } if is_dangerous_expr(test) => return true,
+        If { body, orelse, .. } => {
             for s in body {
                 if is_dangerous_statement(s) {
                     return true;

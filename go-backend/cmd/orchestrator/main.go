@@ -68,7 +68,7 @@ func main() {
 	// Optionally wait for readiness before moving further in production
 	// healthOrch.WaitUntilReady(ctx, 10*time.Second) 
 
-	sagaCoord := server.NewSagaCoordinator(pgPool, producer)
+	sagaCoord := server.NewSagaCoordinator(pgPool, redisClient, producer)
 	resultHandler := server.NewResultHandler(pgPool, redisClient, producer, sagaCoord)
 
 	// ── Kafka Consumer (for consuming results) ────────────────────────────

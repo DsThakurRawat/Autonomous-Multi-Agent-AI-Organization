@@ -11,9 +11,9 @@ FROM base AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
-COPY package.json ./
-# Use npm install for better resilience. Includes devDeps for the builder stage.
-RUN npm install
+COPY package.json .npmrc ./
+# Use npm install with legacy-peer-deps to handle React 19 peer dep mismatches
+RUN npm install --legacy-peer-deps
 
 # ── Stage 2: Build ───────────────────────────────────────────────────
 FROM base AS builder

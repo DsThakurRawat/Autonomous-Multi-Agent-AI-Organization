@@ -141,7 +141,7 @@ func Load(serviceName string) (*Config, error) {
 	v.SetDefault("gateway.idempotency_ttl", "24h")
 	v.SetDefault("gateway.security_bin_path", "/usr/local/bin/security-check")
 	v.SetDefault("gateway.otel_endpoint", "otel-collector:4317")
-	v.SetDefault("gateway.cors_origins", "*") // Default to wildcard, override in prod using CORS_ORIGINS
+	v.SetDefault("gateway.cors_origins", "") // Default to empty (restricted), override in prod using CORS_ORIGINS
 
 	// Load from optional YAML file
 	v.SetConfigName("config")

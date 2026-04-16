@@ -2,8 +2,8 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
@@ -34,43 +34,52 @@ type SagaState struct {
 // SagaCoordinator manages the execution of Sagas.
 type SagaCoordinator struct {
 	db       *db.Pool
+	redis    *db.Redis
 	producer *kafka.Producer
-	sagas    map[string]*SagaState // In-memory for now, should be in DB/Redis for multi-node
-	mu       sync.RWMutex
 }
 
-func NewSagaCoordinator(pool *db.Pool, prod *kafka.Producer) *SagaCoordinator {
+func NewSagaCoordinator(pool *db.Pool, rds *db.Redis, prod *kafka.Producer) *SagaCoordinator {
 	return &SagaCoordinator{
 		db:       pool,
+		redis:    rds,
 		producer: prod,
-		sagas:    make(map[string]*SagaState),
 	}
 }
 
 // RegisterSaga starts or resumes a saga for a project.
-func (sc *SagaCoordinator) RegisterSaga(projectID string, initialPayload map[string]any) {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
+func (sc *SagaCoordinator) RegisterSaga(ctx context.Context, projectID string, initialPayload map[string]any) {
+	key := fmt.Sprintf("saga:state:%s", projectID)
 	
-	if _, exists := sc.sagas[projectID]; !exists {
-		sc.sagas[projectID] = &SagaState{
-			ProjectID:   projectID,
-			CurrentStep: 0,
-			Payload:     initialPayload,
-			Status:      "forward",
-		}
+	// Check if already exists in Redis
+	exists, _ := sc.redis.Client.Exists(ctx, key).Result()
+	if exists > 0 {
+		return
 	}
+
+	state := &SagaState{
+		ProjectID:   projectID,
+		CurrentStep: 0,
+		Payload:     initialPayload,
+		Status:      "forward",
+	}
+
+	data, _ := json.Marshal(state)
+	sc.redis.Client.Set(ctx, key, data, 24*time.Hour)
 }
 
 // HandleFailure triggers compensation logic if a step fails.
 func (sc *SagaCoordinator) HandleFailure(ctx context.Context, projectID string, failedAgent string) error {
 	log := logger.L()
-	sc.mu.Lock()
-	state, exists := sc.sagas[projectID]
-	sc.mu.Unlock()
+	key := fmt.Sprintf("saga:state:%s", projectID)
 
-	if !exists {
-		return fmt.Errorf("no active saga found for project %s", projectID)
+	val, err := sc.redis.Client.Get(ctx, key).Result()
+	if err != nil {
+		return fmt.Errorf("no active saga found in redis for project %s", projectID)
+	}
+
+	var state SagaState
+	if err := json.Unmarshal([]byte(val), &state); err != nil {
+		return err
 	}
 
 	log.Warn("Saga failure detected, initiating compensation", 
@@ -79,6 +88,8 @@ func (sc *SagaCoordinator) HandleFailure(ctx context.Context, projectID string, 
 	)
 
 	state.Status = "compensating"
+	data, _ := json.Marshal(&state)
+	sc.redis.Client.Set(ctx, key, data, 24*time.Hour)
 	
 	// Implementation note: In a real distributed system, we would:
 	// 1. Identify all completed steps in reverse order.
@@ -102,17 +113,27 @@ func (sc *SagaCoordinator) HandleFailure(ctx context.Context, projectID string, 
 		},
 	}
 
-	_, _, err := sc.producer.PublishJSON("ai-org-tasks", projectID, taskPayload)
+	_, _, err = sc.producer.PublishJSON("ai-org-tasks", projectID, taskPayload)
 	return err
 }
 
 // Advance records a successful step and prepares for the next.
-func (sc *SagaCoordinator) Advance(projectID string, agentRole string) {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-	
-	if state, ok := sc.sagas[projectID]; ok {
-		state.History = append(state.History, fmt.Sprintf("%s_completed_at_%s", agentRole, time.Now().Format(time.RFC3339)))
-		state.CurrentStep++
+func (sc *SagaCoordinator) Advance(ctx context.Context, projectID string, agentRole string) {
+	key := fmt.Sprintf("saga:state:%s", projectID)
+
+	val, err := sc.redis.Client.Get(ctx, key).Result()
+	if err != nil {
+		return
 	}
+
+	var state SagaState
+	if err := json.Unmarshal([]byte(val), &state); err != nil {
+		return
+	}
+
+	state.History = append(state.History, fmt.Sprintf("%s_completed_at_%s", agentRole, time.Now().Format(time.RFC3339)))
+	state.CurrentStep++
+
+	data, _ := json.Marshal(&state)
+	sc.redis.Client.Set(ctx, key, data, 24*time.Hour)
 }

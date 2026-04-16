@@ -57,7 +57,7 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 	}
 
 	// Register/initialize saga for this project if not present
-	h.saga.RegisterSaga(res.ProjectID, res.OutputData)
+	h.saga.RegisterSaga(ctx, res.ProjectID, res.OutputData)
 
 	log.Info("processing result", 
 		zap.String("project_id", res.ProjectID), 
@@ -126,7 +126,7 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 
 	// Advance the saga locally
 	if status == "done" {
-		h.saga.Advance(res.ProjectID, res.AgentRole)
+		h.saga.Advance(ctx, res.ProjectID, res.AgentRole)
 	}
 
 	if status == "failed" {

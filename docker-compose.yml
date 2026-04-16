@@ -61,10 +61,15 @@ x-agent-defaults: &agent-defaults
     - /run/secrets/ai-org:mode=1777,size=10m
   healthcheck:
     test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8000/health"]
-    interval: 10s
-    timeout: 5s
-    retries: 5
-    start_period: 10s
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+  deploy:
+    resources:
+      limits:
+        memory: 256M
+
 
 services:
 
@@ -79,13 +84,18 @@ services:
     restart: unless-stopped
     environment:
       PROXY_ADDR: ":8080"
+    profiles: ["infra"]
     networks:
       - ai-org-net
+    deploy:
+      resources:
+        limits:
+          memory: 64M
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8080"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
 
   postgres:
     image: postgres:15-alpine
@@ -101,10 +111,15 @@ services:
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U aiorg -d aiorg" ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
       start_period: 30s
+    profiles: ["infra"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - ai-org-net
 
@@ -117,10 +132,15 @@ services:
       - qdrant_data:/qdrant/storage
     healthcheck:
       test: [ "CMD", "wget", "--spider", "-q", "http://localhost:6333/readyz" ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
       start_period: 30s
+    profiles: ["infra"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - ai-org-net
 
@@ -135,9 +155,14 @@ services:
       - redis_data:/data
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
+    profiles: ["infra"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - ai-org-net
 
@@ -152,14 +177,20 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
       ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+      ZOOKEEPER_HEAP_OPTS: "-Xmx128M -Xms128M"
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
     healthcheck:
       test: [ "CMD", "bash", "-c", "echo ruok | nc localhost 2181" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
       start_period: 20s
+    profiles: ["bus"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - ai-org-net
 
@@ -182,14 +213,20 @@ services:
       KAFKA_LOG_RETENTION_HOURS: 24
       KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
       KAFKA_LOG4J_LOGGERS: "kafka=WARN,kafka.controller=WARN,kafka.log.LogCleaner=WARN,state.change.logger=WARN,kafka.producer.async.DefaultEventHandler=WARN"
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
       test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
-      interval: 15s
+      interval: 60s
       timeout: 10s
-      retries: 10
-      start_period: 60s
+      retries: 5
+      start_period: 90s
+    profiles: ["bus"]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     networks:
       - ai-org-net
 
@@ -205,6 +242,11 @@ services:
       KAFKA_CLUSTERS_0_NAME: ai-org-local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    profiles: ["bus"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - ai-org-net
 
@@ -234,9 +276,14 @@ services:
       - ./output:/app/output
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9091/healthz"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
+    profiles: ["core"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - ai-org-net
 
@@ -256,9 +303,14 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/healthz"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
+    profiles: ["core"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - ai-org-net
 
@@ -277,12 +329,17 @@ services:
       - "${API_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
     depends_on:
       orchestrator:
         condition: service_healthy
+    profiles: ["core"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - ai-org-net
 
@@ -298,6 +355,8 @@ services:
       PROMETHEUS_PORT: "9091"
     ports:
       - "9091:9091"
+    profiles: ["agents"]
+
 
   cto-agent:
     <<: *agent-defaults
@@ -307,6 +366,8 @@ services:
       PROMETHEUS_PORT: "9092"
     ports:
       - "9192:9092"
+    profiles: ["agents"]
+
 
   engineer-backend:
     <<: *agent-defaults
@@ -316,6 +377,8 @@ services:
       PROMETHEUS_PORT: "9093"
     ports:
       - "9093:9093"
+    profiles: ["agents"]
+
 
   engineer-frontend:
     <<: *agent-defaults
@@ -325,6 +388,8 @@ services:
       PROMETHEUS_PORT: "9094"
     ports:
       - "9094:9094"
+    profiles: ["agents"]
+
 
   qa-agent:
     <<: *agent-defaults
@@ -336,6 +401,8 @@ services:
       - "9095:9095"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    profiles: ["agents"]
+
 
   devops-agent:
     <<: *agent-defaults
@@ -347,6 +414,8 @@ services:
       - "9096:9096"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    profiles: ["agents"]
+
 
   finance-agent:
     <<: *agent-defaults
@@ -356,6 +425,8 @@ services:
       PROMETHEUS_PORT: "9097"
     ports:
       - "9097:9097"
+    profiles: ["agents"]
+
 
   # ══════════════════════════════════════════════════════════════════════
   # DASHBOARD — Next.js (will be built in feature/nextjs-dashboard)
@@ -371,6 +442,12 @@ services:
     restart: unless-stopped
     ports:
       - "${DASHBOARD_PORT:-3000}:3000"
+    profiles: ["dashboard"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8080}
       NEXT_PUBLIC_WS_URL: ws://localhost:8082
@@ -401,6 +478,12 @@ services:
       - "--web.enable-lifecycle"
     networks:
       - ai-org-net
+    profiles: ["obs"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
 
   grafana:
     image: grafana/grafana:10.3.1
@@ -430,6 +513,12 @@ services:
       COLLECTOR_OTLP_ENABLED: "true"
     networks:
       - ai-org-net
+    profiles: ["obs"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
 
   # ══════════════════════════════════════════════════════════════════════
   # CLOUDFLARE SECURE TUNNEL

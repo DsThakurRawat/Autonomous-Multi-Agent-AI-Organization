@@ -195,7 +195,7 @@ class BaseAgent(ABC):
             "agent_role": self.ROLE,
             "project_id": getattr(self, "_current_project_id", "demo"),
             "task_id": self._current_task_id,
-            "message": self._scrub_text(
+            "message": await self._scrub_text(
                 f"Suspended for human authorization. Action: {action_type}. Estimated cost: ${cost_estimate}"
             ),
             "data": {
@@ -347,7 +347,8 @@ class BaseAgent(ABC):
 
         # Pre-call budget gate
         try:
-            used_str = await self.redis_client.get("budget:used")
+            budget_key = f"budget:{self._current_project_id or 'global'}:used"
+            used_str = await self.redis_client.get(budget_key)
             used = float(used_str) if used_str else 0.0
             if used >= self.budget_limit:
                 logger.error(
@@ -370,7 +371,8 @@ class BaseAgent(ABC):
 
         with contextlib.suppress(Exception):
             # Assumes roughly $0.005 per turn as a flat generic estimate since we don't have token counts easily here
-            await self.redis_client.incrbyfloat("budget:used", 0.005)
+            budget_key = f"budget:{self._current_project_id or 'global'}:used"
+            await self.redis_client.incrbyfloat(budget_key, 0.005)
 
         # 2. Store in Semantic Cache for future calls
         try:
