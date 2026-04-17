@@ -83,8 +83,8 @@ func TestRequireRole_FullHierarchyMatrix(t *testing.T) {
 func TestLocalAuth_AllLocalsSet(t *testing.T) {
 	// Production scenario: all identity fields must be set for downstream middleware
 	app := fiber.New()
-	os.Setenv("LOCAL_USER_EMAIL", "dev@autonomousorg.ai") //nolint:errcheck
-	defer os.Unsetenv("LOCAL_USER_EMAIL") //nolint:errcheck
+	_ = os.Setenv("LOCAL_USER_EMAIL", "dev@autonomousorg.ai")
+	defer func() { _ = os.Unsetenv("LOCAL_USER_EMAIL") }()
 
 	app.Use(LocalAuth())
 	app.Get("/identity", func(c *fiber.Ctx) error {

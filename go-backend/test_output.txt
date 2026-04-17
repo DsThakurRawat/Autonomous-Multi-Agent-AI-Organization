@@ -1,0 +1,320 @@
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/cmd/gateway	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/cmd/mcp-server	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/cmd/orchestrator	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/cmd/proxy	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/cmd/ws-hub	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/gateway/grpcclient	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/gateway/handler	[no test files]
+=== RUN   TestRequireRole_FullHierarchyMatrix
+=== RUN   TestRequireRole_FullHierarchyMatrix/viewer_accesses_viewer
+=== RUN   TestRequireRole_FullHierarchyMatrix/viewer_blocked_from_member
+=== RUN   TestRequireRole_FullHierarchyMatrix/viewer_blocked_from_admin
+=== RUN   TestRequireRole_FullHierarchyMatrix/viewer_blocked_from_owner
+=== RUN   TestRequireRole_FullHierarchyMatrix/member_accesses_viewer
+=== RUN   TestRequireRole_FullHierarchyMatrix/member_accesses_member
+=== RUN   TestRequireRole_FullHierarchyMatrix/member_blocked_from_admin
+=== RUN   TestRequireRole_FullHierarchyMatrix/member_blocked_from_owner
+=== RUN   TestRequireRole_FullHierarchyMatrix/admin_accesses_viewer
+=== RUN   TestRequireRole_FullHierarchyMatrix/admin_accesses_member
+=== RUN   TestRequireRole_FullHierarchyMatrix/admin_accesses_admin
+=== RUN   TestRequireRole_FullHierarchyMatrix/admin_blocked_from_owner
+=== RUN   TestRequireRole_FullHierarchyMatrix/owner_accesses_viewer
+=== RUN   TestRequireRole_FullHierarchyMatrix/owner_accesses_member
+=== RUN   TestRequireRole_FullHierarchyMatrix/owner_accesses_admin
+=== RUN   TestRequireRole_FullHierarchyMatrix/owner_accesses_owner
+=== RUN   TestRequireRole_FullHierarchyMatrix/empty_role_blocked
+=== RUN   TestRequireRole_FullHierarchyMatrix/unknown_role_blocked
+--- PASS: TestRequireRole_FullHierarchyMatrix (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/viewer_accesses_viewer (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/viewer_blocked_from_member (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/viewer_blocked_from_admin (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/viewer_blocked_from_owner (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/member_accesses_viewer (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/member_accesses_member (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/member_blocked_from_admin (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/member_blocked_from_owner (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/admin_accesses_viewer (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/admin_accesses_member (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/admin_accesses_admin (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/admin_blocked_from_owner (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/owner_accesses_viewer (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/owner_accesses_member (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/owner_accesses_admin (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/owner_accesses_owner (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/empty_role_blocked (0.00s)
+    --- PASS: TestRequireRole_FullHierarchyMatrix/unknown_role_blocked (0.00s)
+=== RUN   TestLocalAuth_AllLocalsSet
+--- PASS: TestLocalAuth_AllLocalsSet (0.00s)
+=== RUN   TestCORS_AllMethodsPresent
+--- PASS: TestCORS_AllMethodsPresent (0.00s)
+=== RUN   TestCORS_AuthHeaderAllowed
+--- PASS: TestCORS_AuthHeaderAllowed (0.00s)
+=== RUN   TestRequestLogger_TraceIDPersistsAcrossMiddleware
+2026-04-17T06:51:49.772+0530	INFO	middleware/middleware.go:71	request	{"method": "GET", "path": "/chained", "status": 200, "latency": "31.22µs", "ip": "0.0.0.0", "trace_id": "trace-from-load-balancer-001"}
+--- PASS: TestRequestLogger_TraceIDPersistsAcrossMiddleware (0.00s)
+=== RUN   TestRequestLogger_GeneratesUUIDWhenMissing
+2026-04-17T06:51:49.773+0530	INFO	middleware/middleware.go:71	request	{"method": "GET", "path": "/test", "status": 200, "latency": "63.622µs", "ip": "0.0.0.0", "trace_id": "7082529e-ed92-4af9-ac6b-737821e390ee"}
+--- PASS: TestRequestLogger_GeneratesUUIDWhenMissing (0.00s)
+=== RUN   TestMiddlewareChain_LocalAuthWithRoleCheck
+--- PASS: TestMiddlewareChain_LocalAuthWithRoleCheck (0.00s)
+=== RUN   TestMiddlewareChain_FullStack
+2026-04-17T06:51:49.773+0530	INFO	middleware/middleware.go:71	request	{"method": "GET", "path": "/api/projects", "status": 200, "latency": "51.467µs", "ip": "0.0.0.0", "trace_id": "91109ca0-702b-46d4-8f45-ef20b197d182"}
+--- PASS: TestMiddlewareChain_FullStack (0.00s)
+=== RUN   TestLocalMode_Enabled
+--- PASS: TestLocalMode_Enabled (0.00s)
+=== RUN   TestLocalMode_CaseInsensitive
+--- PASS: TestLocalMode_CaseInsensitive (0.00s)
+=== RUN   TestLocalMode_Disabled
+--- PASS: TestLocalMode_Disabled (0.00s)
+=== RUN   TestLocalMode_Unset
+--- PASS: TestLocalMode_Unset (0.00s)
+=== RUN   TestLocalAuth_InjectsLocals
+--- PASS: TestLocalAuth_InjectsLocals (0.00s)
+=== RUN   TestRequireRole_OwnerAccessesAll
+--- PASS: TestRequireRole_OwnerAccessesAll (0.00s)
+=== RUN   TestRequireRole_ViewerBlockedFromAdmin
+--- PASS: TestRequireRole_ViewerBlockedFromAdmin (0.00s)
+=== RUN   TestRequireRole_MemberAccessesMember
+--- PASS: TestRequireRole_MemberAccessesMember (0.00s)
+=== RUN   TestRequireRole_NoRoleIsForbidden
+--- PASS: TestRequireRole_NoRoleIsForbidden (0.00s)
+=== RUN   TestCORS_SetsHeaders
+--- PASS: TestCORS_SetsHeaders (0.00s)
+=== RUN   TestCORS_OptionsReturnsNoContent
+--- PASS: TestCORS_OptionsReturnsNoContent (0.00s)
+=== RUN   TestRequestLogger_InjectsTraceID
+2026-04-17T06:51:49.775+0530	INFO	middleware/middleware.go:71	request	{"method": "GET", "path": "/test", "status": 200, "latency": "10.992µs", "ip": "0.0.0.0", "trace_id": "f66fe6b2-b3b8-4e33-a21b-834606e001c0"}
+--- PASS: TestRequestLogger_InjectsTraceID (0.00s)
+=== RUN   TestRequestLogger_UsesProvidedTraceID
+2026-04-17T06:51:49.775+0530	INFO	middleware/middleware.go:71	request	{"method": "GET", "path": "/test", "status": 200, "latency": "8.131µs", "ip": "0.0.0.0", "trace_id": "custom-trace-12345"}
+--- PASS: TestRequestLogger_UsesProvidedTraceID (0.00s)
+PASS
+ok  	github.com/DsThakurRawat/autonomous-org/go-backend/internal/gateway/middleware	0.018s
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/health	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/mcp	[no test files]
+=== RUN   TestNewGraph
+--- PASS: TestNewGraph (0.00s)
+=== RUN   TestAddTask_GeneratesID
+--- PASS: TestAddTask_GeneratesID (0.00s)
+=== RUN   TestAddTask_PreservesCustomID
+--- PASS: TestAddTask_PreservesCustomID (0.00s)
+=== RUN   TestAddTask_SetsCreatedAt
+--- PASS: TestAddTask_SetsCreatedAt (0.00s)
+=== RUN   TestDiamond_OnlyRepoInitiallyReady
+--- PASS: TestDiamond_OnlyRepoInitiallyReady (0.00s)
+=== RUN   TestDiamond_BackendAndFrontendParallelAfterRepo
+2026-04-17T06:51:49.769+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "repo", "name": "Setup Repo"}
+2026-04-17T06:51:49.769+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "repo", "name": "Setup Repo", "duration": "428.25µs"}
+--- PASS: TestDiamond_BackendAndFrontendParallelAfterRepo (0.00s)
+=== RUN   TestDiamond_DeployOnlyAfterBothComplete
+2026-04-17T06:51:49.769+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "repo", "name": "Setup Repo"}
+2026-04-17T06:51:49.769+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "repo", "name": "Setup Repo", "duration": "39.944µs"}
+2026-04-17T06:51:49.769+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "backend", "name": "Build Backend"}
+2026-04-17T06:51:49.769+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "backend", "name": "Build Backend", "duration": "18.554µs"}
+2026-04-17T06:51:49.769+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "frontend", "name": "Build Frontend"}
+2026-04-17T06:51:49.769+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "frontend", "name": "Build Frontend", "duration": "21.354µs"}
+--- PASS: TestDiamond_DeployOnlyAfterBothComplete (0.00s)
+=== RUN   TestMarkRunning_NotFound
+--- PASS: TestMarkRunning_NotFound (0.00s)
+=== RUN   TestMarkRunning_InvalidState
+2026-04-17T06:51:49.769+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t1", "name": "Task"}
+--- PASS: TestMarkRunning_InvalidState (0.00s)
+=== RUN   TestMarkDone_SetsTimestampAndOutput
+2026-04-17T06:51:49.770+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t1", "name": "Task"}
+2026-04-17T06:51:49.770+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t1", "name": "Task", "duration": "33.234µs"}
+--- PASS: TestMarkDone_SetsTimestampAndOutput (0.00s)
+=== RUN   TestMarkDone_NotFound
+--- PASS: TestMarkDone_NotFound (0.00s)
+=== RUN   TestMarkFailed_Retry
+2026-04-17T06:51:49.770+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t1", "name": "Flaky LLM"}
+2026-04-17T06:51:49.770+0530	WARN	dag/dag.go:158	dag: task failed — will retry	{"task_id": "t1", "attempt": 1, "max_retries": 3}
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.(*Graph).MarkFailed
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag.go:158
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.TestMarkFailed_Retry
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag_test.go:169
+testing.tRunner
+	/snap/go/11127/src/testing/testing.go:2036
+--- PASS: TestMarkFailed_Retry (0.00s)
+=== RUN   TestMarkFailed_ExhaustedRetries
+2026-04-17T06:51:49.770+0530	WARN	dag/dag.go:158	dag: task failed — will retry	{"task_id": "t1", "attempt": 1, "max_retries": 2}
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.(*Graph).MarkFailed
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag.go:158
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.TestMarkFailed_ExhaustedRetries
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag_test.go:183
+testing.tRunner
+	/snap/go/11127/src/testing/testing.go:2036
+2026-04-17T06:51:49.770+0530	WARN	dag/dag.go:158	dag: task failed — will retry	{"task_id": "t1", "attempt": 2, "max_retries": 2}
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.(*Graph).MarkFailed
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag.go:158
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.TestMarkFailed_ExhaustedRetries
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag_test.go:183
+testing.tRunner
+	/snap/go/11127/src/testing/testing.go:2036
+2026-04-17T06:51:49.770+0530	ERROR	dag/dag.go:169	dag: task permanently failed	{"task_id": "t1", "error": "permission denied (final)"}
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.(*Graph).MarkFailed
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag.go:169
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.TestMarkFailed_ExhaustedRetries
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag_test.go:189
+testing.tRunner
+	/snap/go/11127/src/testing/testing.go:2036
+--- PASS: TestMarkFailed_ExhaustedRetries (0.00s)
+=== RUN   TestMarkFailed_CascadesDownstream
+2026-04-17T06:51:49.770+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "build", "name": "Build"}
+2026-04-17T06:51:49.770+0530	ERROR	dag/dag.go:169	dag: task permanently failed	{"task_id": "build", "error": "compile error"}
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.(*Graph).MarkFailed
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag.go:169
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.TestMarkFailed_CascadesDownstream
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag_test.go:208
+testing.tRunner
+	/snap/go/11127/src/testing/testing.go:2036
+--- PASS: TestMarkFailed_CascadesDownstream (0.00s)
+=== RUN   TestMarkFailed_NotFound
+--- PASS: TestMarkFailed_NotFound (0.00s)
+=== RUN   TestIsComplete_AllDone
+2026-04-17T06:51:49.770+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t1", "name": "Task"}
+2026-04-17T06:51:49.770+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t1", "name": "Task", "duration": "31.042µs"}
+--- PASS: TestIsComplete_AllDone (0.00s)
+=== RUN   TestIsComplete_MixedDoneAndSkipped
+2026-04-17T06:51:49.770+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t1", "name": "Ok"}
+2026-04-17T06:51:49.770+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t1", "name": "Ok", "duration": "28.759µs"}
+--- PASS: TestIsComplete_MixedDoneAndSkipped (0.00s)
+=== RUN   TestIsComplete_StillPending
+--- PASS: TestIsComplete_StillPending (0.00s)
+=== RUN   TestSummary
+2026-04-17T06:51:49.771+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t1", "name": "Done"}
+2026-04-17T06:51:49.771+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t1", "name": "Done", "duration": "22.195µs"}
+--- PASS: TestSummary (0.00s)
+=== RUN   TestValidate_NoCycleInDiamond
+--- PASS: TestValidate_NoCycleInDiamond (0.00s)
+=== RUN   TestValidate_DetectsCycle
+--- PASS: TestValidate_DetectsCycle (0.00s)
+=== RUN   TestValidate_LinearChainNoCycle
+--- PASS: TestValidate_LinearChainNoCycle (0.00s)
+=== RUN   TestRequeueStaleTasks_RequeuesHungTasks
+2026-04-17T06:51:49.771+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "hung", "name": "Hung LLM Call"}
+2026-04-17T06:51:49.771+0530	WARN	dag/dag.go:158	dag: task failed — will retry	{"task_id": "hung", "attempt": 1, "max_retries": 3}
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.(*Graph).MarkFailed
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag.go:158
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.(*Graph).RequeueStaleTasks
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag.go:271
+github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag.TestRequeueStaleTasks_RequeuesHungTasks
+	/home/divyansh-rawat/Autonomous Multi-Agent AI Organization/go-backend/internal/orchestrator/dag/dag_test.go:329
+testing.tRunner
+	/snap/go/11127/src/testing/testing.go:2036
+--- PASS: TestRequeueStaleTasks_RequeuesHungTasks (0.00s)
+=== RUN   TestRequeueStaleTasks_IgnoresFreshRunning
+2026-04-17T06:51:49.771+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "fresh", "name": "Active Task"}
+--- PASS: TestRequeueStaleTasks_IgnoresFreshRunning (0.00s)
+=== RUN   TestConcurrentReadyTasks
+--- PASS: TestConcurrentReadyTasks (0.00s)
+=== RUN   TestConcurrentMarkRunningAndDone
+2026-04-17T06:51:49.772+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t1", "name": "Task 1"}
+2026-04-17T06:51:49.772+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t1", "name": "Task 1", "duration": "251.951µs"}
+2026-04-17T06:51:49.772+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t19", "name": "Task 19"}
+2026-04-17T06:51:49.772+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t19", "name": "Task 19", "duration": "22.636µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t2", "name": "Task 2"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t2", "name": "Task 2", "duration": "28.519µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t3", "name": "Task 3"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t3", "name": "Task 3", "duration": "25.925µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t4", "name": "Task 4"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t4", "name": "Task 4", "duration": "24.435µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t5", "name": "Task 5"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t5", "name": "Task 5", "duration": "165.312µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t6", "name": "Task 6"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t6", "name": "Task 6", "duration": "57.639µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t7", "name": "Task 7"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t7", "name": "Task 7", "duration": "22.122µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t8", "name": "Task 8"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t8", "name": "Task 8", "duration": "37.86µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t9", "name": "Task 9"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t9", "name": "Task 9", "duration": "21.187µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t10", "name": "Task 10"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t10", "name": "Task 10", "duration": "20.048µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t11", "name": "Task 11"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t11", "name": "Task 11", "duration": "21.63µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t0", "name": "Task 0"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t0", "name": "Task 0", "duration": "15.577µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t12", "name": "Task 12"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t12", "name": "Task 12", "duration": "25.665µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t13", "name": "Task 13"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t13", "name": "Task 13", "duration": "22.533µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t17", "name": "Task 17"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t17", "name": "Task 17", "duration": "25.134µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t16", "name": "Task 16"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t16", "name": "Task 16", "duration": "26.61µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t14", "name": "Task 14"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t14", "name": "Task 14", "duration": "56.722µs"}
+2026-04-17T06:51:49.773+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t18", "name": "Task 18"}
+2026-04-17T06:51:49.773+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t18", "name": "Task 18", "duration": "25µs"}
+2026-04-17T06:51:49.774+0530	DEBUG	dag/dag.go:120	dag: task running	{"task_id": "t15", "name": "Task 15"}
+2026-04-17T06:51:49.774+0530	INFO	dag/dag.go:136	dag: task done	{"task_id": "t15", "name": "Task 15", "duration": "19.022µs"}
+--- PASS: TestConcurrentMarkRunningAndDone (0.00s)
+PASS
+ok  	github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/dag	0.016s
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/server	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/workers	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/proxy	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/auth	[no test files]
+=== RUN   TestLoad_Defaults
+--- PASS: TestLoad_Defaults (0.00s)
+=== RUN   TestLoad_PostgresDefaults
+--- PASS: TestLoad_PostgresDefaults (0.00s)
+=== RUN   TestLoad_RedisDefaults
+--- PASS: TestLoad_RedisDefaults (0.00s)
+=== RUN   TestLoad_KafkaDefaults
+--- PASS: TestLoad_KafkaDefaults (0.00s)
+=== RUN   TestLoad_BudgetDefaults
+--- PASS: TestLoad_BudgetDefaults (0.00s)
+=== RUN   TestLoad_EnvOverrides
+--- PASS: TestLoad_EnvOverrides (0.00s)
+=== RUN   TestAddr
+--- PASS: TestAddr (0.00s)
+=== RUN   TestGRPCAddr
+--- PASS: TestGRPCAddr (0.00s)
+=== RUN   TestIsProduction
+--- PASS: TestIsProduction (0.00s)
+=== RUN   TestLoad_GatewayDefaults
+--- PASS: TestLoad_GatewayDefaults (0.00s)
+=== RUN   TestLoad_AuthDefaults
+--- PASS: TestLoad_AuthDefaults (0.00s)
+PASS
+ok  	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/config	0.020s
+=== RUN   TestWriteSecret_CreatesFile
+2026-04-17T06:51:49.768+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "API_KEY", "path": "/tmp/TestWriteSecret_CreatesFile652267012/001/API_KEY"}
+--- PASS: TestWriteSecret_CreatesFile (0.00s)
+=== RUN   TestWriteSecret_RestrictivePermissions
+2026-04-17T06:51:49.769+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "CREDENTIAL", "path": "/tmp/TestWriteSecret_RestrictivePermissions3213174129/001/CREDENTIAL"}
+--- PASS: TestWriteSecret_RestrictivePermissions (0.00s)
+=== RUN   TestWriteSecret_EmptyBasePath
+--- PASS: TestWriteSecret_EmptyBasePath (0.00s)
+=== RUN   TestWriteSecret_CreatesNestedDirs
+2026-04-17T06:51:49.771+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "DB_PASSWORD", "path": "/tmp/TestWriteSecret_CreatesNestedDirs3351324691/001/secrets/ai-org/DB_PASSWORD"}
+--- PASS: TestWriteSecret_CreatesNestedDirs (0.00s)
+=== RUN   TestRemoveSecret
+2026-04-17T06:51:49.772+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "TEMP_KEY", "path": "/tmp/TestRemoveSecret3608469732/001/TEMP_KEY"}
+--- PASS: TestRemoveSecret (0.00s)
+=== RUN   TestRemoveSecret_Nonexistent
+--- PASS: TestRemoveSecret_Nonexistent (0.00s)
+=== RUN   TestClearAll
+2026-04-17T06:51:49.773+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "KEY_1", "path": "/tmp/TestClearAll4220209034/001/KEY_1"}
+2026-04-17T06:51:49.773+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "KEY_2", "path": "/tmp/TestClearAll4220209034/001/KEY_2"}
+2026-04-17T06:51:49.774+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "KEY_3", "path": "/tmp/TestClearAll4220209034/001/KEY_3"}
+--- PASS: TestClearAll (0.00s)
+=== RUN   TestClearAll_EmptyDir
+--- PASS: TestClearAll_EmptyDir (0.00s)
+=== RUN   TestClearAll_NonexistentDir
+--- PASS: TestClearAll_NonexistentDir (0.00s)
+=== RUN   TestWriteSecret_OverwritesExisting
+2026-04-17T06:51:49.777+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "ROTATE_KEY", "path": "/tmp/TestWriteSecret_OverwritesExisting349367887/001/ROTATE_KEY"}
+2026-04-17T06:51:49.778+0530	DEBUG	crypto/secret_manager.go:44	secret written to tmpfs	{"name": "ROTATE_KEY", "path": "/tmp/TestWriteSecret_OverwritesExisting349367887/001/ROTATE_KEY"}
+--- PASS: TestWriteSecret_OverwritesExisting (0.00s)
+PASS
+ok  	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/crypto	0.020s
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/kafka	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/keystore	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/otel	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/redis	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/proto/gen/orchestrator	[no test files]
+?   	github.com/DsThakurRawat/autonomous-org/go-backend/proto/gen/tenant	[no test files]
