@@ -1,6 +1,6 @@
 module github.com/DsThakurRawat/autonomous-org/go-backend
 
-go 1.25.0
+go 1.23.0
 
 require (
 	// Kafka
