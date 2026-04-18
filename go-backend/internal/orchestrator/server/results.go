@@ -127,12 +127,33 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) (err erro
 	}
 
 	if res.AgentRole == "CTO" && status == "done" {
-		return h.dispatchNext(ctx, res, "Engineer_Backend", "Backend Implementation", "code")
+		// Hardening: Dispatch both Backend and Frontend in parallel for maximum efficiency
+		if err := h.dispatchNext(ctx, res, "Engineer_Backend", "Backend Implementation", "code"); err != nil {
+			return err
+		}
+		return h.dispatchNext(ctx, res, "Engineer_Frontend", "Frontend Implementation", "code")
 	}
 
-	if res.AgentRole == "Engineer_Backend" && status == "done" {
-		// Mark project as done after backend is built
-		_, _ = h.db.Exec(ctx, `UPDATE projects SET status = 'done', completed_at = $1 WHERE id = $2`, time.Now(), res.ProjectID)
+	if (res.AgentRole == "Engineer_Backend" || res.AgentRole == "Engineer_Frontend") && status == "done" {
+		// Efficiency: Check if all implementation tasks are complete before moving to QA
+		var incompleteCount int
+		h.db.QueryRow(ctx, "SELECT count(*) FROM tasks WHERE project_id = $1 AND name LIKE '%Implementation%' AND status != 'done'", res.ProjectID).Scan(&incompleteCount)
+		
+		if incompleteCount == 0 {
+			log.Info("Implementation phase complete, moving to QA", zap.String("project_id", res.ProjectID))
+			return h.dispatchNext(ctx, res, "QA", "System Integration Testing", "test")
+		}
+		return nil
+	}
+
+	if res.AgentRole == "QA" && status == "done" {
+		log.Info("QA complete, finalising project artifacts", zap.String("project_id", res.ProjectID))
+		return h.dispatchNext(ctx, res, "DevOps", "Production Build & Deploy", "deploy")
+	}
+
+	if res.AgentRole == "DevOps" && status == "done" {
+		// Mark project as fully complete after DevOps finishing
+		_, _ = h.db.Exec(ctx, `UPDATE projects SET status = 'completed', completed_at = $1 WHERE id = $2`, time.Now(), res.ProjectID)
 		return nil
 	}
 

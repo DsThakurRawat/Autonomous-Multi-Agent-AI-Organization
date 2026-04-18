@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -131,12 +132,37 @@ func (s *OrchestratorServer) CreateProject(ctx context.Context, req *pb.CreatePr
 }
 
 func (s *OrchestratorServer) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.ProjectResponse, error) {
-	// Simple lookup (Implementation deferred to fully connect the read paths)
-	return &pb.ProjectResponse{
-		ProjectId: req.GetProjectId(),
-		TenantId:  req.GetTenantId(),
-		Status:    pb.ProjectStatus_PROJECT_STATUS_RUNNING, // Hardcoded for stub
-	}, nil
+	query := `SELECT id, tenant_id, user_id, idea, status, created_at FROM projects WHERE id = $1`
+	var p pb.ProjectResponse
+	var status string
+	var createdAt time.Time
+
+	err := s.db.QueryRow(ctx, query, req.GetProjectId()).Scan(
+		&p.ProjectId, &p.TenantId, &p.UserId, &p.Idea, &status, &createdAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("project not found: %w", err)
+	}
+
+	p.CreatedAt = timestamppb.New(createdAt)
+	
+	// Map string status to proto enum
+	switch status {
+	case "planning":
+		p.Status = pb.ProjectStatus_PROJECT_STATUS_PLANNING
+	case "running", "recovering":
+		p.Status = pb.ProjectStatus_PROJECT_STATUS_RUNNING
+	case "completed", "done":
+		p.Status = pb.ProjectStatus_PROJECT_STATUS_DONE
+	case "failed":
+		p.Status = pb.ProjectStatus_PROJECT_STATUS_FAILED
+	case "cancelled":
+		p.Status = pb.ProjectStatus_PROJECT_STATUS_CANCELLED
+	default:
+		p.Status = pb.ProjectStatus_PROJECT_STATUS_UNSPECIFIED
+	}
+
+	return &p, nil
 }
 
 func (s *OrchestratorServer) StreamEvents(req *pb.StreamEventsRequest, stream pb.OrchestratorService_StreamEventsServer) error {

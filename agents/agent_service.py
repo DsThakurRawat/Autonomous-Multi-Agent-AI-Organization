@@ -397,6 +397,11 @@ class AgentMicroservice:
             duration_ms = int(time.time() * 1000 - start_ms)
             self._tasks_done += 1
 
+            # Extract precision cost/usage from the agent instance (stored by call_llm)
+            last_cost = getattr(agent_instance, "_last_cost", 0.0)
+            last_usage = getattr(agent_instance, "_last_usage", {})
+            total_tokens = last_usage.get("prompt_tokens", 0) + last_usage.get("completion_tokens", 0)
+
             # Publish ResultMessage
             result = ResultMessage(
                 task_id=task_msg.task_id,
@@ -408,15 +413,9 @@ class AgentMicroservice:
                     output if isinstance(output, dict) else {"result": str(output)}
                 ),
                 duration_ms=duration_ms,
-                cost_usd=(
-                    output.get("_cost_usd", 0.0) if isinstance(output, dict) else 0.0
-                ),
-                tokens_used=(
-                    output.get("_tokens_used", 0) if isinstance(output, dict) else 0
-                ),
-                model_used=(
-                    output.get("_model_used") if isinstance(output, dict) else None
-                ),
+                cost_usd=last_cost,
+                tokens_used=total_tokens,
+                model_used=model_name,
                 trace_id=task_msg.trace_id,
             )
 

@@ -14,14 +14,11 @@
 
 ## Core Features
 
-- **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry (Jaeger)**, metrics via **Prometheus/Grafana**, and deep LLM reasoning visibility with **LangSmith**.
-- **Production-Grade Shielding**: Kernel-level sandboxing with **gVisor** (`runsc`), and high-performance **Rust-based AST validation and PII scrubbing**.
-- **Distributed Reliability**: API Idempotency (Redis) and **Distributed Sagas** for atomic state transitions across microservices.
-- **MCP Sandboxing**: Native **Model Context Protocol (MCP)** server for secure, standardized tool execution and resource access.
-- **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing** (Mixture of Experts).
-- **Real-Time UX**: Live multi-agent task streaming via **WebSockets (ws-hub)** and interactive **React Flow** DAG visualization.
-- **Next.js Vibe Dashboard**: Premium animated UI for live task tracking, system health monitoring, and LLM key management.
-- **Interactive TUI**: A powerful **Textual-based Terminal UI** for headless control and live event monitoring.
+- **Surgical Local Mastery**: Direct, zero-dependency host-native execution via **Proximus Desktop Nova**.
+- **Enterprise-Ready Scalability**: Event-driven architecture with **Go**, **Kafka**, and **Postgres** (reserved for SaaS/Cloud deployment).
+- **Specialized Expert Mesh**: CEO, CTO, and Engineers work in parallel to build, test, and ship code.
+- **MCP Native Mastery**: Secure, standardized tool execution via **Model Context Protocol (MCP)**.
+- **Real-Time Visibility**: High-fidelity logs and DAG progress tracking via the interactive **Desktop TUI**.
 
 ---
 
@@ -30,16 +27,21 @@
 You type a business idea. The system:
 
 1. **CEO Agent** — Researches the market, defines scope and requirements
-2. **CTO Agent** — Designs the system architecture and database schema
-3. **Backend Engineer Agent** — Writes Python/Go APIs, database schemas, and logic
-4. **Frontend Engineer Agent** — Writes React/TypeScript/CSS code and responsive layouts
-5. **QA Agent** — Runs tests, detects edge cases and bugs
-6. **DevOps Agent** — Generates Terraform, Kubernetes manifests, CI/CD pipelines
-7. **Finance Agent** — Tracks token usage and enforces budget limits
+---
 
-**Continuous Quality Loop**: After each phase, the Orchestrator runs a self-critique cycle where agents reflect on their own outputs, providing quality scores and approval signals before the project proceeds.
+## 🛠️ Operational Modes
 
-Every agent runs asynchronously over Kafka. You watch it all happen live in the dashboard.
+Proximus Nova operates in two distinct modes to support both individual development and enterprise scaling.
+
+| Mode | **Desktop Nova (Active Focus)** | **Enterprise SaaS (On-Hold)** |
+| :--- | :--- | :--- |
+| **Identity** | High-Precision Local Workbench | Distributed Cloud Platform |
+| **Logic Engine** | Standalone Python Orchestrator | Go Orchestrator + Kafka Sagas |
+| **Data Loop** | Surgical Local File Edits | Containerized Project Volumes |
+| **Dependency** | None (Zero-Infra) | Kafka, PostgreSQL, Redis |
+| **Best For** | Daily Coding & Refactoring | Multi-Tenant AI-Org-as-a-Service |
+
+For the full technical guide on the Enterprise/Web version, see [ENTERPRISE_SAS_GUIDE.md](./docs/ENTERPRISE_SAS_GUIDE.md).
 
 ---
 
@@ -79,17 +81,14 @@ Proximus uses a microservices architecture with a Go-based core, Python AI agent
 
 ## Quick Start
 
-The fastest way to run Proximus is using the unified **CLI Launcher**.
+The fastest way to run Proximus is through the **Desktop Nova** standalone runner.
 
 ### Prerequisites
 
-- **Docker + Docker Compose**
-- **gVisor (runsc)** — Optional, for hardened agent sandboxing.
-- **AWS Bedrock Access** (or fallback keys for OpenAI/Anthropic)
-- **Qdrant** — For semantic caching.
-- **OpenTelemetry Collector** — For distributed tracing.
+- **Python 3.12+**
+- **LLM API Keys** (Amazon Bedrock, Anthropic, or OpenAI)
 
-### 1-Minute Setup
+### 30-Second Setup (Desktop)
 
 ```bash
 # 1. Clone
@@ -98,11 +97,16 @@ cd "Autonomous Multi-Agent AI Organization"
 
 # 2. Setup environment
 cp .env.example .env
-# Edit .env and add your AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION
+# Edit .env and your LLM API keys
 
-# 3. Start the platform
-make start
+# 3. Start Proximus Desktop Nova
+# You can run the CLI runner:
+python3 desktop_nova.py "Your Mission"
+
+# OR (Recommended) Launch the full TUI Shell:
+python3 tui.py
 ```
+---
 
 ---
 

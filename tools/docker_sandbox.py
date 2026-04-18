@@ -21,6 +21,8 @@ class DockerSandboxTool(BaseTool):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.local_mode = os.getenv("AI_ORG_LOCAL_MODE", "false").lower() == "true"
+        self.host_workspace = os.getenv("AI_ORG_LOCAL_WORKSPACE", os.getcwd())
 
     async def run(
         self,
@@ -36,7 +38,7 @@ class DockerSandboxTool(BaseTool):
             return ToolResult(False, "", error=f"Unknown sandbox action {action}")
 
     async def _execute_sandboxed(
-        self, cmd: str, image: str, allow_internet: bool, **kwargs
+        self, cmd: str, image: str, allow_internet: bool, env: dict[str, str] | None = None, **kwargs
     ) -> ToolResult:
         """
         Spins up an ephemeral container mapped to the project workspace.
@@ -53,10 +55,15 @@ class DockerSandboxTool(BaseTool):
             "--name",
             container_name,
             "-v",
-            f"{os.path.abspath(self.working_dir)}:/workspace",
+            f"{os.path.abspath(self.host_workspace if self.local_mode else self.working_dir)}:/workspace",
             "-w",
             "/workspace",
         ]
+
+        # Add environment variables
+        if env:
+            for k, v in env.items():
+                docker_cmd.extend(["-e", f"{k}={v}"])
 
         # Enforce strict network isolation representing Moltbot security constraints
         if not allow_internet:

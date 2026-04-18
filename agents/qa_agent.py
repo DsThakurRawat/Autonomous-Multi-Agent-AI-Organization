@@ -195,12 +195,12 @@ Always produce valid, runnable pytest code.
             async def auth_headers(client):
                 """Register and login a test user, return auth headers."""
                 await client.post("/api/auth/register", json={
-                    "email": "test@example.com",
+                    "email": "test@local.ai",
                     "password": "securepassword123",
                     "full_name": "Test User"
                 })
                 res = await client.post("/api/auth/login", json={
-                    "email": "test@example.com",
+                    "email": "test@local.ai",
                     "password": "securepassword123"
                 })
                 token = res.json()["access_token"]
@@ -213,7 +213,7 @@ Always produce valid, runnable pytest code.
             import pytest
             from httpx import AsyncClient
 
-            TEST_USER = {"email": "authtest@example.com", "password": "password123", "full_name": "Auth Test"}
+            TEST_USER = {"email": "authtest@local.ai", "password": "password123", "full_name": "Auth Test"}
 
             @pytest.mark.asyncio
             async def test_register_success(client: AsyncClient):

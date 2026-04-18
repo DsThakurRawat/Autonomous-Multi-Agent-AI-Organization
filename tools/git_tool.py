@@ -48,7 +48,7 @@ class GitTool(BaseTool):
         if result.success:
             # Configure git identity for automated commits
             await self._run_subprocess(
-                ["git", "config", "user.email", "ai-org@example.com"], cwd=target
+                ["git", "config", "user.email", "swarm@proximus.local"], cwd=target
             )
             await self._run_subprocess(
                 ["git", "config", "user.name", "AI Organization Bot"], cwd=target
