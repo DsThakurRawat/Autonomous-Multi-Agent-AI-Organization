@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
@@ -23,41 +24,93 @@ import (
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
 )
 
-// registry maps project_id → set of active WebSocket connections.
+// client wraps a WebSocket connection with a buffered send channel.
+type client struct {
+	projectID string
+	conn      *websocket.Conn
+	send      chan []byte
+}
+
+// registry maps project_id → set of active clients.
 type registry struct {
 	mu    sync.RWMutex
-	conns map[string]map[*websocket.Conn]struct{}
+	conns map[string]map[*client]struct{}
 }
 
 func newRegistry() *registry {
-	return &registry{conns: make(map[string]map[*websocket.Conn]struct{})}
+	return &registry{conns: make(map[string]map[*client]struct{})}
 }
 
-func (r *registry) add(projectID string, conn *websocket.Conn) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.conns[projectID] == nil {
-		r.conns[projectID] = make(map[*websocket.Conn]struct{})
+func (r *registry) add(projectID string, conn *websocket.Conn) *client {
+	c := &client{
+		projectID: projectID,
+		conn:      conn,
+		send:      make(chan []byte, 256), // Buffer up to 256 events
 	}
-	r.conns[projectID][conn] = struct{}{}
-}
 
-func (r *registry) remove(projectID string, conn *websocket.Conn) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.conns[projectID], conn)
+	if r.conns[projectID] == nil {
+		r.conns[projectID] = make(map[*client]struct{})
+	}
+	r.conns[projectID][c] = struct{}{}
+	r.mu.Unlock()
+
+	// Start the write pump for this client
+	go c.writePump()
+
+	return c
 }
 
-// broadcast sends msg JSON to every connection registered for projectID.
+func (r *registry) remove(projectID string, c *client) {
+	r.mu.Lock()
+	if _, ok := r.conns[projectID]; ok {
+		delete(r.conns[projectID], c)
+		if len(r.conns[projectID]) == 0 {
+			delete(r.conns, projectID)
+		}
+	}
+	r.mu.Unlock()
+	close(c.send)
+}
+
+// broadcast sends msg JSON to every client registered for projectID.
+// This is now non-blocking; if a client's buffer is full, the message is dropped for that client.
 func (r *registry) broadcast(projectID string, msg any) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		logger.L().Error("ws marshal failed", zap.Error(err))
+		return
+	}
+
 	r.mu.RLock()
-	conns := r.conns[projectID]
+	clients := r.conns[projectID]
 	r.mu.RUnlock()
 
-	data, _ := json.Marshal(msg)
-	for conn := range conns {
-		if err := conn.WriteMessage(1 /* TextMessage */, data); err != nil {
+	for c := range clients {
+		select {
+		case c.send <- data:
+		default:
+			// Buffer full, drop message and log warning
+			logger.L().Warn("ws client buffer full, dropping message", 
+				zap.String("project_id", projectID),
+				zap.String("remote_addr", c.conn.RemoteAddr().String()),
+			)
+		}
+	}
+}
+
+// writePump pumps messages from the send channel to the WebSocket connection.
+func (c *client) writePump() {
+	defer func() {
+		_ = c.conn.Close()
+	}()
+
+	for msg := range c.send {
+		// Set a write deadline to prevent hanging on slow network
+		_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 			logger.L().Debug("ws write failed", zap.Error(err))
+			return
 		}
 	}
 }
@@ -153,13 +206,13 @@ func main() {
 		if err == nil {
 			for _, e := range events {
 				if payload, ok := e.Values["payload"].(string); ok {
-					_ = conn.WriteMessage(1, []byte(payload))
+					_ = conn.WriteMessage(websocket.TextMessage, []byte(payload))
 				}
 			}
 		}
 
-		reg.add(projectID, conn)
-		defer reg.remove(projectID, conn)
+		c := reg.add(projectID, conn)
+		defer reg.remove(projectID, c)
 
 		log.Info("ws client connected & replayed", zap.String("project_id", projectID))
 
@@ -175,8 +228,8 @@ func main() {
 	// Support for landing page which might use /stream
 	app.Get("/ws/projects/:id/stream", websocket.New(func(conn *websocket.Conn) {
 		projectID := conn.Params("id")
-		reg.add(projectID, conn)
-		defer reg.remove(projectID, conn)
+		c := reg.add(projectID, conn)
+		defer reg.remove(projectID, c)
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {
 				break

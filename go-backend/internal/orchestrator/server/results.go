@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,8 +48,19 @@ type ResultMessage struct {
 	Version       int            `json:"version"`
 }
 
-func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
+func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) (err error) {
 	log := logger.L()
+
+	// Hardening: Prevent panics from crashing the consumer group
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("panic recovered in Resulthandler", 
+				zap.Any("panic", r),
+				zap.Binary("payload", msg.Value),
+			)
+			err = fmt.Errorf("panic in ResultHandler: %v", r)
+		}
+	}()
 
 	var res ResultMessage
 	if err := json.Unmarshal(msg.Value, &res); err != nil {
