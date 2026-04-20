@@ -1,0 +1,19 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-asyncio pytest-cov httpx aiosqlite
+      - name: Run tests
+        run: pytest tests/ --cov=backend --cov-report=xml -v
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
