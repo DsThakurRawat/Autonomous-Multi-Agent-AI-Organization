@@ -27,6 +27,8 @@ coverage.xml
 *.log
 build_log*.txt
 dashboard_build_log*.txt
+dashboard_build*.log
+uvicorn.log
 
 # ── Node / TypeScript / Next.js ─────────────────────────
 node_modules/
@@ -68,6 +70,8 @@ credentials/
 # ── Output / Generated per-run (not source code) ────────
 claude/
 output/
+deliverables/
+docs/
 generated/
 artifacts/
 tmp_repos/
@@ -149,3 +153,11 @@ keys/
 *.pem
 .vercel/
 tmp_repos/
+tmp/
+tmpdir.py
+general_hardcoded_tmp.py
+*.tmp
+
+# Recursive tmp patterns for research repositories
+tmp_repos/**/tmp*
+tmp_repos/**/*tmp*
