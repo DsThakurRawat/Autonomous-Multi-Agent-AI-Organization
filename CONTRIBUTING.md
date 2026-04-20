@@ -1,5 +1,7 @@
 # Contributing to Proximus — Autonomous Multi-Agent AI Organization
 
+> **📌 Before you start**: Read **[PRIORITIES.md](./PRIORITIES.md)** to see where contributions are most impactful. The Go backend, Kafka, Docker, and Rust services are **feature-frozen** until v2.0 — all energy should go into agent prompt quality, tool reliability, and test coverage.
+
 ## Branch Naming Convention
 
 Every operation **must** be done on its own branch. Never commit directly to `main`.
@@ -86,10 +88,10 @@ To maintain a clean and reliable history, we follow a strict Pull Request (PR) w
 
 Proximus is a polyglot system designed for performance and scalability:
 
-- **Go 1.24.0** — API Gateway, Orchestrator, health monitoring, and system-level microservices.
+- **Go 1.25.0** — API Gateway, Orchestrator, health monitoring, and system-level microservices.
 - **Python 3.12** — AI Agents (Amazon Bedrock/Nova), TUI, and observability integrations.
 - **Rust** — High-performance scoring (MoE) and security-critical services (AST validation).
-- **TypeScript / Next.js 14** — Real-time analytics dashboard and React Flow visualization.
+- **TypeScript / Next.js 15** — Real-time analytics dashboard and React Flow visualization.
 - **Apache Kafka** — Main event bus for agent-to-orchestrator communication.
 - **PostgreSQL 15 & Redis 7** — Structured data persistence and low-latency caching/PubSub.
 - **Docker & Terraform** — Containerization and Infrastructure as Code.

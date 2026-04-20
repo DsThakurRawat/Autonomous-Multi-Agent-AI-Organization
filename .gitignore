@@ -27,6 +27,8 @@ coverage.xml
 *.log
 build_log*.txt
 dashboard_build_log*.txt
+dashboard_build*.log
+uvicorn.log
 
 # ── Node / TypeScript / Next.js ─────────────────────────
 node_modules/

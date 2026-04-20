@@ -23,6 +23,7 @@ import redis.asyncio as redis
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
+from agents.events import AgentEvent
 from agents.memory import SemanticCache
 from messaging.kafka_client import KafkaProducerClient
 from tools.collaboration_tool import CollaborationTool
@@ -115,14 +116,32 @@ class BaseAgent(ABC):
 
         self._semantic_cache = SemanticCache()
 
-        # Redis client for atomic budget gate
-        redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
-        self.redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Lazy Redis — only connects when first accessed
+        self._redis_client: Any | None = None
         self.budget_limit = float(os.getenv("BUDGET_LIMIT_USD", "200.0"))
 
         logger.info(
             "Agent initialized", role=self.ROLE, provider=provider, model=model_name
         )
+
+    @property
+    def redis_client(self) -> Any:
+        """Lazy Redis connection — falls back to a no-op stub if unavailable.
+
+        This enables Desktop Nova to run with zero infrastructure dependencies.
+        """
+        if self._redis_client is None:
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            try:
+                self._redis_client = redis.from_url(redis_url, decode_responses=True)
+            except Exception:
+                logger.warning("Redis unavailable, using no-op stub")
+                self._redis_client = _NoOpRedis()
+        return self._redis_client
+
+    @redis_client.setter
+    def redis_client(self, value: Any):
+        self._redis_client = value
 
     @staticmethod
     def get_secret(name: str, default: str | None = None) -> str | None:
@@ -675,6 +694,31 @@ class BaseAgent(ABC):
         self._scratchpad = []
         self._iteration_count = 0
 
+    # -- Event Emission ---------------------------------------------
+    async def emit(
+        self,
+        context: Any,
+        message: str,
+        level: str = "info",
+        data: dict[str, Any] | None = None,
+        event_type: str = "thinking",
+    ) -> None:
+        """Emit a typed AgentEvent through the execution context.
+
+        This replaces the anonymous `type('E', ...)` pattern. Every agent
+        should use this instead of constructing events manually.
+        """
+        if context is None:
+            return
+        event = AgentEvent(
+            event_type=event_type,
+            agent_role=self.ROLE,
+            message=message,
+            level=level,
+            data=data or {},
+        )
+        await context.emit_event(event)
+
     # -- Self-Critique ----------------------------------------------
     async def self_critique(self, output: dict[str, Any]) -> dict[str, Any]:
         """
@@ -705,3 +749,37 @@ Return JSON: {{"scores": {{}}, "issues": [], "improvements": [], "approved": tru
         except Exception:
             output["_critique"] = {"approved": True, "scores": {}, "issues": []}
             return output
+
+
+class _NoOpRedis:
+    """Stub Redis client that silently succeeds for all operations.
+
+    Used as a fallback when Redis is unavailable (Desktop Nova mode).
+    All reads return None, all writes succeed silently.
+    """
+
+    async def get(self, key: str) -> None:
+        return None
+
+    async def set(self, key: str, value: Any, **kwargs) -> bool:
+        return True
+
+    async def incrbyfloat(self, key: str, amount: float) -> float:
+        return amount
+
+    def pubsub(self):
+        return self
+
+    async def subscribe(self, *args, **kwargs):
+        pass
+
+    async def unsubscribe(self, *args, **kwargs):
+        pass
+
+    async def close(self):
+        pass
+
+    async def listen(self):
+        # Yield nothing — approval loop will never block
+        return
+        yield  # Make this an async generator  # noqa: RUF027

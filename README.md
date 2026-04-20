@@ -1,421 +1,107 @@
 # Proximus — Autonomous Multi-Agent AI Organization
 
-[![Go](https://img.shields.io/badge/go-1.24.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/go-1.25.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Kafka](https://img.shields.io/badge/Kafka-Event_Driven-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Go CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/go-ci.yml)
-[![Frontend CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml)
-[![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
-> A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered by **Amazon Nova** foundation models and **Nova Act** browser automation.
-
-## Core Features
-
-- **Surgical Local Mastery**: Direct, zero-dependency host-native execution via **Proximus Desktop Nova**.
-- **Enterprise-Ready Scalability**: Event-driven architecture with **Go**, **Kafka**, and **Postgres** (reserved for SaaS/Cloud deployment).
-- **Specialized Expert Mesh**: CEO, CTO, and Engineers work in parallel to build, test, and ship code.
-- **MCP Native Mastery**: Secure, standardized tool execution via **Model Context Protocol (MCP)**.
-- **Real-Time Visibility**: High-fidelity logs and DAG progress tracking via the interactive **Desktop TUI**.
+> A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea.
 
 ---
 
-## What It Does
+## ✨ Core Philosophy: Surgical Mastery
+Proximus is built on the principle of **precision**. Instead of generic code generation, our specialist agents (CEO, CTO, Engineers, QA, DevOps) perform **surgical local mastery**. They modify your source code with minimal side effects, preserving your style and maintaining full context.
 
-You type a business idea. The system:
+## 🚀 Quick Start (30 Seconds)
 
-1. **CEO Agent** — Researches the market, defines scope and requirements
+The fastest way to experience Proximus is through the **Desktop Nova** standalone runner.
+
+### 1. Setup
+```bash
+git clone https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization.git
+cd "Autonomous Multi-Agent AI Organization"
+cp .env.example .env # Add your LLM API keys
+```
+
+### 2. Launch the Swarm
+Choose your preferred interface:
+
+*   **Interactive TUI Shell (Recommended)**:
+    ```bash
+    python3 tui.py
+    ```
+*   **CLI Runner**:
+    ```bash
+    python3 desktop_nova.py "Build a real-time weather dashboard with FastAPI"
+    ```
+
 ---
 
 ## 🛠️ Operational Modes
 
-Proximus Nova operates in two distinct modes to support both individual development and enterprise scaling.
-
-| Mode | **Desktop Nova (Active Focus)** | **Enterprise SaaS (On-Hold)** |
+| Mode | **Desktop Nova (Active)** | **Enterprise SaaS (Scalable)** |
 | :--- | :--- | :--- |
 | **Identity** | High-Precision Local Workbench | Distributed Cloud Platform |
 | **Logic Engine** | Standalone Python Orchestrator | Go Orchestrator + Kafka Sagas |
-| **Data Loop** | Surgical Local File Edits | Containerized Project Volumes |
 | **Dependency** | None (Zero-Infra) | Kafka, PostgreSQL, Redis |
 | **Best For** | Daily Coding & Refactoring | Multi-Tenant AI-Org-as-a-Service |
 
-For the full technical guide on the Enterprise/Web version, see [ENTERPRISE_SAS_GUIDE.md](./docs/ENTERPRISE_SAS_GUIDE.md).
+---
+
+## 🗺️ Navigation & Documentation
+
+We believe in clean, deep-dive documentation. Please explore our specialized guides:
+
+*   **[Developer Hub](./docs/DEVELOPER_HUB.md)**: The central technical entry point for the polyglot codebase.
+*   **[Architecture Guide](./architecture.md)**: High-level system design and data flow.
+*   **[API Reference](./docs/API_REFERENCE.md)**: Go Gateway routes and WebSocket events.
+*   **[Desktop Mastery](./docs/DESKTOP_MASTERY.md)**: Internals of the local standalone engine.
+*   **[Enterprise Setup](./docs/ENTERPRISE_SAS_GUIDE.md)**: How to run the full Docker-based SaaS stack.
 
 ---
 
-## Architecture
-
-Proximus uses a microservices architecture with a Go-based core, Python AI agents, and a Next.js dashboard. For a detailed breakdown of components and data flow, see [architecture.md](./architecture.md).
-
----
-
-## Tech Stack
-
-| Command      | Description                                                      |
-| :----------- | :--------------------------------------------------------------- |
-| `make start` | Launches the full platform (detached)                            |
-| `make stop`  | Gracefully stops all services                                    |
-| `make clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
-| `make logs`  | Tails logs for all services                                      |
-
-| Layer             | Technology                                                       |
-| ----------------- | ---------------------------------------------------------------- |
-| **API Gateway**   | Go 1.24.0 · Fiber v2                                             |
-| **Orchestrator**  | Go · gRPC · DAG engine                                           |
-| **WebSocket Hub** | Go · Redis Pub/Sub                                               |
-| **AI Agents**     | Python 3.12 · Amazon Bedrock / OpenAI / Anthropic / Google       |
-| **Event Bus**     | Apache Kafka 7.6.0 · ZooKeeper                                   |
-| **Database**      | PostgreSQL 15 · pgcrypto                                         |
-| **Cache & Store** | Redis 7 · Qdrant 1.8.2 (Vector DB)                               |
-| **Dashboard**     | Next.js 14 · TypeScript · React Flow                             |
-| **TUI**           | Python · Textual · WebSockets                                    |
-| **Observability** | Jaeger 1.54 · Prometheus 2.49.1 · Grafana 10.3.1 · OpenTelemetry |
-| **MoE Routing**   | Rust (sub-ms expert scoring)                                     |
-| **Security**      | Rust (AST Validation + PII Masking)                              |
-| **Auth (SaaS)**   | Google OAuth2 · RS256 JWT                                        |
-| **Infra**         | Docker Compose · Helm · Terraform                                |
+## 🛡️ Security & Reliability
+Proximus is hardened for production environments with:
+*   **PII Scrubbing**: Rust-based log redaction.
+*   **AST Validation**: Security analysis of AI-generated scripts before execution.
+*   **Egress Proxy**: Restricted agent network access to an allowlist of domains.
+*   **Budget Gates**: Real-time spending control and alerts.
 
 ---
 
-## Quick Start
+## 🧠 LLM Configuration
+By default, the entire system is powered by **Amazon Nova** models, but it is provider-agnostic. Specific agents can be dynamically swapped via the UI.
 
-The fastest way to run Proximus is through the **Desktop Nova** standalone runner.
-
-### Prerequisites
-
-- **Python 3.12+**
-- **LLM API Keys** (Amazon Bedrock, Anthropic, or OpenAI)
-
-### 30-Second Setup (Desktop)
-
-```bash
-# 1. Clone
-git clone https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization.git
-cd "Autonomous Multi-Agent AI Organization"
-
-# 2. Setup environment
-cp .env.example .env
-# Edit .env and your LLM API keys
-
-# 3. Start Proximus Desktop Nova
-# You can run the CLI runner:
-python3 desktop_nova.py "Your Mission"
-
-# OR (Recommended) Launch the full TUI Shell:
-python3 tui.py
-```
----
+| Agent | Default Model | Alternatives |
+| :--- | :--- | :--- |
+| **CEO / CTO** | `nova-lite-v1:0` | GPT-4o, Claude 3.5 |
+| **Engineers** | `nova-lite-v1:0` | Gemini 1.5, GPT-4o |
+| **QA / DevOps**| `nova-lite-v1:0` | Claude 3 Haiku |
+| **Finance** | `nova-micro-v1:0` | GPT-4o-mini |
 
 ---
 
-## Future Vision
+## 🛠️ Troubleshooting
 
-Ongoing development focuses on scaling to production, advanced self-healing, and visual intelligence. For the full technical vision, please see the [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md).
-
----
-
-## Advanced Settings
-
-For deploying on a server where multiple users sign in with Google accounts.
-
-**Prerequisites:** Docker, a domain, Google Cloud Console app
-
-```bash
-# 1. Clone
-git clone https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization.git
-cd "Autonomous Multi-Agent AI Organization"
-
-# 2. Copy SaaS env template
-cp .env.example .env
-
-# 3. Generate RSA keys for JWT signing
-mkdir -p keys
-openssl genrsa -out keys/private.pem 2048
-openssl rsa -in keys/private.pem -pubout -out keys/public.pem
-
-# 4. Generate encryption key
-openssl rand -hex 32   # → paste as KEY_ENCRYPTION_KEY in .env
-
-# 5. Fill in Google OAuth credentials in .env
-#    Create at: https://console.cloud.google.com/apis/credentials
-#    Authorized redirect URI: https://yourdomain.com/auth/google/callback
-
-# 6. Fill in AWS API keys and any fallback LLM API keys in .env (platform-wide defaults)
-
-# 7. Start
-docker-compose -f go-backend/deploy/docker-compose.yml up --build
-
-# 8. Open
-open https://yourdomain.com
-```
-
-Users land on a login page → **Sign in with Google** → redirected to their dashboard.
-
----
-
-## Environment Variables
-
-### Auth & Security
-
-| `AUTH_DISABLED`        | Yes      | Set to `true` for local, `false` for SaaS      |
-| `KEY_ENCRYPTION_KEY`   | Yes      | 64-char hex (32 bytes). `openssl rand -hex 32` |
-| `JWT_PRIVATE_KEY_PATH` | Yes      | Path to `keys/private.pem` (SaaS only)         |
-| `JWT_PUBLIC_KEY_PATH`  | Yes      | Path to `keys/public.pem` (SaaS only)          |
-| `JWT_EXPIRY`           |          | Default: `168h` (7 days)                       |
-
----
-
-## API Routes (Go Gateway — port 8080)
-
-| Method   | Path                             | Description                         |
-| -------- | -------------------------------- | ----------------------------------- |
-| `GET`    | `/healthz`                       | Health check                        |
-| `GET`    | `/auth/google`                   | Initiate Google OAuth (SaaS mode)   |
-| `GET`    | `/auth/google/callback`          | OAuth callback → JWT cookie         |
-| `POST`   | `/v1/projects`                   | Create a new project                |
-| `GET`    | `/v1/projects`                   | List your projects                  |
-| `GET`    | `/v1/projects/:id`               | Get project detail + task counts    |
-| `DELETE` | `/v1/projects/:id`               | Cancel a project                    |
-| `GET`    | `/v1/projects/:id/tasks`         | DAG task list (for DagViewer)       |
-| `GET`    | `/v1/projects/:id/events`        | Recent agent event log              |
-| `GET`    | `/v1/projects/:id/cost`          | Cost breakdown per agent            |
-| `POST`   | `/v1/settings/keys`              | Add encrypted LLM API key           |
-| `GET`    | `/v1/settings/keys`              | List stored key labels              |
-| `DELETE` | `/v1/settings/keys/:id`          | Delete a stored key                 |
-| `POST`   | `/v1/settings/agent-prefs`       | Set model preference per agent role |
-| `GET`    | `/v1/settings/agent-prefs`       | Get all agent model preferences     |
-| `DELETE` | `/v1/settings/agent-prefs/:role` | Reset agent to default model        |
-
----
-
-## LLM Configuration
-
-### Default Models (Current Configuration)
-
-By default, the entire system is powered by Amazon Nova models. However, the orchestrator and agent layers are designed to be provider-agnostic. Later on, specific agents can be dynamically swapped via the UI to use specialized models (e.g., using Gemini for a highly visual Frontend Engineer task, or Claude for complex Backend QA).
-
-| Agent         | Default Provider | Default Model            | Supported Alternatives    |
-| :------------ | :--------------- | :----------------------- | :------------------------ |
-| CEO           | Bedrock          | `amazon.nova-lite-v1:0`  | OpenAI, Anthropic, Google |
-| CTO           | Bedrock          | `amazon.nova-lite-v1:0`  | OpenAI, Anthropic, Google |
-| Backend Eng   | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
-| Frontend Eng  | Bedrock          | `amazon.nova-lite-v1:0`  | Google (Gemini)           |
-| QA            | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
-| DevOps        | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic                 |
-| Finance       | Bedrock          | `amazon.nova-micro-v1:0` | OpenAI, Google            |
-
-### Per-User Key Management
-
-In the dashboard → **Settings**, users can:
-
-- Add multiple API keys per provider (stored AES-256-GCM encrypted)
-- Override which model each agent role uses
-- Select which stored key each agent uses
-
-The resolution order per task:
-
-1. User's agent-specific preference → their stored key
-2. User's stored key for the provider (first valid)
-3. Server environment variable (`AWS_ACCESS_KEY_ID`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.)
-4. Error if none available
-
----
-
-## Database Migrations
-
-Migrations run automatically in the local Docker Compose stack.
-
-```bash
-# Run manually
-migrate -path go-backend/migrations -database "$DATABASE_URL" up
-
-# Rollback last migration
-migrate -path go-backend/migrations -database "$DATABASE_URL" down 1
-```
-
-| Migration           | Contents                                                                    |
-| ------------------- | --------------------------------------------------------------------------- |
-| `001_init`          | Core schema: tenants, users, projects, tasks, cost_events, agent_heartbeats |
-| `002_user_llm_keys` | user_llm_keys + agent_model_prefs tables                                    |
-| `003_user_auth`     | users.updated_at + `upsert_google_user()` PG function (atomic OAuth login)  |
-| `004_projects_name` | projects.name column (backfilled from idea)                                 |
-
----
-
-## Dashboard
-
-Access at `http://localhost:3000`
-
-| Page         | What's there                                                        |
-| ------------ | ------------------------------------------------------------------- |
-| `/`          | Landing page / Google Sign-In (SaaS mode)                           |
-| `/dashboard` | Project list, create project, live agent feed, task DAG, cost meter |
-| `/settings`  | Manage LLM API keys + per-agent model preferences                   |
-
----
-
-## Project Structure
-
-```text
-├── Makefile                  Cross-platform shortcuts (start, stop, logs)
-├── tui.py                    Interactive Terminal UI (Textual)
-├── go-backend/               Go microservices
-│   ├── cmd/
-│   │   ├── gateway/          HTTP API (Fiber) — auth, routing, websockets
-│   │   ├── health-monitor/   System health monitoring
-│   │   ├── mcp-server/       Model Context Protocol (MCP) server
-│   │   ├── metrics-svc/      Metrics tracking service
-│   │   ├── orchestrator/     gRPC server — DAG planning, Kafka dispatch
-│   │   ├── proxy/            Egress proxy (domain allowlist enforcement)
-│   │   ├── tenant-svc/       Tenant management
-│   │   └── ws-hub/           WebSocket server — Redis pub/sub
-│   ├── internal/
-│   │   ├── gateway/handler/  HTTP handlers (projects, tasks, settings, OAuth)
-│   │   ├── gateway/middleware/  Auth (JWT + Local), CORS, rate limiting
-│   │   ├── orchestrator/     DAG engine + gRPC server
-│   │   └── shared/           auth, config, db, kafka, keystore, logger, redis
-│   ├── migrations/           SQL migrations (001–004)
-│   └── deploy/
-│       ├── docker-compose.yml        SaaS mode
-│       ├── docker-compose.local.yml  Local mode (no login)
-│       └── dockerfiles/
-├── agents/                   Python AI agents
-│   ├── base_agent.py         Multi-provider LLM caller (OpenAI/Anthropic/Google)
-│   ├── agent_service.py      Kafka consumer + per-task LLM resolution
-│   ├── model_registry.py     Default model configs per agent role
-│   ├── roles.py              Typed role definitions
-│   ├── ceo_agent.py
-│   ├── cto_agent.py
-│   ├── backend_agent.py      (Handles Backend Engineer tasks)
-│   ├── frontend_agent.py     (Handles Frontend Engineer tasks)
-│   ├── qa_agent.py
-│   ├── devops_agent.py
-│   └── finance_agent.py
-├── dashboard/                Next.js 14 frontend
-│   ├── app/
-│   │   ├── page.tsx          Landing / login page
-│   │   ├── dashboard/        Main dashboard
-│   │   └── settings/         LLM key + model preference management
-│   └── lib/api.ts            Typed API client
-├── security-check/           Rust — AST validation and PII scrubbing gRPC service
-├── moe-scoring/              Rust — sub-ms expert routing engine
-├── infra/
-│   ├── helm/                 Kubernetes Helm charts
-│   └── terraform/            AWS infrastructure (Mocked by DevOps Agent)
-├── monitoring/               Grafana dashboards and Prometheus configuration
-├── observability/            Python-based OpenTelemetry tracing and metrics
-├── api/                      API definitions and specs
-├── messaging/                Kafka schemas and clients
-├── orchestrator/             Python orchestrator logic
-├── output/                   Log/artifact outputs
-├── tests/                    Test suite (unit and integration)
-├── tools/                    Shared agent tools
-├── utils/                    Shared utility functions
-├── tui.py                    Interactive Terminal UI (Textual)
-├── docker-compose.yml        Root compose file (SaaS)
-├── docker-compose.observability.yml Metrics and Observability
-├── .env.example              SaaS mode env template
-├── requirements.txt          Python dependencies
-└── Dockerfile.agent          Python agent container image
-```
-
----
-
-## Kubernetes Deployment
-
-```bash
-cd infra/helm/ai-org
-helm install ai-org . --namespace ai-org-system --create-namespace \
-  --set gateway.env.AUTH_DISABLED=false \
-  --set gateway.env.GOOGLE_CLIENT_ID=<your-id> \
-  --set gateway.env.GOOGLE_CLIENT_SECRET=<your-secret>
-```
-
----
-
-## Terraform (AWS)
-
-```bash
-cd infra/terraform
-terraform init
-terraform plan
-terraform apply
-```
-
-> **Note**: These files are currently managed and simulated by the DevOps agent locally. Real AWS deployment bindings will be fully integrated.
-
----
-
-## Production Softening & Resilience
-
-The system is now hardened for production environments:
-
-- **Egress Proxy**: Restricts agent network access to an allowlist of LLM providers and infrastructure.
-- **Log Redactor**: Automatically masks API keys (AWS, Google, OpenAI) in both Python and Go logging pipelines using high-performance regex cores.
-- **Memory Decay**: Background worker periodically prunes stale agent memories to prevent context-window explosion and data rot.
-- **Budget Alerts**: Real-time emission of `budget_alert` events when spend thresholds are crossed, integrated into the Finance Agent's monitoring loop.
-- **Health Orchestrator**: Go-based aggregator provides unified readiness checks on `/healthz`, verifying Postgres, Redis, and Kafka availability.
-
----
-
-## Security
-
-- **Encrypted API keys** — AES-256-GCM. Raw keys never written to disk.
-- **`key_hint`** — Only last 4 chars of a key are stored unencrypted (safe for UI display).
-- **RS256 JWT** — Asymmetric signing. Private key never leaves the server.
-- **CSRF protection** — OAuth state token validated via HttpOnly cookie.
-- **HttpOnly JWT cookie** — Immune to XSS token theft.
-- **Agent sandboxing** — Support for **gVisor (`runsc`)** for kernel-isolated code execution.
-- **Least privilege** — CEO cannot write code; Engineer cannot modify billing.
-- **PII Scrubbing** — High-performance Rust-based redaction of logs and agent outputs.
-- **AST Validation** — Real-time security analysis of AI-generated Python scripts.
-
----
-
-## Troubleshooting
-
-### Kafka Connectivity Issues
-
+### Kafka Issues
 If agents are not receiving tasks, ensure Kafka is healthy:
-
 ```bash
 make status
-make logs  # check for kafka connection errors
+make logs  # Check for kafka connection errors
 ```
+If stuck, run `make clean` to wipe volumes and restart.
 
-If Kafka is stuck, run `make clean` to wipe volumes and restart.
+### Dashboard/WebSockets
+Ensure `ws-hub` is running. Check browser console for WebSocket connection errors to `localhost:8080`.
 
-### Dashboard not updating
-
-Ensure the `ws-hub` service is running and that your browser can connect to `localhost:8080`. Check the browser console for WebSocket connection errors.
-
-### LLM API Errors
-
-Verify your `.env` file contains valid API keys. Check the agent logs for specific error messages:
-
-```bash
-make logs-agents
-```
+### LLM Errors
+Verify `.env` has valid API keys. Check agent logs: `make logs-agents`.
 
 ---
 
-## Contributing
+## 🤝 Contributing
+We welcome contributions! Please see **[CONTRIBUTING.md](./CONTRIBUTING.md)** for our standards and **[SETUP.md](./SETUP.md)** for local development environment configuration.
 
-We welcome contributions from the community! Whether you're fixing a bug, adding a feature, or improving documentation, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on our PR workflow and coding standards.
-
----
-
-## Branding & Identity
-
-**Proximus** is the official identity of the Autonomous Multi-Agent AI Organization. When contributing:
-
-- Use **Proximus** when referring to the platform as a whole.
-- Maintain the specialized agent roles (CEO, CTO, etc.) as the core organizational units.
-
----
-
-## License
-
+## 📄 License
 MIT — see `LICENSE` for details.

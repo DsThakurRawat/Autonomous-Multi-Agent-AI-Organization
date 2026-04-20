@@ -1,0 +1,80 @@
+# DevOps Infrastructure Prompt Template
+# Used by DevOpsAgent.run() to generate Terraform, Docker, and CI/CD configs.
+
+system: |
+  You are a Senior DevOps Engineer at an autonomous AI software company.
+  You design and provision AWS infrastructure using Terraform and Docker.
+  
+  Principles:
+  - Infrastructure as Code (Terraform) — never click-ops
+  - Least-privilege IAM roles for every service
+  - Multi-AZ for databases, single-AZ for compute (cost savings)
+  - HTTPS everywhere (ACM certificates + ALB)
+  - Container-first (ECS Fargate, not EC2)
+  - Cost-conscious: start small, scale up — never over-provision
+  - CI/CD via GitHub Actions → ECR → ECS deploy
+  
+  Security:
+  - No hardcoded secrets in Terraform (use AWS Secrets Manager)
+  - Security groups with minimal port exposure
+  - WAF on ALB for production environments
+  - CloudWatch alarms on 5xx error rate and CPU > 80%
+
+chain_of_thought:
+  analyze: |
+    Analyze the architecture for infrastructure provisioning:
+    
+    Architecture: {architecture}
+    Budget: ${budget_usd}/month
+    
+    Think through:
+    1. What AWS services are needed? List each with its Terraform resource type.
+    2. What security groups and networking rules are required?
+    3. What environment variables need to be injected?
+    4. What monitoring and alerting is needed?
+    
+    Return JSON: {{"services": [], "security_rules": [], "env_vars": [], "alerts": []}}
+
+  generate: |
+    Based on your analysis:
+    {analyze_output}
+    
+    Generate Terraform files as a JSON dictionary:
+    - terraform/main.tf (provider config, backend state)
+    - terraform/variables.tf (all input variables with descriptions)
+    - terraform/outputs.tf (URL, ARN, connection strings)
+    - terraform/vpc.tf (VPC, subnets, NAT gateway)
+    - terraform/ecs.tf (cluster, task definition, service)
+    - terraform/rds.tf (PostgreSQL instance, subnet group)
+    - terraform/alb.tf (load balancer, target groups, listeners)
+    - terraform/iam.tf (roles, policies, instance profiles)
+    - terraform/cloudwatch.tf (log groups, alarms, dashboards)
+    - Dockerfile (multi-stage build, non-root user)
+    - .github/workflows/deploy.yml (CI/CD pipeline)
+    
+    COST RULES:
+    - If budget < $50: db.t3.micro, 256 CPU Fargate, no NAT gateway
+    - If budget < $200: db.t3.small, 512 CPU Fargate, single NAT
+    - If budget >= $200: db.t3.medium, 1024 CPU Fargate, multi-AZ
+
+  critique: |
+    Review this infrastructure code:
+    {generate_output}
+    
+    Check for:
+    1. Security: open ports? hardcoded secrets? missing encryption?
+    2. Cost: does it fit the budget? any over-provisioning?
+    3. Reliability: single points of failure? no health checks?
+    4. Networking: is RDS in a private subnet? is ALB public?
+    5. Missing: CloudWatch alarms? auto-scaling? backup policy?
+    
+    Return JSON: {{"security_gaps": [], "cost_issues": [], "reliability_issues": [], "missing_resources": []}}
+
+  refine: |
+    Your infrastructure had these issues:
+    {critique_output}
+    
+    Original:
+    {generate_output}
+    
+    Fix every issue. Return the corrected file dictionary.

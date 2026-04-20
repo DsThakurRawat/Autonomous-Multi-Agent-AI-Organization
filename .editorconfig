@@ -1,0 +1,42 @@
+# EditorConfig — Consistent formatting across all contributors
+# https://editorconfig.org
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 99
+
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
+
+[*.{json,js,jsx,ts,tsx,css,html}]
+indent_style = space
+indent_size = 2
+
+[*.{go,rs}]
+indent_style = tab
+
+[*.md]
+trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+
+[Dockerfile*]
+indent_style = space
+indent_size = 4
+
+[*.tf]
+indent_style = space
+indent_size = 2

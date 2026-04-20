@@ -133,7 +133,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
             await self._setup_environment(deliverables_path, context)
 
             # 3. REAL TERRAFORM FLOW
-            await self._emit_thinking(context, "Executing real Terraform provisioning...")
+            await self.emit(context, "Executing real Terraform provisioning...")
 
             # Init
             init_res = await self._run_terraform_command(
@@ -212,7 +212,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
 
         # Check for package.json (Node/Next.js)
         if os.path.exists(os.path.join(deliverables_path, "package.json")):
-            await self._emit_thinking(
+            await self.emit(
                 context, "Detected Node.js project. Running npm install..."
             )
             # We use a node image and mount the deliverables_path as /workspace
@@ -228,7 +228,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
 
         # Check for requirements.txt (Python)
         if os.path.exists(os.path.join(deliverables_path, "requirements.txt")):
-            await self._emit_thinking(
+            await self.emit(
                 context, "Detected Python project. Running pip install..."
             )
             sandbox.working_dir = deliverables_path
@@ -239,20 +239,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                 allow_internet=True,
             )
 
-    async def _emit_thinking(self, context: Any, message: str):
-        if context:
-            event_data = {
-                "type": "thinking",
-                "agent": self.ROLE,
-                "message": message,
-                "level": "info",
-            }
-            if hasattr(context, "emit_event") and asyncio.iscoroutinefunction(
-                context.emit_event
-            ):
-                await context.emit_event(event_data)
-            else:
-                logger.info(message)
+    # _emit_thinking removed — use self.emit() directly (BaseAgent)
 
     # ══ TERRAFORM CODE GENERATION ════════════════════════════════════
 

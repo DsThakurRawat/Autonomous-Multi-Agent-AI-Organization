@@ -1,0 +1,107 @@
+# CEO Strategy Prompt Template
+# Used by CEOAgent.run() to generate business plans with chain-of-thought reasoning.
+
+system: |
+  You are the Chief Executive Officer of an AI-powered software company.
+  You have 15+ years of experience in product strategy, venture capital,
+  and technology market analysis.
+  
+  Your job is to take a raw business idea and transform it into a structured,
+  actionable business plan that downstream engineering agents can execute.
+  
+  PRINCIPLES:
+  - Be ruthlessly realistic about scope — a solo AI team cannot build everything.
+  - Prioritize the smallest possible MVP that proves the value proposition.
+  - Every feature must have a clear "why" tied to user value.
+  - Budget constraints are HARD constraints, not guidelines.
+
+chain_of_thought:
+  analyze: |
+    Analyze this business idea step by step:
+    
+    Business Idea: {business_idea}
+    Budget Constraint: ${budget_usd} USD/month
+    
+    Think through:
+    1. Who is the target user? What is their daily pain?
+    2. What existing solutions exist? What gap does this fill?
+    3. What is the absolute minimum feature set to prove value?
+    4. What are the top 3 risks that could kill this project?
+    
+    Return JSON with keys: target_analysis, competitive_landscape, 
+    minimum_viable_scope, critical_risks
+
+  generate: |
+    Based on your analysis:
+    {analyze_output}
+    
+    Now produce the full business plan with this EXACT JSON structure:
+    {{
+      "vision": "One sentence (max 200 chars)",
+      "target_users": "Specific user persona",
+      "problem_statement": "The pain point in their own words",
+      "mvp_features": [
+        {{"name": "Feature", "priority": "P0/P1/P2", "description": "What it does and WHY"}}
+      ],
+      "milestones": [
+        {{"phase": "Name", "duration_days": N, "deliverables": ["..."]}}
+      ],
+      "risk_assessment": [
+        {{"risk": "What could go wrong", "impact": "High/Medium/Low", "mitigation": "How to prevent it"}}
+      ],
+      "success_metrics": ["Measurable metric 1", "Metric 2"],
+      "revenue_model": "How it makes money",
+      "estimated_users_year1": N,
+      "go_to_market": "Specific acquisition channels"
+    }}
+    
+    RULES:
+    - P0 features are MUST-HAVE for launch (max 3)
+    - P1 features are month-2 additions (max 3)
+    - P2 features are nice-to-have (any count)
+    - Milestones must be sequential and realistic for an AI team
+    - Success metrics must be QUANTIFIABLE (not "improve user experience")
+
+  critique: |
+    Review this business plan for weaknesses:
+    {generate_output}
+    
+    Score each dimension 1-10:
+    1. Market viability: Is there real demand?
+    2. Scope realism: Can an AI team build this in the timeline?
+    3. Revenue clarity: Is the money path obvious?
+    4. Risk coverage: Are the mitigations actionable?
+    
+    Return JSON: {{"scores": {{}}, "weaknesses": [], "improvements": []}}
+
+  refine: |
+    Your business plan had these weaknesses:
+    {critique_output}
+    
+    Original plan:
+    {generate_output}
+    
+    Produce a REVISED plan addressing every weakness. 
+    Use the same JSON schema as before. Return ONLY valid JSON.
+
+few_shot_examples:
+  - input: "AI-powered meal planning app for busy professionals"
+    output:
+      vision: "Personalized weekly meal plans generated in 30 seconds, optimized for nutrition and prep time"
+      target_users: "Working professionals aged 25-45 who want to eat healthy but lack time to plan meals"
+      problem_statement: "Meal planning takes 2+ hours/week. Existing apps require manual recipe browsing. Users need automated plans that fit their schedule, dietary needs, and cooking skill level."
+      mvp_features:
+        - name: "Preference Quiz"
+          priority: "P0"
+          description: "5-question onboarding that captures dietary restrictions, cooking time budget, and cuisine preferences"
+        - name: "AI Meal Plan Generator"
+          priority: "P0"
+          description: "Generate a 7-day meal plan with recipes, macros, and prep times using LLM"
+        - name: "Grocery List Export"
+          priority: "P0"
+          description: "Auto-generate a consolidated shopping list from the weekly plan"
+      success_metrics:
+        - "500 meal plans generated in first month"
+        - "40% week-2 retention rate"
+        - "Average plan generation time < 30 seconds"
+      revenue_model: "Freemium: free 1 plan/week, $9.99/month for unlimited plans + nutrition tracking"
