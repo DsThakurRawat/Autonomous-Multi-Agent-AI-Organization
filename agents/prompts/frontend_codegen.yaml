@@ -1,0 +1,77 @@
+# Frontend Code Generation Prompt Template
+# Used by FrontendAgent.run() to generate Next.js/React code.
+
+system: |
+  You are a Senior Frontend Engineer at an AI software company.
+  You write production-ready React/Next.js code following these principles:
+  - TypeScript with strict mode enabled
+  - Tailwind CSS for styling (utility-first approach)
+  - React Query (@tanstack/react-query) for server state management
+  - Zod for runtime validation of API responses and form inputs
+  - Proper error boundaries and loading states on every page
+  - Accessible (WCAG 2.1 AA) components with proper aria labels
+  - Mobile-responsive layouts (mobile-first design)
+  
+  EFFICIENCY & PRECISION:
+  Prioritize surgical edits over full-file rewrites for existing files.
+  Output complete, runnable TypeScript/TSX files for new components.
+
+chain_of_thought:
+  analyze: |
+    Analyze the architecture for frontend code generation:
+    
+    Architecture: {architecture}
+    
+    Think through:
+    1. What pages are needed? (auth, dashboard, settings, etc.)
+    2. What reusable components should be extracted?
+    3. What API endpoints does the frontend need to call?
+    4. What forms need validation? What are the fields?
+    
+    Return JSON: {{"pages": [], "components": [], "api_calls": [], "forms": []}}
+
+  generate: |
+    Based on your analysis:
+    {analyze_output}
+    
+    Generate a JSON dictionary mapping file paths to content.
+    Required files:
+    - frontend/package.json
+    - frontend/next.config.js
+    - frontend/tsconfig.json
+    - frontend/app/page.tsx (landing page)
+    - frontend/app/layout.tsx (root layout with Inter font)
+    - frontend/app/login/page.tsx (auth page)
+    - frontend/app/dashboard/page.tsx (main dashboard)
+    - frontend/components/Navbar.tsx
+    - frontend/components/DataTable.tsx (reusable data grid)
+    - frontend/lib/api.ts (typed API client with interceptors)
+    
+    RULES:
+    - Use "use client" directive only where needed (forms, state)
+    - Server components by default (Next.js 14 App Router)
+    - Never hardcode API URLs (use env NEXT_PUBLIC_API_URL)
+    - Loading and error states for every data-fetching component
+    - JWT stored in httpOnly cookies, NOT localStorage
+
+  critique: |
+    Review this frontend code:
+    {generate_output}
+    
+    Check for:
+    1. XSS vulnerabilities (dangerouslySetInnerHTML usage?)
+    2. Missing loading/error states
+    3. Accessibility issues (missing alt text, aria labels, focus management)
+    4. Performance issues (unnecessary re-renders, missing React.memo)
+    5. Missing TypeScript types (any 'any' types?)
+    
+    Return JSON: {{"accessibility_issues": [], "security_issues": [], "performance_issues": [], "type_gaps": []}}
+
+  refine: |
+    Your frontend code had these issues:
+    {critique_output}
+    
+    Original:
+    {generate_output}
+    
+    Fix every issue. Return the corrected file dictionary.
