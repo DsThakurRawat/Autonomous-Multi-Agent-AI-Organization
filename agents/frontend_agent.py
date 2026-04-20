@@ -1,7 +1,7 @@
 """
-Engineer Agent - Backend & Frontend
-Generates production-quality code based on the CTO's architecture.
-Supports: FastAPI backend, Next.js frontend, with self-fix loops.
+Frontend Agent - Engineer (Frontend)
+Generates production-quality React/Next.js code based on the CTO's architecture.
+Supports: Next.js 14, TypeScript, Tailwind CSS, with self-fix loops.
 """
 
 import json
@@ -15,19 +15,6 @@ from .base_agent import BaseAgent
 logger = structlog.get_logger(__name__)
 
 
-BACKEND_SYSTEM_PROMPT = """You are a Senior Backend Engineer at an AI software company.
-You write production-ready Python (FastAPI) code following these principles:
-- Clean architecture with proper separation of concerns
-- Type hints everywhere (Pydantic models)
-- Async/await for all I/O operations
-- Comprehensive error handling
-- JWT authentication with proper security
-- SQLAlchemy ORM with async support
-- OpenAPI documentation on all endpoints
-- NEVER write insecure code (SQL injection, hardcoded secrets, etc.)
-Output complete, runnable Python files. No pseudo-code, no omissions.
-"""
-
 FRONTEND_SYSTEM_PROMPT = """You are a Senior Frontend Engineer at an AI software company.
 You write production-ready React/Next.js code following these principles:
 - TypeScript with strict mode
@@ -37,7 +24,10 @@ You write production-ready React/Next.js code following these principles:
 - Proper error boundaries and loading states
 - Accessible (WCAG 2.1 AA) components
 - Mobile-responsive layouts
-Output complete, runnable TypeScript/TSX files. No pseudo-code, no omissions.
+
+EFFICIENCY & PRECISION:
+When the LocalFileEditTool is available, prioritize surgical edits (search/replace) over full-file rewrites. For existing files, use precision updates to modify components without recreating the entire page structure.
+Output complete, runnable TypeScript/TSX files for new components, or surgical edits for existing ones.
 """
 
 
@@ -75,57 +65,6 @@ class FrontendAgent(BaseAgent):
     async def execute_task(self, task: Any, context: Any) -> dict[str, Any]:
         return await self.run(task=task, context=context)
 
-    # -- Backend Code Generation ------------------------------------─
-    async def _generate_backend(
-        self, arch: dict[str, Any], context: Any
-    ) -> dict[str, str]:
-        """Generate complete FastAPI backend."""
-        # Issue #18: LLM Code Validation
-        if getattr(self, "llm_client", None):
-            logger.info("Generating backend using active LLM agent")
-            prompt = f"System Architecture:\\n{json.dumps(arch, indent=2)}\\n"
-            prompt += "Based on this architecture, output a JSON dictionary mapping absolute file paths (e.g. 'backend/main.py') to their string content. No markdown wrappers. Just valid JSON."
-            response_json_str = await self.call_llm(
-                [{"role": "user", "content": prompt}], response_format="json_object"
-            )
-            if response_json_str:
-                try:
-                    response_json = json.loads(response_json_str)
-                    if isinstance(response_json, dict):
-                        return response_json
-                except json.JSONDecodeError:
-                    logger.error("Failed to parse Engineer backend LLM response")
-
-        logger.warning("LLM disabled or failed, using static backend templates")
-        files = {}
-
-        # Generate main app
-        files["backend/main.py"] = self._generate_main_app(arch)
-        files["backend/config.py"] = self._generate_config()
-        files["backend/database.py"] = self._generate_database(arch)
-
-        # Generate models
-        db_schema = arch.get("database_schema", [])
-        files["backend/models.py"] = self._generate_models(db_schema)
-
-        # Generate schemas (Pydantic)
-        files["backend/schemas.py"] = self._generate_schemas(db_schema)
-
-        # Generate auth
-        files["backend/auth.py"] = self._generate_auth()
-
-        # Generate routers
-        api_contracts = arch.get("api_contracts", [])
-        files["backend/routers/items.py"] = self._generate_items_router(api_contracts)
-        files["backend/routers/auth.py"] = self._generate_auth_router()
-        files["backend/routers/__init__.py"] = ""
-
-        # Generate Dockerfile
-        files["backend/Dockerfile"] = self._generate_backend_dockerfile()
-        files["backend/requirements.txt"] = self._generate_backend_requirements()
-
-        logger.info("Backend code generated", file_count=len(files))
-        return files
 
     # -- Frontend Code Generation ------------------------------------
     async def _generate_frontend(
