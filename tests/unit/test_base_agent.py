@@ -87,11 +87,10 @@ class TestMockLLMResponse:
 
     def test_mock_returns_valid_json(self, agent):
         messages = [{"role": "user", "content": "Hello world"}]
-        result, usage = agent._mock_llm_response(messages)
+        result = agent._mock_llm_response(messages)
         data = json.loads(result)
         assert data["agent"] == "TestAgent"
         assert "Hello world" in data["response"]
-        assert "prompt_tokens" in usage
 
     def test_mock_uses_last_user_message(self, agent):
         messages = [
@@ -99,7 +98,7 @@ class TestMockLLMResponse:
             {"role": "assistant", "content": "Reply"},
             {"role": "user", "content": "Second message here"},
         ]
-        result, usage = agent._mock_llm_response(messages)
+        result = agent._mock_llm_response(messages)
         data = json.loads(result)
         assert "Second message here" in data["response"]
 
