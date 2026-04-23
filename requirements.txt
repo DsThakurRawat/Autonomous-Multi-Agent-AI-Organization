@@ -58,7 +58,7 @@ langchain-core>=0.1.0
 langsmith>=0.1.0
 
 # ── Task Graph & DAG ────────────────────────────────────────────
-networkx>=3.2.0
+networkx>=3.6.1
 
 # ── Web Scraping (browser_tool) ─────────────────────────────────
 beautifulsoup4>=4.12.0
