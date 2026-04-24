@@ -6,7 +6,7 @@ Proximus Nova is a high-performance, expert-driven AI organization that operates
 
 ## 🏗️ High-Level Overview
 
-The system supports both a standalone Python-based desktop loop and a distributed Go-based cloud platform.
+The system is built on the **Hive Framework**, a polyglot orchestration engine (Go, Python, Rust) that coordinates specialized agents to achieve complex engineering goals across **Desktop Workbench** (standalone Python) and **Enterprise SaaS** (distributed Go/Kafka) modes.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#f8fafc', 'primaryBorderColor': '#cbd5e1', 'primaryTextColor': '#0f172a', 'lineColor': '#475569', 'clusterBkg': '#ffffff', 'clusterBorder': '#cbd5e1', 'edgeLabelBackground': '#ffffff'}}}%%
@@ -95,7 +95,13 @@ Apache Kafka serves as the backbone for asynchronous communication.
 - **`ai-org-results`**: Completed task data.
 - **`ai-org-events`**: Real-time progress logs (streamed to UI via WebSockets).
 
-### 5. Mixture of Experts (MoE) Routing (`moe-scoring/`)
+### 5. Model Context Protocol (MCP) Server (`go-backend/cmd/mcp-server`)
+
+The MCP server provides a standardized interface for agents to interact with the host system.
+- **Sandboxed File IO**: Secure reading and writing of files within a restricted path.
+- **Extensible Tooling**: Standardized protocol for adding new capabilities (e.g., DB access, browser control) without modifying agent core logic.
+
+### 6. Mixture of Experts (MoE) Routing (`moe-scoring/`)
 
 A high-performance Rust service that routes tasks to the most efficient LLM or agent based on complexity and cost constraints.
 
