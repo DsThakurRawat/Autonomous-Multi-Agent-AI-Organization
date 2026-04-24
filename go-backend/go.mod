@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	// Kafka
 	github.com/IBM/sarama v1.47.0
-	github.com/gofiber/contrib/websocket v1.3.2
+	github.com/gofiber/contrib/websocket v1.3.4
 	// HTTP Framework
 	github.com/gofiber/fiber/v2 v2.52.12
 
