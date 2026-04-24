@@ -58,10 +58,10 @@ func TestLoad_BudgetDefaults(t *testing.T) {
 }
 
 func TestLoad_EnvOverrides(t *testing.T) {
-	os.Setenv("AI_ORG_SERVER__PORT", "9999")
-	os.Setenv("AI_ORG_ENV", "production")
-	defer os.Unsetenv("AI_ORG_SERVER__PORT")
-	defer os.Unsetenv("AI_ORG_ENV")
+	os.Setenv("AI_ORG_SERVER__PORT", "9999") //nolint:errcheck
+	os.Setenv("AI_ORG_ENV", "production") //nolint:errcheck
+	defer os.Unsetenv("AI_ORG_SERVER__PORT") //nolint:errcheck
+	defer os.Unsetenv("AI_ORG_ENV") //nolint:errcheck
 
 	cfg, err := Load("test-service")
 	require.NoError(t, err)

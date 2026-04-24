@@ -66,7 +66,7 @@ func main() {
 	if err != nil {
 		log.Fatal("redis connection failed", zap.Error(err))
 	}
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	authSvc, err := auth.New(&cfg.Auth)
 	if err != nil {
@@ -83,7 +83,7 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to connect to orchestrator", zap.Error(err))
 	}
-	defer orchClient.Close()
+	defer func() { _ = orchClient.Close() }()
 
 	hdlr := handler.NewHandler(orchClient, pgPool)
 	settingsHdlr := handler.NewSettingsHandler(pgPool)
@@ -105,7 +105,7 @@ func main() {
 
 	app.Use(recover.New())
 	app.Use(compress.New())
-	app.Use(middleware.CORS())
+	app.Use(middleware.CORS(cfg.Gateway.CORSOrigins))
 	app.Use(middleware.RequestLogger())
 
 	// ── Phase 5: Reliability Middlewares ─────────────────────────────────────

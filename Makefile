@@ -32,6 +32,14 @@ help:
 	@echo "  make kafka-ui     Open Kafka UI in browser"
 	@echo "  make jaeger       Open Jaeger tracing UI in browser"
 	@echo ""
+	@echo "  Advanced Operations (Modular Start):"
+	@echo "  make start-infra  Start Database layer (Postgres, Redis, Qdrant)"
+	@echo "  make start-bus    Start Messaging layer (Kafka, Zookeeper)"
+	@echo "  make start-core   Start Orchestration layer (Gateway, Orchestrator)"
+	@echo "  make start-agents Start all 7 AI Agents"
+	@echo "  make start-obs    Start Observability layer (Grafana, Jaeger)"
+	@echo ""
+
 
 # ── Setup ────────────────────────────────────────────────────────────
 setup:
@@ -43,13 +51,36 @@ setup:
 
 # ── Core Operations ──────────────────────────────────────────────────
 start:
-	@echo "🚀 Starting AI Organization..."
+	@echo "🚀 Starting AI Organization (Full Stack)..."
 	@docker compose up -d
+	@$(MAKE) status-links
+
+start-infra:
+	@echo "🏗️ Starting Infrastructure layer..."
+	@docker compose --profile infra up -d
+
+start-bus:
+	@echo "🛤️ Starting Message Bus (Kafka)..."
+	@docker compose --profile bus up -d
+
+start-core:
+	@echo "🧠 Starting Orchestration layer..."
+	@docker compose --profile core up -d
+
+start-agents:
+	@echo "🤖 Starting AI Agents..."
+	@docker compose --profile agents up -d
+
+start-obs:
+	@echo "🔍 Starting Observability stack..."
+	@docker compose --profile obs up -d
+
+status-links:
 	@echo ""
 	@echo "  ✅ Dashboard:    http://localhost:3000"
 	@echo "  ✅ API:          http://localhost:8080"
 	@echo "  ✅ Kafka UI:     http://localhost:8888"
-	@echo "  ✅ Grafana:      http://localhost:3002  (admin / ai-org-admin)"
+	@echo "  ✅ Grafana:      http://localhost:3002"
 	@echo "  ✅ Prometheus:   http://localhost:9090"
 	@echo "  ✅ Jaeger:       http://localhost:16686"
 	@echo ""

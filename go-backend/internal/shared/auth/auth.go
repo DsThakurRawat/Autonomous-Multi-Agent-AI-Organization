@@ -155,7 +155,7 @@ func (s *Service) GoogleUserInfo(ctx context.Context, code string) (sub, email, 
 	if err != nil {
 		return "", "", "", fmt.Errorf("auth: get userinfo: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var info struct {
 		Sub   string `json:"sub"`

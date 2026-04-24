@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,8 +48,19 @@ type ResultMessage struct {
 	Version       int            `json:"version"`
 }
 
-func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
+func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) (err error) {
 	log := logger.L()
+
+	// Hardening: Prevent panics from crashing the consumer group
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("panic recovered in Resulthandler", 
+				zap.Any("panic", r),
+				zap.Binary("payload", msg.Value),
+			)
+			err = fmt.Errorf("panic in ResultHandler: %v", r)
+		}
+	}()
 
 	var res ResultMessage
 	if err := json.Unmarshal(msg.Value, &res); err != nil {
@@ -57,7 +69,7 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 	}
 
 	// Register/initialize saga for this project if not present
-	h.saga.RegisterSaga(res.ProjectID, res.OutputData)
+	h.saga.RegisterSaga(ctx, res.ProjectID, res.OutputData)
 
 	log.Info("processing result", 
 		zap.String("project_id", res.ProjectID), 
@@ -115,18 +127,39 @@ func (h *ResultHandler) Handle(ctx context.Context, msg kafka.Message) error {
 	}
 
 	if res.AgentRole == "CTO" && status == "done" {
-		return h.dispatchNext(ctx, res, "Engineer_Backend", "Backend Implementation", "code")
+		// Hardening: Dispatch both Backend and Frontend in parallel for maximum efficiency
+		if err := h.dispatchNext(ctx, res, "Engineer_Backend", "Backend Implementation", "code"); err != nil {
+			return err
+		}
+		return h.dispatchNext(ctx, res, "Engineer_Frontend", "Frontend Implementation", "code")
 	}
 
-	if res.AgentRole == "Engineer_Backend" && status == "done" {
-		// Mark project as done after backend is built
-		_, _ = h.db.Exec(ctx, `UPDATE projects SET status = 'done', completed_at = $1 WHERE id = $2`, time.Now(), res.ProjectID)
+	if (res.AgentRole == "Engineer_Backend" || res.AgentRole == "Engineer_Frontend") && status == "done" {
+		// Efficiency: Check if all implementation tasks are complete before moving to QA
+		var incompleteCount int
+		h.db.QueryRow(ctx, "SELECT count(*) FROM tasks WHERE project_id = $1 AND name LIKE '%Implementation%' AND status != 'done'", res.ProjectID).Scan(&incompleteCount)
+		
+		if incompleteCount == 0 {
+			log.Info("Implementation phase complete, moving to QA", zap.String("project_id", res.ProjectID))
+			return h.dispatchNext(ctx, res, "QA", "System Integration Testing", "test")
+		}
+		return nil
+	}
+
+	if res.AgentRole == "QA" && status == "done" {
+		log.Info("QA complete, finalising project artifacts", zap.String("project_id", res.ProjectID))
+		return h.dispatchNext(ctx, res, "DevOps", "Production Build & Deploy", "deploy")
+	}
+
+	if res.AgentRole == "DevOps" && status == "done" {
+		// Mark project as fully complete after DevOps finishing
+		_, _ = h.db.Exec(ctx, `UPDATE projects SET status = 'completed', completed_at = $1 WHERE id = $2`, time.Now(), res.ProjectID)
 		return nil
 	}
 
 	// Advance the saga locally
 	if status == "done" {
-		h.saga.Advance(res.ProjectID, res.AgentRole)
+		h.saga.Advance(ctx, res.ProjectID, res.AgentRole)
 	}
 
 	if status == "failed" {

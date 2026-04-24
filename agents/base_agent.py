@@ -23,9 +23,11 @@ import redis.asyncio as redis
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
+from agents.events import AgentEvent
 from agents.memory import SemanticCache
 from messaging.kafka_client import KafkaProducerClient
 from tools.collaboration_tool import CollaborationTool
+from tools.file_edit_tool import LocalFileEditTool
 
 logger = structlog.get_logger(__name__)
 
@@ -101,6 +103,8 @@ class BaseAgent(ABC):
         self.tools = tools or {}
         if "collaboration" not in self.tools:
             self.tools["collaboration"] = CollaborationTool().run
+        if "file_edit" not in self.tools:
+            self.tools["file_edit"] = LocalFileEditTool().run
         self.provider = provider
         self.model_name = model_name
         self.kafka_producer = kafka_producer
@@ -112,14 +116,32 @@ class BaseAgent(ABC):
 
         self._semantic_cache = SemanticCache()
 
-        # Redis client for atomic budget gate
-        redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
-        self.redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Lazy Redis — only connects when first accessed
+        self._redis_client: Any | None = None
         self.budget_limit = float(os.getenv("BUDGET_LIMIT_USD", "200.0"))
 
         logger.info(
             "Agent initialized", role=self.ROLE, provider=provider, model=model_name
         )
+
+    @property
+    def redis_client(self) -> Any:
+        """Lazy Redis connection — falls back to a no-op stub if unavailable.
+
+        This enables Desktop Nova to run with zero infrastructure dependencies.
+        """
+        if self._redis_client is None:
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            try:
+                self._redis_client = redis.from_url(redis_url, decode_responses=True)
+            except Exception:
+                logger.warning("Redis unavailable, using no-op stub")
+                self._redis_client = _NoOpRedis()
+        return self._redis_client
+
+    @redis_client.setter
+    def redis_client(self, value: Any):
+        self._redis_client = value
 
     @staticmethod
     def get_secret(name: str, default: str | None = None) -> str | None:
@@ -142,8 +164,25 @@ class BaseAgent(ABC):
     @property
     @abstractmethod
     def system_prompt(self) -> str:
-        """Each agent defines its own system prompt and role."""
+        """Each agent defines its own core prompt."""
         ...
+
+    def get_full_system_prompt(self) -> str:
+        """Combines the agent's core prompt with global organization & local mode instructions."""
+        local_mode = os.getenv("AI_ORG_LOCAL_MODE", "false").lower() == "true"
+        
+        base_instructions = f"YOU ARE {self.ROLE} IN THE PROXIMUS COLLABORATIVE AI ORGANIZATION.\n"
+        
+        if local_mode:
+            base_instructions += (
+                "\n### LOCAL MASTERY MODE ACTIVE\n"
+                "- You are working directly on the developer's LOCAL FILESYSTEM.\n"
+                "- Your workspace is MOUNTED via Docker directly to the host's directory.\n"
+                "- PRIORITIZE surgery over replacement: Use 'file_edit' for partial updates rather than overwriting whole files.\n"
+                "- PRESERVE STYLE: Maintain the user's indentation and coding style exactly.\n"
+            )
+        
+        return base_instructions + self.system_prompt
 
     @abstractmethod
     async def run(self, **kwargs) -> dict[str, Any]:
@@ -195,7 +234,7 @@ class BaseAgent(ABC):
             "agent_role": self.ROLE,
             "project_id": getattr(self, "_current_project_id", "demo"),
             "task_id": self._current_task_id,
-            "message": self._scrub_text(
+            "message": await self._scrub_text(
                 f"Suspended for human authorization. Action: {action_type}. Estimated cost: ${cost_estimate}"
             ),
             "data": {
@@ -347,7 +386,8 @@ class BaseAgent(ABC):
 
         # Pre-call budget gate
         try:
-            used_str = await self.redis_client.get("budget:used")
+            budget_key = f"budget:{self._current_project_id or 'global'}:used"
+            used_str = await self.redis_client.get(budget_key)
             used = float(used_str) if used_str else 0.0
             if used >= self.budget_limit:
                 logger.error(
@@ -361,22 +401,29 @@ class BaseAgent(ABC):
                 "Redis connection error, bypassing budget gate", error=str(e)
             )
 
-        text = await self._execute_provider(
+        text, usage = await self._execute_provider(
             messages, temperature, max_tokens, response_format
         )
 
-        # Post-call simplistic cost tracking (rough estimate)
-        import contextlib
+        # 2. Precision Cost Tracking
+        cost_usd = self._calculate_actual_cost(self.model_name or "unknown", usage)
+        
+        try:
+            budget_key = f"budget:{self._current_project_id or 'global'}:used"
+            await self.redis_client.incrbyfloat(budget_key, cost_usd)
+        except Exception as e:
+            logger.warning("Failed to update Redis budget", error=str(e))
 
-        with contextlib.suppress(Exception):
-            # Assumes roughly $0.005 per turn as a flat generic estimate since we don't have token counts easily here
-            await self.redis_client.incrbyfloat("budget:used", 0.005)
-
-        # 2. Store in Semantic Cache for future calls
+        # 3. Store in Semantic Cache for future calls
         try:
             await self._semantic_cache.cache_response(prompt_text, text)
         except Exception as e:
             logger.debug("Failed to write to cache", error=str(e))
+
+        # We return the usage data so child agents can pass it back to the orchestrator
+        # Note: In a real system, we might attach this to a thread-local or context object
+        self._last_usage = usage
+        self._last_cost = cost_usd
 
         return text
 
@@ -391,7 +438,7 @@ class BaseAgent(ABC):
         temperature: float,
         max_tokens: int,
         response_format: str | None,
-    ) -> str:
+    ) -> tuple[str, dict[str, int]]:
         with tracer.start_as_current_span(
             "llm.generate",
             attributes={
@@ -404,7 +451,7 @@ class BaseAgent(ABC):
                 assert self.llm_client is not None  # guarded above
                 # -- Google Gemini ----------------------------------------------
                 if self.provider == "google":
-                    system_prompt = self.system_prompt
+                    system_prompt = self.get_full_system_prompt()
                     config = types.GenerateContentConfig(
                         system_instruction=system_prompt,
                         temperature=temperature,
@@ -434,7 +481,12 @@ class BaseAgent(ABC):
                         ),
                         timeout=60.0,
                     )
-                    return response.text
+                    
+                    usage = {
+                        "prompt_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
+                        "completion_tokens": getattr(response.usage_metadata, "candidates_token_count", 0),
+                    }
+                    return response.text, usage
 
                 # -- OpenAI ----------------------------------------------------
                 elif self.provider == "openai":
@@ -454,12 +506,17 @@ class BaseAgent(ABC):
                         ),
                         timeout=60.0,
                     )
-                    return response.choices[0].message.content
+                    
+                    usage = {
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                    }
+                    return response.choices[0].message.content, usage
 
                 # -- Anthropic Claude ------------------------------------------
                 elif self.provider == "anthropic":
                     # Extract system prompt separately - Anthropic uses it as a top-level param
-                    system_content = self.system_prompt
+                    system_content = self.get_full_system_prompt()
                     if response_format == "json_object":
                         system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
 
@@ -479,15 +536,20 @@ class BaseAgent(ABC):
                         ),
                         timeout=60.0,
                     )
+                    
+                    usage = {
+                        "prompt_tokens": response.usage.input_tokens,
+                        "completion_tokens": response.usage.output_tokens,
+                    }
                     text = response.content[0].text
                     if response_format == "json_object":
                         text = _clean_json_response(text)
-                    return text
+                    return text, usage
 
                 # -- Amazon Bedrock (Nova) --------------------------------------------------
                 elif self.provider == "bedrock":
                     # Nova models use the Bedrock Converse API format
-                    system_content = self.system_prompt
+                    system_content = self.get_full_system_prompt()
                     if response_format == "json_object":
                         system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
 
@@ -514,10 +576,15 @@ class BaseAgent(ABC):
                         ),
                         timeout=60.0,
                     )
+                    
+                    usage = {
+                        "prompt_tokens": response["usage"]["inputTokens"],
+                        "completion_tokens": response["usage"]["outputTokens"],
+                    }
                     text = response["output"]["message"]["content"][0]["text"]
                     if response_format == "json_object":
                         text = _clean_json_response(text)
-                    return text
+                    return text, usage
 
                 else:
                     logger.warning(
@@ -534,18 +601,53 @@ class BaseAgent(ABC):
                 )
                 raise
 
-    def _mock_llm_response(self, messages: list[dict[str, str]]) -> str:
+    def _mock_llm_response(self, messages: list[dict[str, str]]) -> tuple[str, dict[str, int]]:
         """Deterministic mock response for demo mode."""
         last_user_msg = next(
             (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
         )
-        return json.dumps(
+        text = json.dumps(
             {
                 "status": "mock_response",
                 "agent": self.ROLE,
                 "response": f"[{self.ROLE}] Processed: {last_user_msg[:100]}",
             }
         )
+        usage = {"prompt_tokens": 100, "completion_tokens": 50}
+        return text, usage
+
+    def _calculate_actual_cost(self, model: str, usage: dict[str, int]) -> float:
+        """Calculate USD cost based on token counts and model pricing."""
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+
+        # Pricing per 1M tokens (Standard market rates as of Q1 2026)
+        pricing = {
+            # Google Gemini
+            "gemini-1.5-pro": {"prompt": 1.25, "completion": 3.75},
+            "gemini-1.5-flash": {"prompt": 0.075, "completion": 0.30},
+            
+            # OpenAI
+            "gpt-4o": {"prompt": 2.50, "completion": 10.00},
+            "gpt-4o-mini": {"prompt": 0.15, "completion": 0.60},
+            
+            # Anthropic
+            "claude-3-5-sonnet-latest": {"prompt": 3.00, "completion": 15.00},
+            "claude-3-haiku-20240307": {"prompt": 0.25, "completion": 1.25},
+            
+            # Bedrock (Nova)
+            "amazon.nova-pro-v1:0": {"prompt": 0.80, "completion": 3.20},
+            "amazon.nova-lite-v1:0": {"prompt": 0.06, "completion": 0.24},
+            "amazon.nova-micro-v1:0": {"prompt": 0.035, "completion": 0.14},
+        }
+
+        # Fallback pricing for unknown models (Average mid-range)
+        model_pricing = pricing.get(model, {"prompt": 1.0, "completion": 4.0})
+        
+        cost = (prompt_tokens / 1_000_000 * model_pricing["prompt"]) + \
+               (completion_tokens / 1_000_000 * model_pricing["completion"])
+        
+        return float(f"{cost:.6f}")
 
     # -- Tool Calling ----------------------------------------------─
     async def use_tool(self, tool_name: str, **kwargs) -> Any:
@@ -592,6 +694,31 @@ class BaseAgent(ABC):
         self._scratchpad = []
         self._iteration_count = 0
 
+    # -- Event Emission ---------------------------------------------
+    async def emit(
+        self,
+        context: Any,
+        message: str,
+        level: str = "info",
+        data: dict[str, Any] | None = None,
+        event_type: str = "thinking",
+    ) -> None:
+        """Emit a typed AgentEvent through the execution context.
+
+        This replaces the anonymous `type('E', ...)` pattern. Every agent
+        should use this instead of constructing events manually.
+        """
+        if context is None:
+            return
+        event = AgentEvent(
+            event_type=event_type,
+            agent_role=self.ROLE,
+            message=message,
+            level=level,
+            data=data or {},
+        )
+        await context.emit_event(event)
+
     # -- Self-Critique ----------------------------------------------
     async def self_critique(self, output: dict[str, Any]) -> dict[str, Any]:
         """
@@ -622,3 +749,37 @@ Return JSON: {{"scores": {{}}, "issues": [], "improvements": [], "approved": tru
         except Exception:
             output["_critique"] = {"approved": True, "scores": {}, "issues": []}
             return output
+
+
+class _NoOpRedis:
+    """Stub Redis client that silently succeeds for all operations.
+
+    Used as a fallback when Redis is unavailable (Desktop Nova mode).
+    All reads return None, all writes succeed silently.
+    """
+
+    async def get(self, key: str) -> None:
+        return None
+
+    async def set(self, key: str, value: Any, **kwargs) -> bool:
+        return True
+
+    async def incrbyfloat(self, key: str, amount: float) -> float:
+        return amount
+
+    def pubsub(self):
+        return self
+
+    async def subscribe(self, *args, **kwargs):
+        pass
+
+    async def unsubscribe(self, *args, **kwargs):
+        pass
+
+    async def close(self):
+        pass
+
+    async def listen(self):
+        # Yield nothing — approval loop will never block
+        return
+        yield  # Make this an async generator  # noqa: RUF027

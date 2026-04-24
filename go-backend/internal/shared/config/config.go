@@ -91,6 +91,7 @@ type GatewayConfig struct {
 	IdempotencyTTL  time.Duration `mapstructure:"idempotency_ttl"`
 	SecurityBinPath string        `mapstructure:"security_bin_path"`
 	OTelEndpoint    string        `mapstructure:"otel_endpoint"`
+	CORSOrigins     string        `mapstructure:"cors_origins"`
 }
 
 // Load reads config from env vars and optional config.yaml.
@@ -140,6 +141,7 @@ func Load(serviceName string) (*Config, error) {
 	v.SetDefault("gateway.idempotency_ttl", "24h")
 	v.SetDefault("gateway.security_bin_path", "/usr/local/bin/security-check")
 	v.SetDefault("gateway.otel_endpoint", "otel-collector:4317")
+	v.SetDefault("gateway.cors_origins", "") // Default to empty (restricted), override in prod using CORS_ORIGINS
 
 	// Load from optional YAML file
 	v.SetConfigName("config")
@@ -152,6 +154,9 @@ func Load(serviceName string) (*Config, error) {
 	v.SetEnvPrefix("AI_ORG")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "__"))
 	v.AutomaticEnv()
+	
+	// Bind explicit non-prefixed env vars (e.g. from docker-compose)
+	_ = v.BindEnv("gateway.cors_origins", "CORS_ORIGINS")
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {

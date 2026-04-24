@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Modern Go 1.24.0**: Full support for newest Go features (generic type aliases, `iter` package).
+- **Modern Go 1.25.0**: Full support for newest Go features (generic type aliases, `iter` package).
 - **Pydantic V2 Migration**: Upgraded all Python agents to Pydantic V2 for 5x performance gains in data validation.
 - **MCP Server**: Native Model Context Protocol (MCP) server for secure, standardized tool execution.
 - **Egress Proxy**: Secure egress gateway with domain-level allowlist enforcement for agents.

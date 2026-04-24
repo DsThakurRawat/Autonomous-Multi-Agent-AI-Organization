@@ -189,11 +189,14 @@ func DistributedRateLimiter(rc *redisclient.Client, limit int64, window time.Dur
 	}
 }
 
-// CORS sets permissive headers for local development.
-// In production, restrict AllowOrigins to your actual domain.
-func CORS() fiber.Handler {
+// CORS sets permissive headers for local development or explicit origins in production.
+// In production, restrict AllowOrigins to your actual domain via CORS_ORIGINS.
+func CORS(origins string) fiber.Handler {
+	if origins == "" {
+		origins = "*"
+	}
 	return func(c *fiber.Ctx) error {
-		c.Set("Access-Control-Allow-Origin", "*")
+		c.Set("Access-Control-Allow-Origin", origins)
 		c.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Trace-ID")
 

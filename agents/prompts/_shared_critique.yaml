@@ -1,0 +1,90 @@
+# Shared Self-Critique Rubric
+# Role-specific evaluation dimensions for the self_critique() method.
+
+common_instructions: |
+  You are reviewing your own output for quality. Be brutally honest.
+  Score each dimension from 1 to 10 (10 = perfect).
+  If any score is below 6, set "approved" to false.
+  List specific, actionable improvements — not vague suggestions.
+
+rubrics:
+  CEO:
+    dimensions:
+      - name: "Market Viability"
+        description: "Is there evidence of real demand? Is the target user specific?"
+        weight: 0.25
+      - name: "Scope Realism"
+        description: "Can this MVP be built by an AI team in the given timeline?"
+        weight: 0.25
+      - name: "Feature Prioritization"
+        description: "Are P0 features truly essential? Are there too many P0s?"
+        weight: 0.25
+      - name: "Revenue Clarity"
+        description: "Is the path to revenue obvious and specific?"
+        weight: 0.25
+
+  CTO:
+    dimensions:
+      - name: "Single Points of Failure"
+        description: "What happens if each service goes down? Is there redundancy?"
+        weight: 0.20
+      - name: "Cost vs Budget"
+        description: "Does the estimated cost fit the budget? Are estimates realistic?"
+        weight: 0.25
+      - name: "Security Posture"
+        description: "HTTPS enforced? Secrets managed? IAM least-privilege?"
+        weight: 0.25
+      - name: "API Completeness"
+        description: "Does every MVP feature have complete CRUD coverage?"
+        weight: 0.15
+      - name: "Scalability"
+        description: "Can the design handle 10x traffic without re-architecture?"
+        weight: 0.15
+
+  Engineer_Backend:
+    dimensions:
+      - name: "API Completeness"
+        description: "Does every endpoint from the spec have an implementation?"
+        weight: 0.25
+      - name: "Error Handling"
+        description: "Are all error paths covered with proper HTTP status codes?"
+        weight: 0.20
+      - name: "Auth Coverage"
+        description: "Are protected endpoints actually checking JWT/session?"
+        weight: 0.20
+      - name: "SQL Injection Safety"
+        description: "Are all queries parameterized? No string concatenation?"
+        weight: 0.20
+      - name: "Code Quality"
+        description: "Type hints, docstrings, consistent naming conventions?"
+        weight: 0.15
+
+  QA:
+    dimensions:
+      - name: "Branch Coverage"
+        description: "Do tests cover happy path, error path, and edge cases?"
+        weight: 0.30
+      - name: "Edge Cases"
+        description: "Are boundary values, empty inputs, and nulls tested?"
+        weight: 0.25
+      - name: "Negative Tests"
+        description: "Are unauthorized access, invalid input, and rate limits tested?"
+        weight: 0.25
+      - name: "Security Tests"
+        description: "SQL injection, XSS, CSRF, auth bypass tested?"
+        weight: 0.20
+
+  Finance:
+    dimensions:
+      - name: "Projection Accuracy"
+        description: "Are cost projections based on actual AWS pricing?"
+        weight: 0.30
+      - name: "Alert Thresholds"
+        description: "Are warning/critical thresholds reasonable (80%/95%)?"
+        weight: 0.20
+      - name: "Optimization Actionability"
+        description: "Are recommendations specific enough to implement?"
+        weight: 0.25
+      - name: "ROI Analysis"
+        description: "Is the AI-vs-manual comparison realistic?"
+        weight: 0.25

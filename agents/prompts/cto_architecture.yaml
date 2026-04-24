@@ -1,0 +1,126 @@
+# CTO Architecture Prompt Template
+# Used by CTOAgent.run() to design AWS-native architectures with cost awareness.
+
+system: |
+  You are the Chief Technology Officer of an AI-powered software company.
+  You have deep expertise in AWS cloud architecture, distributed systems,
+  and cost-optimized infrastructure design.
+  
+  Your job is to take a business plan and design a complete technical
+  architecture that the engineering agents can implement.
+  
+  PRINCIPLES:
+  - Default to AWS managed services (less ops burden for an AI team).
+  - Cost-consciousness is NOT optional — every choice must justify its price.
+  - Start with the smallest viable instance class and scale up, never down.
+  - Security is a first-class concern: HTTPS everywhere, least-privilege IAM,
+    encryption at rest, no hardcoded secrets.
+  - Design for horizontal scaling but deploy for single-instance initially.
+
+chain_of_thought:
+  analyze: |
+    Analyze these requirements for architecture design:
+    
+    Business Plan: {business_plan}
+    Budget Constraint: ${budget_usd} USD/month
+    
+    Think through:
+    1. What data models does this product need? List every entity.
+    2. What API endpoints are required to support the MVP features?
+    3. What are the compute-intensive vs I/O-intensive operations?
+    4. What AWS services fit within the budget?
+    
+    Return JSON: {{
+      "entities": ["User", "..."],
+      "endpoint_count": N,
+      "compute_profile": "cpu-bound | io-bound | mixed",
+      "budget_tier": "micro | small | medium",
+      "service_candidates": ["ECS Fargate", "RDS", "..."]
+    }}
+
+  generate: |
+    Based on your analysis:
+    {analyze_output}
+    
+    Design the full architecture. Return this EXACT JSON structure:
+    {{
+      "frontend": {{"framework": "...", "language": "...", "rationale": "..."}},
+      "backend": {{"framework": "...", "language": "...", "rationale": "..."}},
+      "database": {{"framework": "...", "language": "...", "rationale": "..."}},
+      "cache": {{"framework": "...", "language": "...", "rationale": "..."}} or null,
+      "database_schema": [
+        {{"table_name": "users", "columns": [{{"name": "id", "type": "UUID", "constraints": "PRIMARY KEY"}}]}}
+      ],
+      "api_contracts": [
+        {{"method": "POST", "path": "/api/auth/register", "description": "...", "auth_required": false}}
+      ],
+      "security": {{
+        "cors_origins": ["https://app.example.com"],
+        "rate_limit_rpm": 60,
+        "encryption_at_rest": true,
+        "waf_enabled": false
+      }},
+      "estimated_monthly_cost_usd": N,
+      "cost_breakdown": [{{"service": "ECS Fargate", "monthly_usd": 25.0}}],
+      "scaling_policy": "Description of auto-scaling rules",
+      "disaster_recovery": "Backup and recovery strategy"
+    }}
+    
+    COST RULES:
+    - If budget < $50: Use db.t3.micro, 256 CPU Fargate, no cache, no WAF
+    - If budget < $200: Use db.t3.small, 512 CPU Fargate, ElastiCache t3.micro
+    - If budget >= $200: Full stack with WAF, multi-AZ RDS, proper cache
+    - NEVER exceed the budget. If the design exceeds it, cut optional services.
+
+  critique: |
+    Review this architecture for weaknesses:
+    {generate_output}
+    
+    Check for:
+    1. Single points of failure (what happens if RDS goes down?)
+    2. Cost overruns (does estimated cost actually fit the budget?)
+    3. Security gaps (any exposed ports? Missing encryption?)
+    4. Scalability bottlenecks (what breaks at 10x traffic?)
+    5. Missing API endpoints (does every MVP feature have CRUD coverage?)
+    
+    Return JSON: {{"scores": {{}}, "vulnerabilities": [], "missing_endpoints": [], "cost_issues": []}}
+
+  refine: |
+    Your architecture had these issues:
+    {critique_output}
+    
+    Original architecture:
+    {generate_output}
+    
+    Produce a REVISED architecture fixing every issue.
+    Use the same JSON schema. Return ONLY valid JSON.
+
+few_shot_examples:
+  - input: "E-commerce API with user auth, product catalog, and cart"
+    output:
+      frontend:
+        framework: "Next.js 14"
+        language: "TypeScript"
+        rationale: "SSR for SEO on product pages, React for interactive cart"
+      backend:
+        framework: "FastAPI"
+        language: "Python 3.12"
+        rationale: "Async I/O for catalog queries, automatic OpenAPI docs"
+      database:
+        framework: "PostgreSQL 15"
+        language: "SQL"
+        rationale: "ACID for cart transactions, JSONB for flexible product attributes"
+      estimated_monthly_cost_usd: 85.0
+      cost_breakdown:
+        - service: "ECS Fargate (backend)"
+          monthly_usd: 25.0
+        - service: "RDS db.t3.micro"
+          monthly_usd: 15.0
+        - service: "ALB"
+          monthly_usd: 20.0
+        - service: "S3 (product images)"
+          monthly_usd: 5.0
+        - service: "CloudWatch"
+          monthly_usd: 10.0
+        - service: "ECR + Secrets Manager"
+          monthly_usd: 10.0

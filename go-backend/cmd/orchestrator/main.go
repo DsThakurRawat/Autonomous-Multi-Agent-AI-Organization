@@ -55,20 +55,20 @@ func main() {
 	if err != nil {
 		log.Fatal("redis failed", zap.Error(err))
 	}
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	// ── Kafka Producer (for publishing tasks) ────────────────────────────
 	producer, err := kafka.NewProducer(&cfg.Kafka)
 	if err != nil {
 		log.Fatal("kafka producer failed", zap.Error(err))
 	}
-	defer producer.Close()
+	defer func() { _ = producer.Close() }()
 	
 	healthOrch := health.NewHealthOrchestrator(pgPool, redisClient)
 	// Optionally wait for readiness before moving further in production
 	// healthOrch.WaitUntilReady(ctx, 10*time.Second) 
 
-	sagaCoord := server.NewSagaCoordinator(pgPool, producer)
+	sagaCoord := server.NewSagaCoordinator(pgPool, redisClient, producer)
 	resultHandler := server.NewResultHandler(pgPool, redisClient, producer, sagaCoord)
 
 	// ── Kafka Consumer (for consuming results) ────────────────────────────

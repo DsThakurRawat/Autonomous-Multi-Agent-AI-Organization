@@ -1,8 +1,8 @@
 mod scrubber;
 mod validator;
 
-use std::io::{self, Read};
 use serde::{Deserialize, Serialize};
+use std::io::{self, Read};
 
 #[derive(Serialize, Deserialize)]
 struct SecurityRequest {
@@ -19,8 +19,10 @@ struct SecurityResponse {
 
 fn main() {
     let mut buffer = String::new();
-    io::stdin().read_to_string(&mut buffer).expect("Failed to read stdin");
-    
+    io::stdin()
+        .read_to_string(&mut buffer)
+        .expect("Failed to read stdin");
+
     let req: SecurityRequest = match serde_json::from_str(&buffer) {
         Ok(r) => r,
         Err(_) => {
@@ -40,22 +42,20 @@ fn main() {
             resp.result = scrubber::scrub_pii(&req.content);
             resp.message = "PII scrubbed".to_string();
         }
-        "validate_python" => {
-            match validator::validate_python_ast(&req.content) {
-                Ok(true) => {
-                    resp.safe = true;
-                    resp.message = "Code is safe".to_string();
-                }
-                Ok(false) => {
-                    resp.safe = false;
-                    resp.message = "Dangerous code detected!".to_string();
-                }
-                Err(e) => {
-                    resp.safe = false;
-                    resp.message = format!("Validation error: {}", e);
-                }
+        "validate_python" => match validator::validate_python_ast(&req.content) {
+            Ok(true) => {
+                resp.safe = true;
+                resp.message = "Code is safe".to_string();
             }
-        }
+            Ok(false) => {
+                resp.safe = false;
+                resp.message = "Dangerous code detected!".to_string();
+            }
+            Err(e) => {
+                resp.safe = false;
+                resp.message = format!("Validation error: {}", e);
+            }
+        },
         _ => {
             resp.safe = false;
             resp.message = "Unknown security task".to_string();

@@ -1,62 +1,65 @@
 # System Architecture — Proximus
 
-Proximus is a production-grade, event-driven multi-agent AI system designed to autonomously plan, build, test, and ship software projects from high-level business ideas.
+Proximus Nova is a high-performance, expert-driven AI organization that operates in two modes: **Desktop Workbench** (Surgical Local Mastery) and **Enterprise SaaS** (Distributed Cloud Orchestration).
 
 ---
 
 ## 🏗️ High-Level Overview
 
-The system is built on the **Hive Framework**, a polyglot orchestration engine (Go, Python, Rust) that coordinates specialized agents to achieve complex engineering goals.
+The system is built on the **Hive Framework**, a polyglot orchestration engine (Go, Python, Rust) that coordinates specialized agents to achieve complex engineering goals across **Desktop Workbench** (standalone Python) and **Enterprise SaaS** (distributed Go/Kafka) modes.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#f8fafc', 'primaryBorderColor': '#cbd5e1', 'primaryTextColor': '#0f172a', 'lineColor': '#475569', 'clusterBkg': '#ffffff', 'clusterBorder': '#cbd5e1', 'edgeLabelBackground': '#ffffff'}}}%%
 flowchart TB
-    User(["User — Business Idea"]) -->|"HTTPS POST"| GW
-
-    subgraph GoBackend ["Go Core Services"]
-        GW["Gateway\nFiber HTTP · OAuth2 · JWT"]
-        Orch["Orchestrator\ngRPC · DAG Builder · Kafka Publisher"]
-        WS["WS-Hub\nWebSocket · Redis Pub/Sub"]
-        GW -->|"gRPC"| Orch
-        GW --> WS
+    User(["User Mission"]) --> TUI["Proximus TUI Shell\n(Master Control)"]
+    
+    subgraph Mode_Desktop ["1. Desktop Nova Mode (Active Focus)"]
+        TUI -->|"Direct Loop"| PythonOrch["Standalone Python Engine\n(Desktop Nova)"]
+        PythonOrch --> Experts
     end
 
-    Orch -->|"TaskMessage + llm_config"| Kafka
-
-    subgraph EventBus ["Apache Kafka"]
-        T["ai-org-tasks"]
-        R["ai-org-results"]
-        E["ai-org-events"]
+    subgraph Mode_SaaS ["2. Enterprise SaaS Mode (Reserved)"]
+        TUI -->|"API Call"| GoCore
+        GoCore["Go Gateway + Orchestrator\nKafka Event Bus"]
+        GoCore --> Experts
     end
 
-    Kafka --> Agents
-
-    subgraph Agents ["AI Agent Fleet (Python)"]
-        CEO["CEO · Nova Lite\nMarket Research & Scope"]
-        CTO["CTO · Nova Lite\nSystem Design & Tech Stack"]
-        ENG_FE["Engineer (FE) · Nova Lite\nFrontend Implementation"]
-        ENG_BE["Engineer (BE) · Nova Lite\nBackend Implementation"]
-        QA["QA · Nova Lite\nTesting & Bug Detection"]
-        OPS["DevOps · Nova Lite\nInfrastructure & CI/CD"]
-        FIN["Finance · Nova Micro\nBudgeting & Usage tracking"]
+    subgraph Experts ["AI Specialist Swarm"]
+        CEO["CEO · Nova Lite\nScope & Planning"]
+        CTO["CTO · Nova Lite\nArch & Tech Stack"]
+        ENG["Engineers (FE/BE)\nSurgical Implementation"]
+        Experts_More["QA / DevOps / Finance"]
     end
 
-    Agents -->|"Results"| R
-    Agents -->|"Events"| E
-    E --> WS
-
-    subgraph DataLayer ["Data & Storage Layer"]
-        DB["Postgres\nProject & Task State"]
-        Redis["Redis\nWebsocket PubSub & Cache"]
-        Qdrant["Qdrant\nSemantic Vector Memory"]
-    end
-
-    GoBackend --> DataLayer
-    Agents --> DataLayer
-    WS -->|"WebSocket"| Dash["Next.js Dashboard\nLive DAG & Agent Logs"]
+    Experts -->|"Direct File Surgery"| LocalDisk["Local Host Filesystem"]
+    Experts -->|"Containerized Artifacts"| Volumes["Project Volumes"]
 ```
 
 ---
+
+## 🛠️ Operational Modes
+
+### 1. Desktop Nova (Local Workbench)
+The primary mode for high-precision engineering.
+- **Engine**: A standalone Python `OrchestratorEngine` running locally.
+- **Mastery**: Experts modify code directly on the user's host machine using the `LocalFileEditTool`.
+- **Latency**: Zero. No network hops between orchestrator and agents.
+
+### 2. Enterprise SaaS (Cloud Scale)
+The distributed architecture for multi-tenant deployments.
+- **Engine**: The Go-based Gateway and Orchestrator managed via Distributed Sagas.
+- **Backbone**: Apache Kafka handles asynchronous task delivery and cross-service resilience.
+- **Status**: Reserved for production scaling (Oracle Cloud / AWS).
+
+---
+
+## 🧱 Expert Coordination Mesh
+
+Proximus leverages a high-performance **Go Orchestrator** to coordinate specialized experts:
+
+1. **Strategic Experts (CEO/CTO)**: Use a Saga-based planning system to define project milestones and technical requirements.
+2. **Surgical Execution**: Engineer Specialists (Backend/Frontend) are equipped with precision tools (e.g., `LocalFileEditTool`) to modify source code with minimal side effects and maximum token efficiency.
+3. **Hybrid Workbench**: The system supports both isolated **SaaS environments** and **Local direct-mount** modes, allowing the specialist mesh to work directly on the host filesystem when `AI_ORG_LOCAL_MODE` is enabled.
 
 ## 🧱 Core Components
 

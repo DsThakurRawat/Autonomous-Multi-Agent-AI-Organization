@@ -11,7 +11,7 @@ import InterventionModal, { InterventionData } from '@/components/InterventionMo
 import {
     Plus, RefreshCw, Cpu, ChevronRight,
     CheckCircle2, Clock, AlertCircle, Loader2,
-    Braces, Github, Settings, Sparkles, Folder, Activity
+    Braces, Settings, Sparkles, Folder, Activity
 } from 'lucide-react'
 import Link from 'next/link'
 import { clsx } from 'clsx'

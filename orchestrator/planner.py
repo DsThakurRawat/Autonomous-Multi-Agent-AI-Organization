@@ -350,7 +350,7 @@ class OrchestratorEngine:
             ctx["status"] = "completed"
             deployment_url = (
                 artifacts.get_deployment_url()
-                or f"http://localhost:3000/preview/{project_id}"
+                or f"local://output/{project_id}"
             )
             await self._emit(
                 ExecutionEvent(
