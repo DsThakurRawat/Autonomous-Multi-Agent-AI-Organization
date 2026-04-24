@@ -19,32 +19,56 @@ Every Proximus project follows a structured 5-phase lifecycle:
 
 ---
 
-## 🛠️ Technology Stack
+## 🐝 Hive: The Core Framework
+Proximus is powered by the **Hive** framework, a production-grade multi-agent orchestration engine. Hive provides the fundamental abstractions for agent reasoning, tool use, and memory management.
+
+### Key Hive Architectural Patterns
+*   **Pydantic V2 Validation**: All internal state, message schemas, and tool parameters are strictly validated using Pydantic V2, offering 5x performance improvements over V1.
+*   **SecretStr for Security**: Sensitive configuration fields (API keys, passwords) use Pydantic's `SecretStr` type to prevent accidental leakage in logs and serializations.
+*   **Vector-Native Memory**: Agents utilize a Hive-managed semantic cache (Qdrant-backed) to reuse expensive LLM reasoning across project phases.
+
+---
+
+## 🛠️ Technology Stack (Modernized)
 
 ### Core Languages & Frameworks
-*   **Go (v1.25.0)**: Powers the API Gateway, Enterprise Orchestrator, and system-level microservices.
-*   **Python (v3.12)**: The logic engine for AI Agents and the Desktop TUI.
-*   **Rust**: High-performance "Mixture of Experts" scoring and AST-based security validation.
+*   **Go (v1.25.0)**: Powers the API Gateway, Enterprise Orchestrator, and the **Native MCP Server**.
+*   **Python (v3.12)**: The logic engine for AI Agents, utilizing **Pydantic V2** and **OpenTelemetry**.
+*   **Rust**: High-performance "Mixture of Experts" scoring and AST-based security validation (`security-check`).
 *   **TypeScript / Next.js 15**: The real-time management dashboard.
 
 ### Infrastructure & Event Bus
 *   **Apache Kafka**: The backbone for asynchronous agent-to-orchestrator communication.
 *   **PostgreSQL 15**: Structured data persistence for projects, tasks, and tenants.
-*   **Redis 7**: Distributed locks, budget tracking, and WebSocket event routing.
+*   **Redis 7**: Distributed locks, **Budget Gating**, and WebSocket event routing.
+*   **Qdrant**: High-performance vector database for **Semantic Cache** and long-term agent memory.
 
 ---
 
-## 📂 Repository Map
+## 📂 Repository Map (Expanded)
 
 ### Core Logic
 *   [`orchestrator/`](../orchestrator/): The central brain. Contains the Python `OrchestratorEngine` and Task Graph logic.
-*   [`agents/`](../agents/): Specialized AI agent definitions and the `BaseAgent` class.
-*   [`go-backend/`](../go-backend/): The Go microservices stack (Gateway, SaaS Orchestrator, Metrics).
+*   [`agents/`](../agents/): Specialized AI agent definitions built on the Hive `BaseAgent` class.
+*   [`go-backend/`](../go-backend/): The Go microservices stack, including the **MCP Server** (`go-backend/cmd/mcp-server`).
 
 ### Specialized Services
 *   [`security-check/`](../security-check/): Rust-based service for AST validation and PII scrubbing.
 *   [`moe-scoring/`](../moe-scoring/): Rust engine for optimized agent/model routing.
-*   [`tools/`](../tools/): Shared tools (File Editing, Web Search, Collaboration) used by agents.
+*   [`tools/`](../tools/): Shared tools (File Editing, Web Search, Collaboration) used by agents via MCP or direct injection.
+
+---
+
+## 🏗️ Model Context Protocol (MCP) Integration
+Proximus/Hive now supports the **Model Context Protocol (MCP)** for standardized tool execution.
+
+*   **MCP Server (Go)**: Located in `go-backend/cmd/mcp-server`. It exposes local filesystem tools (`read_file`, `write_file`, `list_files`) to agents in a secure, sandboxed manner.
+*   **Agent MCP Client**: Hive agents can dynamically connect to MCP servers to extend their capabilities without code changes.
+
+---
+
+## 📖 Technical Deep-Dives
+...
 
 ### Interfaces
 *   [`tui.py`](../tui.py): The primary interactive Terminal UI for Desktop Workbench.

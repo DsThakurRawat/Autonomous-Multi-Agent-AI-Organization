@@ -106,9 +106,11 @@ make start
 
 ---
 
-## Future Vision
+## 🏗️ The Hive Core Framework
+Proximus is powered by the **Hive Framework**, a specialized multi-agent orchestration engine designed for surgical precision in autonomous engineering. Hive provides the foundational layers for Pydantic V2 validation, SecretStr security, and vector-native semantic caching.
 
-Ongoing development focuses on scaling to production, advanced self-healing, and visual intelligence. For the full technical vision, please see the [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md).
+- **[HIVE_ENGINEERING_ROADMAP.md](./HIVE_ENGINEERING_ROADMAP.md)**: Deep-dive into the engineering layers and implementation patterns of the framework.
+- **[FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md)**: The high-level product vision and upcoming feature milestones.
 
 ---
 

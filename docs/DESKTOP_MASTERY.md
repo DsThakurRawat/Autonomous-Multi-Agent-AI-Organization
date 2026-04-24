@@ -1,12 +1,12 @@
 # Technical Deep-Dive: Desktop Mastery
 
-Proximus Nova's **Desktop Workbench** mode is powered by a standalone, zero-infrastructure Python orchestration engine. This guide explains the internals of the local swarm and how it achieves high-precision host-native engineering.
+Proximus Nova's **Desktop Workbench** mode is powered by a standalone, zero-infrastructure implementation of the **Hive Core Framework**. This guide explains the internals of the local swarm and how it achieves high-precision host-native engineering.
 
 ---
 
 ## 🧠 The Standalone Engine (`orchestrator/planner.py`)
 
-Unlike the Enterprise mode which relies on Go and Kafka, the Desktop Nova mode uses the `OrchestratorEngine` directly in-process.
+Unlike the Enterprise mode which relies on Go and Kafka, the Desktop Nova mode uses the **Hive OrchestratorEngine** directly in-process.
 
 ### Core Execution Loop
 1. **Bootstrap**: The `desktop_nova.py` or `tui.py` instantiates all specialist agents (CEO, CTO, Engineers, etc.) with local LLM clients.
@@ -32,7 +32,7 @@ All data is persisted in the `./output/<project_id>/` directory, allowing missio
 
 ## 🪚 Surgical Tooling: `LocalFileEditTool`
 
-The hallmark of Proximus Precision is the **Surgical Edit** loop. Instead of overwriting files entirely, agents use a precision search-and-replace tool.
+The hallmark of Proximus Precision is the **Hive Surgical Edit** loop. Instead of overwriting files entirely, agents use a precision search-and-replace tool (`LocalFileEditTool`).
 
 ### Why Surgery?
 1. **Efficiency**: Only changes the lines that matter, saving massive amounts of tokens.

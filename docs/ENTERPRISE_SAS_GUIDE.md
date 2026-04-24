@@ -15,8 +15,9 @@ The Enterprise version of Proximus is built for high-scale, event-driven orchest
 | Component | Responsibility | Technology |
 | :--- | :--- | :--- |
 | **API Gateway** | Auth, Project Management, Billing | Go (Fiber) |
-| **Orchestrator** | DAG Planning, Task Dispatching | Go (gRPC) |
+| **Orchestrator** | DAG Planning, Task Dispatching | Go (Hive Orchestrator) |
 | **Event Bus** | Asynchronous Agent Communication | Apache Kafka |
+| **MCP Server** | Secure Host/Resource Access | Go (Native MCP) |
 | **WebSocket Hub** | Live Event Streaming to UI | Go + Redis |
 | **Persistence** | Structured state & tenant data | PostgreSQL |
 | **Observability** | Distributed Tracing | OpenTelemetry + Jaeger |
@@ -52,9 +53,9 @@ State changes in the Orchestrator are published to a **Redis Pub/Sub** channel. 
 
 ## 🏗️ Technical Component Deep-Dive
 
-### Go Orchestrator (`go-backend/cmd/orchestrator`)
+### Hive Go Orchestrator (`go-backend/cmd/orchestrator`)
 - **gRPC Interface**: Implements the `OrchestratorService` defined in `api/proto/orchestrator.proto`.
-- **State Machine**: Uses a lock-free advancement algorithm to process parallel agent results.
+- **Hive State Machine**: Uses a lock-free advancement algorithm to process parallel agent results from the Hive swarm.
 - **Error Handling**: Implements exponential backoff for failed LLM calls and automatic task re-dispatch.
 
 ### Go Gateway (`go-backend/cmd/gateway`)
