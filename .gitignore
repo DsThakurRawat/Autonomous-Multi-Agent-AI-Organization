@@ -71,7 +71,9 @@ credentials/
 claude/
 output/
 deliverables/
-docs/
+# docs/  <-- Removed from ignore to track manual documentation
+roadmap/
+
 generated/
 artifacts/
 tmp_repos/
