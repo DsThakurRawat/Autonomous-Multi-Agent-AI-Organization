@@ -28,6 +28,17 @@ Before diving in, please review the specialized documentation tailored to your r
 
 ---
 
+## 🖥️ Interface Previews
+
+Proximus offers two world-class interfaces for managing your autonomous organization.
+
+| **Interactive TUI Shell** | **Enterprise Management Dashboard** |
+| :---: | :---: |
+| ![TUI Preview](./assets/tui_preview.png) | ![Dashboard Preview](./assets/dashboard_preview.png) |
+| *Real-time agent collaboration logs and system telemetry.* | *Visual Task DAG, cost analytics, and fleet management.* |
+
+---
+
 ## 🔄 Project Workflow & Lifecycle
 
 Proximus operates as a coordinated swarm. Below is the end-to-end execution flow for a typical software project mission:
@@ -59,21 +70,35 @@ graph TD
 
 ---
 
-## 🏗️ Core Subsystems
+## 🧠 The Specialized Agent Swarm
 
-### 1. The Orchestrator (`/orchestrator`)
-The "Brain" of the organization. It manages the **Task Graph (DAG)**, tracking dependencies and ensuring that agents work in the correct sequence. It handles state persistence, checkpointing, and error recovery.
+Each agent in Proximus is a specialist with unique capabilities and toolsets.
 
-### 2. The Agent Swarm (`/agents`)
-Specialized AI personas powered by **Amazon Nova** (default) or other LLMs. Each agent is equipped with a specific set of tools via the **Model Context Protocol (MCP)**.
-- **CEO/CTO**: Strategy and Design.
-- **Engineers**: Implementation (Go, Python, Next.js).
-- **QA**: Automated testing in isolated Docker sandboxes.
+### 👔 Strategic Leadership
+*   **CEO Agent**: Analyzes business ideas, performs market feasibility studies, and generates high-level project roadmaps.
+*   **CTO Agent**: Defines technical stacks, designs system architectures, and sets the "North Star" for all engineering tasks.
 
-### 3. Security & Governance (`/security-check` & `/moe-scoring`)
-- **AST Validation**: Rust-based service that analyzes AI-generated code for security vulnerabilities before execution.
-- **PII Redaction**: High-performance log scrubbing to prevent leakage of sensitive data.
-- **Mixture of Experts (MoE)**: Optimized routing that selects the best model for each specific task based on historical performance and cost.
+### 🛠️ Core Engineering
+*   **Backend Engineer**: Implements high-performance Go and Python microservices with a focus on concurrency and reliability.
+*   **Frontend Engineer**: Builds responsive, modern UIs using Next.js 15 and Tailwind CSS, following accessibility standards.
+
+### 🛡️ Quality & Operations
+*   **QA Agent**: Validates all generated code within isolated **Docker Sandboxes**, ensuring 100% test coverage before delivery.
+*   **DevOps Agent**: Orchestrates containerization, manages CI/CD pipelines, and automates AWS cloud deployments.
+*   **Finance Agent**: The project's "Budget Guard," monitoring LLM token consumption and infrastructure costs in real-time.
+
+---
+
+## ✨ The Proximus Advantage
+
+Why choose Proximus for autonomous software engineering?
+
+*   **Surgical Precision**: Agents modify source code with minimal side effects, preserving developer intent and project style.
+*   **Security-First Architecture**: 
+    *   **AST Validation**: AI-generated code is analyzed for security risks in Rust before it ever touches your disk.
+    *   **PII Scrubbing**: Automatic log redaction keeps sensitive API keys and user data private.
+*   **Mixture of Experts (MoE)**: Our Rust-based routing engine dynamically selects the most cost-effective LLM for each specific task.
+*   **Budget Governance**: Real-time spending limits and token quotas prevent unexpected API bills.
 
 ---
 
@@ -87,9 +112,6 @@ Specialized AI personas powered by **Amazon Nova** (default) or other LLMs. Each
 ├── dashboard/          # Next.js 15 Management Dashboard
 ├── docs/               # Detailed technical documentation hub
 ├── go-backend/         # Enterprise microservices (Go)
-│   ├── cmd/            # Entry points (Gateway, Orchestrator, MCP)
-│   ├── internal/       # Core Go logic and shared libraries
-│   └── migrations/     # PostgreSQL schema migrations
 ├── infra/              # Kubernetes Helm charts and Terraform
 ├── messaging/          # Kafka schemas and client implementations
 ├── moe-scoring/        # Rust-based routing engine
@@ -115,6 +137,28 @@ cp .env.example .env # Add your LLM API keys
 ### 2. Launch
 *   **TUI Mode**: `python3 tui.py`
 *   **CLI Mode**: `python3 desktop_nova.py "Build a real-time weather dashboard"`
+
+---
+
+## ❓ Frequently Asked Questions
+
+<details>
+<summary><b>Which LLMs does Proximus support?</b></summary>
+Proximus is provider-agnostic. While it is optimized for <b>Amazon Nova</b> models on Bedrock, it supports OpenAI, Anthropic, and Google Gemini. You can configure per-agent model preferences in the <code>dashboard/settings</code> page.
+</details>
+
+<details>
+<summary><b>Is it safe to run AI-generated code?</b></summary>
+Yes. Proximus uses a multi-layered security approach:
+1. All code is run in an isolated <b>Docker Sandbox</b>.
+2. A Rust-based <b>AST Validator</b> checks for malicious patterns before execution.
+3. An <b>Egress Proxy</b> restricts network access to a strict allowlist.
+</details>
+
+<details>
+<summary><b>How does the budget gating work?</b></summary>
+The <b>Finance Agent</b> tracks every token and API call. If a project exceeds the pre-defined budget threshold, the Orchestrator automatically pauses the swarm and requests human intervention.
+</details>
 
 ---
 
