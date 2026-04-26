@@ -44,6 +44,49 @@ Proximus offers two world-class interfaces for managing your autonomous organiza
 
 Proximus operates as a high-frequency trading desk for software engineering, moving through 7 granular phases of execution.
 
+```mermaid
+graph TD
+    User([User Idea]) --> CEO[CEO Agent: Strategic Analysis]
+    CEO --> PRD[PRD Generated]
+    PRD --> CTO[CTO Agent: Architectural Spec]
+    CTO --> Spec[Architecture Spec]
+    Spec --> Planner[Orchestrator: DAG Generation]
+    Planner --> DAG{Task Graph}
+    
+    subgraph Swarm[Autonomous Swarm]
+        BE[Backend Engineer]
+        FE[Frontend Engineer]
+        DO[DevOps Engineer]
+        QA[QA Engineer]
+    end
+    
+    DAG --> BE
+    DAG --> FE
+    DAG --> DO
+    
+    BE --> SEC[Rust Security Layer]
+    FE --> SEC
+    
+    SEC --> QA
+    QA --> DEPLOY[Deployment Worker]
+    
+    DEPLOY --> Done([Mission Complete])
+    
+    subgraph Infrastructure[The Polyglot Kernel]
+        Go[Go: Orchestration & Gateway]
+        Rust[Rust: Performance & Security]
+        Python[Python: Agent Logic]
+        Kafka[Kafka: Event Mesh]
+        Redis[Redis: State & Locks]
+    end
+    
+    Swarm -.-> Infrastructure
+    
+    style DAG fill:#f9f,stroke:#333,stroke-width:2px
+    style SEC fill:#ff9,stroke:#333,stroke-width:2px
+    style Infrastructure fill:#e1f5fe,stroke:#01579b,stroke-dasharray: 5 5
+```
+
 ### 1. Strategic Ingestion (CEO)
 The **CEO Agent** analyzes the business idea, performs market feasibility checks, and defines the MVP (Minimum Viable Product). It emits a structured **Product Requirements Document (PRD)** into the Kafka event mesh.
 
