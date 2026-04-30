@@ -7,7 +7,7 @@ require (
 	github.com/IBM/sarama v1.47.0
 	github.com/gofiber/contrib/websocket v1.3.4
 	// HTTP Framework
-	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/gofiber/fiber/v2 v2.52.13
 
 	// Auth
 	github.com/golang-jwt/jwt/v5 v5.3.1
