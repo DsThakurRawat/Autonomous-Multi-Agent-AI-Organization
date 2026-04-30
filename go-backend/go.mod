@@ -16,7 +16,7 @@ require (
 	github.com/google/uuid v1.6.0
 
 	// Postgres
-	github.com/jackc/pgx/v5 v5.7.4
+	github.com/jackc/pgx/v5 v5.9.2
 
 	// Redis
 	github.com/redis/go-redis/v9 v9.18.0
