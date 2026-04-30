@@ -55,7 +55,7 @@ opentelemetry-api>=1.23.0
 opentelemetry-sdk>=1.23.0
 opentelemetry-exporter-otlp>=1.23.0
 langchain-core>=0.1.0
-langsmith>=0.1.0
+langsmith>=0.8.0
 
 # ── Task Graph & DAG ────────────────────────────────────────────
 networkx>=3.6.1
