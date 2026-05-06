@@ -4,7 +4,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 // ── Types ─────────────────────────────────────────────────────────────
 
-export interface Project {
+export interface ResearchMission {
     id: string
     name: string
     description: string
@@ -12,8 +12,8 @@ export interface Project {
     budget_usd: number
     spent_usd: number
     progress_pct: number
-    tasks_total: number
-    tasks_done: number
+    milestones_total: number
+    milestones_done: number
     created_at: string
     completed_at?: string
 }
@@ -119,21 +119,21 @@ export const api = {
     health: () =>
         apiFetch<{ status: string; uptime_seconds: number }>('/healthz'),
 
-    // Projects — Go Gateway: /v1/projects
-    listProjects: () =>
-        apiFetch<Project[]>('/v1/projects'),
+    // Missions — Go Gateway: /v1/missions
+    listMissions: () =>
+        apiFetch<ResearchMission[]>('/v1/missions'),
 
-    getProject: (id: string) =>
-        apiFetch<Project>(`/v1/projects/${id}`),
+    getMission: (id: string) =>
+        apiFetch<ResearchMission>(`/v1/missions/${id}`),
 
-    createProject: (data: CreateProjectRequest, idempotencyKey?: string) =>
-        apiFetch<Project>('/v1/projects', {
+    createMission: (data: CreateProjectRequest, idempotencyKey?: string) =>
+        apiFetch<ResearchMission>('/v1/missions', {
             method: 'POST',
             idempotencyKey,
             body: JSON.stringify({
-                idea: data.idea,
+                goal: data.idea,
                 budget: { max_cost_usd: data.budget_usd },
-                name: data.name ?? '',
+                name: data.name ?? 'New Research Mission',
             }),
         }),
 
@@ -143,9 +143,9 @@ export const api = {
             body: JSON.stringify({ reason }),
         }),
 
-    // Tasks / DAG — Go Gateway: /v1/projects/:id/tasks
-    getProjectTasks: (projectId: string) =>
-        apiFetch<TaskNode[]>(`/v1/projects/${projectId}/tasks`),
+    // Milestones / DAG — Go Gateway: /v1/missions/:id/milestones
+    getMissionMilestones: (missionId: string) =>
+        apiFetch<TaskNode[]>(`/v1/missions/${missionId}/milestones`),
 
     postIntervention: (projectId: string, taskId: string, approved: boolean) =>
         apiFetch<void>(`/v1/projects/${projectId}/tasks/${taskId}/intervene`, {
@@ -153,10 +153,10 @@ export const api = {
             body: JSON.stringify({ approved }),
         }),
 
-    // Cost report — Go Gateway: /v1/projects/:id/cost
-    getProjectCost: (projectId: string) =>
+    // Cost report — Go Gateway: /v1/missions/:id/cost
+    getMissionCost: (missionId: string) =>
         apiFetch<{ total_usd: number; by_agent: Record<string, number> }>(
-            `/v1/projects/${projectId}/cost`
+            `/v1/missions/${missionId}/cost`
         ),
 
     // Settings — LLM key management (Go Gateway: /v1/settings/keys)
@@ -208,25 +208,25 @@ export function formatDuration(ms: number): string {
 }
 
 export const AGENT_COLORS: Record<string, string> = {
-    CEO: '#4f8ef7',
-    CTO: '#8b5cf6',
-    Engineer_Backend: '#10b981',
-    Engineer_Frontend: '#22d3ee',
-    QA: '#f59e0b',
-    DevOps: '#ec4899',
-    Finance: '#6b7280',
+    Lead_Researcher: '#4f8ef7',
+    Math_Architect: '#8b5cf6',
+    Implementation_Specialist: '#10b981',
+    Visual_Insights: '#22d3ee',
+    Reproducibility_Engineer: '#f59e0b',
+    Peer_Reviewer: '#ec4899',
+    Compute_Monitor: '#6b7280',
     Orchestrator: '#4b5563',
     system: '#3f3f46',
 }
 
 export const AGENT_EMOJI: Record<string, string> = {
-    CEO: '👑',
-    CTO: '🛡️',
-    Engineer_Backend: '⚙️',
-    Engineer_Frontend: '🎨',
-    QA: '🧪',
-    DevOps: '🚀',
-    Finance: '💰',
+    Lead_Researcher: '🔬',
+    Math_Architect: '📐',
+    Implementation_Specialist: '💻',
+    Visual_Insights: '📊',
+    Reproducibility_Engineer: '♻️',
+    Peer_Reviewer: '🔍',
+    Compute_Monitor: '⚡',
     Orchestrator: '🧠',
     system: '🤖',
 }

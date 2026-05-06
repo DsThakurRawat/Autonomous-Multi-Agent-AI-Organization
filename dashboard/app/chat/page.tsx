@@ -30,7 +30,7 @@ export default function ChatPage() {
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080';
 
-    const { status: wsStatus, events, connect, disconnect } = useWebSocket({
+    const { status: wsStatus, events, connect, disconnect, sendMessage } = useWebSocket({
         projectId: activeProject,
         onEvent: (event) => {
             if (event.type === 'phase_change') {
@@ -45,8 +45,19 @@ export default function ChatPage() {
         if (events.length > 0) {
             const latest = events[0];
             
-            // Filter out granular noise from the central chat
-            if (['task_start', 'task_complete', 'task_completed', 'thinking', 'system'].includes(latest.type)) {
+            // Filter out granular noise from the central chat, but allow major milestones
+            if (['thinking', 'task_start'].includes(latest.type)) {
+                return;
+            }
+
+            // Handle conversational messages differently than system events
+            if (latest.type === 'message') {
+                setLogs(prev => [...prev, {
+                    role: latest.agent,
+                    text: latest.message,
+                    color: AGENT_COLORS[latest.agent] || '#a855f7'
+                }]);
+                setIsExecuting(false);
                 return;
             }
 
@@ -85,22 +96,31 @@ export default function ChatPage() {
         
         // Add user prompt to the chat
         setLogs(prev => [...prev, { text: userPrompt, color: '#f8fafc', role: 'User' }]);
-        setTimeout(() => {
-            setLogs(prev => [...prev, { text: `Initializing project & assembling agent swarm...`, color: '#64748b', role: 'System' }]);
-        }, 500);
+        
+        // Use conversational flow by default
+        if (wsStatus === 'connected') {
+            const success = sendMessage(userPrompt);
+            if (success) return;
+        }
 
+        // Fallback to REST if WS isn't ready yet (for the very first message)
         try {
-            const project = await api.createProject({
-                idea: userPrompt,
-                budget_usd: 10
+            const resp = await fetch('http://localhost:8000/agents/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userPrompt, role: 'Lead_Researcher' })
             });
-
-            // The useWebSocket hook at the top will automatically connect to the new activeProject
-            setActiveProject(project.id);
-            setLogs(prev => [...prev, { text: `Project initialization commanded. Launching Swarm...`, color: '#64748b', role: 'System' }]);
+            const data = await resp.json();
             
+            setLogs(prev => [...prev, {
+                role: data.agent_role,
+                text: data.content,
+                color: AGENT_COLORS[data.agent_role] || '#a855f7'
+            }]);
+            setIsExecuting(false);
+
         } catch (error: any) {
-            setLogs(prev => [...prev, { text: `Error: Failed to start orchestrator: ${error.message}`, color: '#ef4444', role: 'System' }]);
+            setLogs(prev => [...prev, { text: `Error: Service unavailable: ${error.message}`, color: '#ef4444', role: 'System' }]);
             setIsExecuting(false);
         }
     };
@@ -118,13 +138,13 @@ export default function ChatPage() {
             <aside className="w-72 bg-[#0c0c0e] shrink-0 border-r border-white/5 hidden md:flex flex-col">
                 <div className="p-6">
                     <button className="w-full flex items-center justify-center gap-2 bg-white text-black rounded-2xl py-3.5 transition-all text-sm font-bold hover:bg-slate-200 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                        <Plus size={18} /> New Workspace
+                        <Plus size={18} /> New Research
                     </button>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto px-4 space-y-2 mt-4">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-3 mb-4">Recent Projects</p>
-                    {['SaaS Dashboard Platform', 'E-commerce API', 'Internal Admin Tool'].map((proj, i) => (
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-3 mb-4">Recent Research</p>
+                    {['Quantum Neural Networks', 'Market Efficiency Hypothesis', 'CRISPR Gene Editing'].map((proj, i) => (
                         <button key={i} className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 transition-colors text-sm truncate flex items-center gap-3 text-slate-400 hover:text-white group">
                             <div className="w-2 h-2 rounded-full bg-slate-700 group-hover:bg-purple-500 transition-colors" />
                             {proj}
@@ -164,7 +184,7 @@ export default function ChatPage() {
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                             <Sparkles size={16} />
                         </div>
-                        <span className="font-bold">Proximus</span>
+                        <span className="font-bold">SARANG</span>
                     </div>
                 </header>
 
@@ -183,15 +203,18 @@ export default function ChatPage() {
                             <div className="w-20 h-20 rounded-[2.5rem] bg-white/5 border border-white/10 text-purple-400 flex items-center justify-center mb-8 shadow-2xl animate-float">
                                 <Sparkles size={40} />
                             </div>
-                            <h2 className="text-4xl font-bold text-white mb-4">What shall we build?</h2>
-                            <p className="text-slate-500 text-lg mb-12 max-w-md">Our multi-agent swarm is ready to architect, develop, and deploy your next big idea.</p>
+                            <h2 className="text-4xl font-bold text-white mb-4">
+                                Hello, {session.user?.name?.split(' ')[0] || 'Researcher'}.<br/>
+                                <span className="text-slate-400 text-3xl">How can I help you today?</span>
+                            </h2>
+                            <p className="text-slate-500 text-lg mb-12 max-w-md">Our specialized agent swarm is ready to deconstruct papers, extract math, and implement validated code.</p>
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
                                 {[
-                                    "Build a CRM dashboard for real estate agents",
-                                    "Create a Next.js blog with an admin panel",
-                                    "Develop a REST API for a task management app",
-                                    "Set up an e-commerce storefront"
+                                    "Deconstruct a paper on Quantum Computing",
+                                    "Extract math from a Deep Learning PDF",
+                                    "Analyze a genomics dataset (FASTQ)",
+                                    "Synthesize a validated Python simulation"
                                 ].map((suggestion, i) => (
                                     <button 
                                         key={i} 
@@ -252,7 +275,7 @@ export default function ChatPage() {
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 disabled={isExecuting}
-                                placeholder="Command the swarm..."
+                                placeholder="Enter a paper URL or upload a PDF..."
                                 className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-5 pl-6 pr-16 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/5 resize-none overflow-hidden transition-all text-base backdrop-blur-2xl shadow-2xl"
                                 rows={1}
                                 style={{ minHeight: '70px', maxHeight: '200px' }}

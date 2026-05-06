@@ -6,7 +6,7 @@ export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
 export interface AgentEvent {
     id: string
-    type: 'thinking' | 'task_start' | 'task_complete' | 'task_failed' | 'phase_change' | 'cost_update' | 'system'
+    type: 'thinking' | 'task_start' | 'task_complete' | 'task_failed' | 'phase_change' | 'cost_update' | 'system' | 'message' | 'error'
     agent: string
     message: string
     data?: Record<string, unknown>
@@ -38,7 +38,7 @@ export function useWebSocket({
     const pingRef = useRef<NodeJS.Timeout | null>(null)
     const pingStartRef = useRef<number>(0)
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8082'
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080'
 
     const connect = useCallback(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN) return
@@ -128,8 +128,8 @@ export function useWebSocket({
         const event: AgentEvent = {
             id: `mock-${Date.now()}`,
             type: msg.type || 'thinking',
-            agent: msg.agent || 'CEO',
-            message: msg.message || 'Analyzing business requirements...',
+            agent: msg.agent || 'Lead_Researcher',
+            message: msg.message || 'Analyzing research requirements...',
             timestamp: new Date().toISOString(),
             project_id: msg.project_id || 'demo',
             level: msg.level || 'info',
@@ -138,11 +138,23 @@ export function useWebSocket({
         setEvents(prev => [event, ...prev].slice(0, maxEvents))
     }, [maxEvents])
 
+    const sendMessage = useCallback((message: string, agentRole: string = 'Lead_Researcher') => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                mission_id: projectId,
+                message: message,
+                agent_role: agentRole
+            }))
+            return true
+        }
+        return false
+    }, [projectId])
+
     useEffect(() => {
         connect()
         return () => disconnect()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectId])
 
-    return { status, events, latency, connect, disconnect, clearEvents, injectMockEvent }
+    return { status, events, latency, connect, disconnect, clearEvents, injectMockEvent, sendMessage }
 }
