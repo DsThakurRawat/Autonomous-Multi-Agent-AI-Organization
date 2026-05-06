@@ -1,6 +1,0 @@
-apiVersion: v2
-name: ai-org
-description: Production-grade Helm chart for the Autonomous AI Organization platform
-type: application
-version: 1.0.0
-appVersion: "1.0.0"
