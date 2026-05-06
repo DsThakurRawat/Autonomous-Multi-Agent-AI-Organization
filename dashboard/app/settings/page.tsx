@@ -35,13 +35,13 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 const AGENT_LABELS: Record<string, string> = {
-    CEO: 'CEO — Strategy',
-    CTO: 'CTO — Architecture',
-    Engineer_Backend: 'Engineer — Backend',
-    Engineer_Frontend: 'Engineer — Frontend',
-    QA: 'QA — Testing',
-    DevOps: 'DevOps — Infrastructure',
-    Finance: 'Finance — Budget',
+    Lead_Researcher: 'Lead Researcher — Strategy & Synthesis',
+    Math_Architect: 'Math Architect — Formalism & Equations',
+    Implementation_Specialist: 'Implementation Specialist — Code Synthesis',
+    Visual_Insights: 'Visual Insights — Data & Figures',
+    Reproducibility_Engineer: 'Reproducibility Engineer — Validation',
+    Peer_Reviewer: 'Peer Reviewer — Quality & Critique',
+    Compute_Monitor: 'Compute Monitor — Resource Ops',
 };
 
 const MODEL_OPTIONS: Record<Provider, string[]> = {
@@ -484,7 +484,7 @@ export default function SettingsPage() {
                     
                     <div className="text-center py-12 border-t border-white/5">
                         <p className="text-xs text-slate-600 font-bold uppercase tracking-[0.2em] italic">
-                            Platform keys are managed by Proximus admin • Personal overrides take precedence
+                            Platform keys are managed by SARANG admin • Personal overrides take precedence
                         </p>
                     </div>
                 </div>

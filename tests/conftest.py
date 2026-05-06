@@ -1,5 +1,5 @@
 """
-Shared test fixtures for the Proximus test suite.
+Shared test fixtures for the SARANG test suite.
 
 Provides reusable mock objects, agent factories, and workspace helpers
 that eliminate boilerplate across unit and integration tests.

@@ -270,7 +270,7 @@ export default function DashboardPage() {
                         <Sparkles size={16} className="text-white" />
                     </div>
                     <div>
-                        <h1 className="text-sm font-semibold tracking-tight text-white">Proximus</h1>
+                        <h1 className="text-sm font-semibold tracking-tight text-white">SARANG</h1>
                         <p className="text-[10px] text-emerald-400 font-medium">Live Orchestrator</p>
                     </div>
                 </div>

@@ -24,7 +24,7 @@ export default function LandingPage() {
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-md">
                         <Sparkles size={16} className="text-white" />
                     </div>
-                    <span className="font-bold text-slate-900 tracking-tight text-xl">Proximus</span>
+                    <span className="text-zinc-400 text-sm font-medium tracking-tight">RESEARCH ENGINE v1.0 • POWERED BY GEMINI, CLAUDE & GPT</span>
                 </div>
                 
                 <nav className="hidden md:flex items-center gap-10 text-sm font-semibold text-slate-600">
@@ -56,43 +56,46 @@ export default function LandingPage() {
 
                     <div className="badge mb-10 text-purple-600 border-purple-100 bg-white/50 backdrop-blur-sm">
                         <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                        PROXIMUS PLATFORM LIVE
+                        SARANG OPEN SOURCE RESEARCH ENGINE
                     </div>
 
                     <h1 className="text-6xl md:text-[5.5rem] font-extrabold tracking-tight text-slate-900 mb-6 max-w-4xl leading-[1.05]">
-                        The AI Company,<br/>
+                        The Research Lab,<br/>
                         <span className="text-fuchsia-500">in a Box.</span>
                     </h1>
                     
                     <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-12 font-medium">
-                        Describe your product idea in natural language. Our autonomous agents will architect, build, test, and deploy it instantly.
+                        Deconstruct scientific papers into validated, reproducible implementations. Our autonomous agents extract math, logic, and code from PDFs in real-time.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <button 
-                            onClick={() => signIn('google', { callbackUrl: '/chat' })}
-                            className="bg-[#0f111a] text-white px-8 py-4 rounded-full text-base font-semibold hover:bg-black transition-all w-full sm:w-auto shadow-xl"
-                        >
-                            Sign in with Google
-                        </button>
-                        <button 
-                            onClick={() => {
-                                if (process.env.NODE_ENV !== 'production') {
-                                    signIn('credentials', { username: 'admin', password: 'admin', callbackUrl: '/chat' });
-                                }
-                            }}
-                            className="bg-white border-2 border-slate-200 px-8 py-3.5 rounded-full text-base font-semibold text-slate-700 hover:bg-slate-50 transition-all w-full sm:w-auto"
-                        >
-                            Try Demo (Local Account)
-                        </button>
-                    </div>
+                    <div className="flex flex-col items-center gap-6">
+                            <div className="flex gap-4">
+                                <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Gemini 1.5 Flash
+                                </span>
+                                <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> Claude 3.5 Sonnet
+                                </span>
+                                <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> GPT-4o
+                                </span>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <Link href="/chat" className="bg-white text-black px-10 py-5 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center gap-3 text-lg shadow-[0_0_40px_rgba(255,255,255,0.15)] active:scale-95">
+                                    Sign in with Google
+                                </Link>
+                                <Link href="/chat" className="bg-transparent border border-white/10 text-white px-10 py-5 rounded-2xl font-bold hover:bg-white/5 transition-all text-lg active:scale-95">
+                                    Try Demo (Local Account)
+                                </Link>
+                            </div>
+                        </div>
                 </section>
 
                 {/* "Single Prompt" Section */}
                 <section className="py-24 px-6 md:px-12 max-w-6xl mx-auto w-full">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-5xl font-bold mb-4 text-slate-900 tracking-tight">Create software with a single prompt</h2>
-                        <p className="text-slate-500 text-lg max-w-2xl mx-auto font-medium">Build powerful automated sequences that connect your favorite tech stack.</p>
+                        <h2 className="text-3xl md:text-5xl font-bold mb-4 text-slate-900 tracking-tight">Paper to implementation in minutes</h2>
+                        <p className="text-slate-500 text-lg max-w-2xl mx-auto font-medium">A specialized agent swarm built for professional researchers, postdocs, and professors.</p>
                     </div>
 
                     {/* Dark Concept Card */}
@@ -103,16 +106,16 @@ export default function LandingPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center relative z-10">
                             {/* Left Side: Text */}
                             <div>
-                                <h3 className="text-3xl md:text-4xl font-bold text-white mb-6">Micro-Agent Swarm</h3>
+                                <h3 className="text-3xl md:text-4xl font-bold text-white mb-6">Research Agent Swarm</h3>
                                 <p className="text-slate-400 text-lg mb-10 leading-relaxed font-medium">
-                                    Our proprietary Multi-Agent Swarm divides and conquers. The CEO agent plans the strategy, the CTO architects the system, and engineering agents write front-end and back-end code concurrently.
+                                    Our multi-agent ecosystem is designed for deep scientific reasoning. We use a hybrid Agent + Swarm method where specialized researchers collaborate to deconstruct papers, extract math, and verify reproducibility.
                                 </p>
                                 <ul className="space-y-6">
                                     {[
-                                        'Requirements Planning', 
-                                        'Parallel Code Generation', 
-                                        'Automated QA & Security', 
-                                        'Native Cloud Deployment'
+                                        'Scientific Deconstruction', 
+                                        'Mathematical Extraction', 
+                                        'Peer-Review Validation', 
+                                        'Reproducible Sandboxing'
                                     ].map((item, i) => (
                                         <li key={i} className="flex items-center gap-4 text-slate-300">
                                             <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
@@ -140,21 +143,21 @@ export default function LandingPage() {
                                         <div className="flex items-center gap-4">
                                             <div className="w-5 h-5 rounded bg-purple-500 shrink-0"></div>
                                             <div className="bg-slate-800/80 text-slate-300 px-4 py-2.5 rounded-lg w-full max-w-[80%] border border-slate-700/50">
-                                                Analyzing business requirements... <span className="text-purple-400 animate-pulse">|</span>
+                                                [Lead_Researcher] Deconstructing scientific PDF... <span className="text-purple-400 animate-pulse">|</span>
                                             </div>
                                         </div>
                                         
                                         <div className="flex items-center gap-4 ml-6 border-l-2 border-slate-700/50 pl-4 py-2">
                                             <div className="w-5 h-5 rounded bg-blue-500 shrink-0"></div>
                                             <div className="bg-slate-800/80 text-slate-400 px-4 py-2.5 rounded-lg w-full max-w-[85%] border border-slate-700/50">
-                                                Designing database schema and APIs.
+                                                [Math_Architect] Extracting mathematical equations...
                                             </div>
                                         </div>
                                         
                                         <div className="flex items-center gap-4 ml-6 border-l-2 border-slate-700/50 pl-4 pb-2">
                                             <div className="w-5 h-5 rounded bg-teal-500 shrink-0"></div>
                                             <div className="bg-slate-800/80 text-slate-400 px-4 py-2.5 rounded-lg w-full max-w-[90%] border border-slate-700/50">
-                                                Writing Next.js frontend components...
+                                                [Implementation_Specialist] Synthesizing validated logic...
                                             </div>
                                         </div>
                                     </div>
@@ -162,7 +165,7 @@ export default function LandingPage() {
                                 
                                 {/* Floating Blue Button */}
                                 <div className="absolute -bottom-5 -right-5 bg-blue-600 text-white px-5 py-3 rounded-xl shadow-2xl font-bold flex items-center gap-3 text-sm animate-float">
-                                    <Sparkles size={16} /> Deploying to AWS
+                                    <Sparkles size={16} /> Validating reproducibility
                                 </div>
                             </div>
                         </div>
@@ -173,9 +176,9 @@ export default function LandingPage() {
                 <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto w-full z-10 relative bg-white/50">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
-                            { icon: <LayoutDashboard size={20} />, title: "Real-time Dashboard", desc: "Watch the agents work live. See code generation, testing, and deployment happen in real-time on your dashboard.", color: "purple" },
-                            { icon: <Workflow size={20} />, title: "Full Visibility", desc: "No black boxes. Every architectural decision, cost estimate, and code commit is logged and traceable.", color: "blue" },
-                            { icon: <Search size={20} />, title: "Search Across Apps", desc: "Find information instantly across all generated codebase artifacts with powerful semantic search.", color: "teal" }
+                            { icon: <LayoutDashboard size={20} />, title: "Research Notebook", desc: "Watch the agents deconstruct papers live. See the math extraction and code synthesis happen in real-time.", color: "purple" },
+                            { icon: <Workflow size={20} />, title: "Auditable Reasoning", desc: "No black boxes. Every mathematical derivation and research assumption is logged and traceable.", color: "blue" },
+                            { icon: <Search size={20} />, title: "Literature Search", desc: "Find insights instantly across your research project with deep semantic search and citation tracking.", color: "teal" }
                         ].map((f, i) => {
                             const colorMap: Record<string, string> = {
                                 purple: 'bg-purple-100 text-purple-600',
@@ -204,9 +207,9 @@ export default function LandingPage() {
                     </div>
                     
                     <h2 className="text-4xl md:text-[3.2rem] font-extrabold text-[#0f111a] mb-12 max-w-4xl mx-auto leading-[1.15] tracking-tight">
-                        We prioritize your <span className="underline decoration-purple-500 decoration-4 underline-offset-8">security and</span><br/>
-                        <span className="underline decoration-purple-500 decoration-4 underline-offset-8">privacy</span>, safeguarding your app<br/>
-                        and databases.
+                        We prioritize your <span className="underline decoration-purple-500 decoration-4 underline-offset-8">data privacy and</span><br/>
+                        <span className="underline decoration-purple-500 decoration-4 underline-offset-8">IP safety</span>, safeguarding your research<br/>
+                        and discoveries.
                     </h2>
                     
                     <div className="flex flex-wrap justify-center gap-8 mt-12 text-[15px] font-bold text-slate-500">
@@ -223,10 +226,10 @@ export default function LandingPage() {
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                                 <Sparkles size={16} className="text-white" />
                             </div>
-                            Proximus
+                            SARANG
                         </div>
                         <div className="text-slate-400 text-sm font-medium">
-                            © 2026 Proximus Org. All rights reserved.
+                            © 2026 SARANG Org. All rights reserved.
                         </div>
                     </div>
                 </footer>

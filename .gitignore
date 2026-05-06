@@ -163,3 +163,20 @@ general_hardcoded_tmp.py
 # Recursive tmp patterns for research repositories
 tmp_repos/**/tmp*
 tmp_repos/**/*tmp*
+
+# --- SARANG Runtime Artifacts ---
+output/
+deliverables/
+tmp_repos/
+logs/
+*.log
+
+# --- Python & Environment ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+sarang.pdf

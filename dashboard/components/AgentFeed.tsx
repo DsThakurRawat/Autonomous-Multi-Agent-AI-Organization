@@ -158,7 +158,7 @@ export default function AgentFeed({ events, status, latency, onClear, maxVisible
                                     <div className="flex items-center gap-2">
                                         <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-mono text-zinc-300">
                                             <span>{emoji}</span>
-                                            <span className="font-semibold">{thread.agent.replace('Engineer_', 'Eng_')}</span>
+                                            <span className="font-semibold">{thread.agent.replace(/_/g, ' ')}</span>
                                         </div>
                                     </div>
                                     <span className="text-[10px] text-zinc-500 font-mono">

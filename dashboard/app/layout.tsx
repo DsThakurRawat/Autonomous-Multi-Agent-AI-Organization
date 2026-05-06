@@ -22,10 +22,10 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-    title: 'AI Organization — Control Center',
-    description: 'Autonomous Multi-Agent AI Organization — Real-time project orchestration dashboard',
-    keywords: ['AI', 'agents', 'orchestration', 'automation', 'LLM'],
-    authors: [{ name: 'AI Organization' }],
+    title: 'SARANG — Professional Research Environment',
+    description: 'Open source research-to-code engine for professional researchers. Deconstructing scientific papers into validated implementations.',
+    keywords: ['SARANG', 'Research', 'AI Agents', 'Open Source', 'Scientific Computing', 'Reproducibility'],
+    authors: [{ name: 'SARANG Org' }],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
