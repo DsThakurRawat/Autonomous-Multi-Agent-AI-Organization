@@ -164,4 +164,34 @@ class QAReport(BaseModel):
     security_scan_passed: bool = True
     security_issues: list[str] = Field(default_factory=list)
     coverage_estimate_pct: float = Field(default=0, ge=0, le=100)
-    recommendations: list[str] = Field(default_factory=list)
+# ── SARANG Research Schemas ───────────────────────────────────────────
+
+
+class ResearchHypothesis(BaseModel):
+    statement: str = Field(..., min_length=10)
+    confidence: float = Field(..., ge=0, le=1)
+    validation_method: str
+
+
+class MathRequirement(BaseModel):
+    concept: str
+    formalism: str  # e.g. "Linear Algebra", "Information Theory"
+    critical_equations: list[str] = Field(default_factory=list)
+
+
+class ImplementationGoal(BaseModel):
+    module: str
+    language: str = "python"
+    requirements: list[str] = Field(..., min_length=1)
+
+
+class DeconstructionPlan(BaseModel):
+    """Structured output for the Lead Researcher agent."""
+
+    summary: str = Field(..., min_length=50, description="Conversational summary of the research deconstruction")
+    hypotheses: list[ResearchHypothesis] = Field(..., min_length=1)
+    math_requirements: list[MathRequirement] = Field(..., min_length=1)
+    implementation_goals: list[ImplementationGoal] = Field(..., min_length=1)
+    estimated_complexity: Literal["Low", "Medium", "High", "Critical"]
+    novelty_score: float = Field(..., ge=0, le=10)
+    reproducibility_risks: list[str] = Field(default_factory=list)

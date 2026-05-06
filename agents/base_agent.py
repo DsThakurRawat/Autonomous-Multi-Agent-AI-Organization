@@ -143,6 +143,26 @@ class BaseAgent(ABC):
     def redis_client(self, value: Any):
         self._redis_client = value
 
+    async def _publish_event(self, event: Any):
+        """Publish event to Redis for real-time UI streaming."""
+        if not self._current_task_id:
+            return
+        
+        try:
+            # We use mission:{id}:events to match the Go Gateway listener
+            channel = f"mission:{self._current_task_id}:events"
+            payload = {
+                "type": getattr(event, "event_type", "thinking"),
+                "agent": self.ROLE,
+                "message": getattr(event, "message", ""),
+                "level": getattr(event, "level", "info"),
+                "timestamp": datetime.now(UTC).isoformat(),
+                "data": getattr(event, "data", {})
+            }
+            await asyncio.to_thread(self.redis_client.publish, channel, json.dumps(payload))
+        except Exception as e:
+            logger.warning("Failed to publish event to Redis", error=str(e))
+
     @staticmethod
     def get_secret(name: str, default: str | None = None) -> str | None:
         """
@@ -717,7 +737,11 @@ class BaseAgent(ABC):
             level=level,
             data=data or {},
         )
+        # 1. Internal event bus
         await context.emit_event(event)
+        
+        # 2. Real-time Redis streaming for UI
+        await self._publish_event(event)
 
     # -- Self-Critique ----------------------------------------------
     async def self_critique(self, output: dict[str, Any]) -> dict[str, Any]:

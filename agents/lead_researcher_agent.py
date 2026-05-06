@@ -1,7 +1,7 @@
 """
-CEO Agent - Chief Executive Officer
-Converts a business idea into a structured business plan using
-multi-turn chain-of-thought reasoning and Pydantic-validated output.
+Lead Researcher Agent - Strategy & Synthesis
+Converts a research goal into a structured deconstruction plan using
+multi-turn chain-of-thought reasoning.
 """
 
 import json
@@ -13,7 +13,7 @@ import yaml
 
 from .base_agent import BaseAgent
 from .reasoning import ReasoningChain, ReasoningStep
-from .schemas import BusinessPlan
+from .schemas import DeconstructionPlan
 
 logger = structlog.get_logger(__name__)
 
@@ -22,68 +22,59 @@ _PROMPT_DIR = os.path.join(os.path.dirname(__file__), "prompts")
 
 
 def _load_prompt() -> dict:
-    path = os.path.join(_PROMPT_DIR, "ceo_strategy.yaml")
+    path = os.path.join(_PROMPT_DIR, "lead_researcher.yaml")
     try:
         with open(path, "r") as f:
             return yaml.safe_load(f)
     except FileNotFoundError:
-        logger.warning("CEO prompt template not found, using inline prompts")
+        logger.warning("Lead Researcher prompt template not found, using inline prompts")
         return {}
 
 
 _PROMPT_TEMPLATE = _load_prompt()
 
 
-class CEOAgent(BaseAgent):
+class LeadResearcherAgent(BaseAgent):
     """
-    The CEO agent is the first agent in the pipeline.
-    It receives a raw business idea and produces a structured business plan
-    that all other agents will use as their north star.
-
-    v2: Uses multi-turn ReasoningChain for deeper analysis and
-    Pydantic BusinessPlan schema for validated output.
+    The Lead Researcher agent is the first agent in the research pipeline.
+    It receives a research goal and produces a structured deconstruction plan.
     """
 
-    ROLE = "CEO"
+    ROLE = "Lead_Researcher"
 
     @property
     def system_prompt(self) -> str:
         return _PROMPT_TEMPLATE.get("system", "") or (
-            "You are the CEO of an autonomous AI software company.\n"
-            "Your job is to analyze a business idea and produce a clear, actionable business plan.\n\n"
+            "You are the Lead Researcher and Principal Investigator of SARANG, an autonomous scientific research lab.\n"
+            "Your mission is to serve two primary audiences:\n"
+            "1. PROFESSIONAL RESEARCHERS: Provide high-fidelity, mathematically rigorous deconstructions of complex goals.\n"
+            "2. STUDENTS: Act as a patient mentor, breaking down complex concepts into first principles and explaining the 'why' behind scientific breakthroughs.\n\n"
             "You think in terms of:\n"
-            "- Market opportunity and user value\n"
-            "- MVP scope (minimum valuable product, not minimum viable)\n"
-            "- Priorities and trade-offs\n"
-            "- Risk identification and mitigation\n"
-            "- Success metrics\n\n"
-            "You are pragmatic and budget-conscious.\n"
-            "You always output valid JSON matching the required schema.\n"
-            "Never over-engineer. Ship fast, iterate.\n"
+            "- Scientific significance and novelty (for researchers)\n"
+            "- Conceptual clarity and pedagogical progression (for students)\n"
+            "- Mathematical foundations and hypotheses\n"
+            "- Implementation feasibility and reproducibility\n"
+            "- Potential bottlenecks in validation\n\n"
+            "When responding conversationally, be warm, professional, and intellectually stimulating. "
+            "You always aim for clarity without compromising on rigor.\n"
         )
 
     async def run(
         self,
-        business_idea: str = "",
+        research_goal: str = "",
         budget_usd: float = 200.0,
         context: Any | None = None,
         **kwargs,
     ) -> dict[str, Any]:
         """
-        Analyze business idea and produce a structured business plan.
-
-        Uses a 4-step reasoning chain:
-          1. Analyze — Decompose the idea into market/scope/risk signals
-          2. Generate — Produce the full business plan
-          3. Critique — Self-evaluate for weaknesses
-          4. Refine — Address weaknesses in a revised plan
+        Analyze research goal and produce a structured deconstruction plan.
         """
-        logger.info("CEO Agent: Analyzing business idea", idea=business_idea[:80])
+        logger.info("Lead Researcher: Analyzing research goal", goal=research_goal[:80])
 
         if context:
             await self.emit(
                 context,
-                "Analyzing market opportunity and defining MVP scope...",
+                "Analyzing scientific significance and defining deconstruction scope...",
             )
 
         # Build the reasoning chain from YAML template or inline fallback
@@ -111,7 +102,7 @@ class CEOAgent(BaseAgent):
                     temperature=0.3,
                 ),
             ],
-            output_schema=BusinessPlan,
+            output_schema=DeconstructionPlan,
             max_validation_retries=2,
         )
 
@@ -133,22 +124,22 @@ class CEOAgent(BaseAgent):
             plan = await chain.execute(
                 call_llm=self.call_llm,
                 on_step=on_step,
-                business_idea=business_idea,
+                research_goal=research_goal,
                 budget_usd=budget_usd,
             )
         except Exception as e:
             logger.warning(
-                "CEO reasoning chain failed, using fallback",
+                "Lead Researcher reasoning chain failed, using fallback",
                 error=str(e),
             )
-            plan = self._extract_plan_fallback(business_idea)
+            plan = self._extract_plan_fallback(research_goal)
 
         if context:
             await self.emit(
                 context,
-                f"MVP Strategy Drafted:\nVision: {plan.get('vision')}\n"
-                f"Target: {plan.get('target_users')}\n"
-                f"Features: {len(plan.get('mvp_features', []))} core tasks.",
+                f"Research Mission Deconstructed:\n{plan.get('summary')}\n"
+                f"Hypotheses: {len(plan.get('hypotheses', []))} identified.\n"
+                f"Complexity: {plan.get('estimated_complexity')}",
                 level="success",
             )
 
@@ -195,33 +186,38 @@ class CEOAgent(BaseAgent):
     @staticmethod
     def _fallback_analyze_prompt() -> str:
         return (
-            "Analyze this business idea step by step:\n\n"
-            "Business Idea: {business_idea}\n"
-            "Budget Constraint: ${budget_usd} USD/month\n\n"
+            "Analyze this research goal step by step:\n\n"
+            "Research Goal: {research_goal}\n"
+            "Constraints: High scientific rigor, reproducibility priority.\n\n"
             "Think through:\n"
-            "1. Who is the target user?\n"
-            "2. What existing solutions exist?\n"
-            "3. What is the minimum feature set to prove value?\n"
-            "4. Top 3 risks?\n\n"
-            'Return JSON with keys: target_analysis, competitive_landscape, '
-            'minimum_viable_scope, critical_risks'
+            "1. What is the core scientific question?\n"
+            "2. What mathematical foundations are required?\n"
+            "3. What are the top 3 implementation challenges?\n"
+            "4. How can we validate the novelty?\n\n"
+            'Return JSON with keys: scientific_question, math_foundations, '
+            'implementation_challenges, novelty_indicators'
         )
 
     @staticmethod
     def _fallback_generate_prompt() -> str:
         return (
             "Based on your analysis:\n{analyze_output}\n\n"
-            "Produce the full business plan as JSON with keys: "
-            "vision, target_users, problem_statement, mvp_features, "
-            "milestones, risk_assessment, success_metrics, revenue_model, "
-            "estimated_users_year1, go_to_market"
+            "Produce a comprehensive Research Deconstruction Plan.\n"
+            "IMPORTANT: The 'summary' field should be a conversational, Claude-style explanation (100-200 words) "
+            "of how we will tackle this research mission.\n\n"
+            "Return JSON with keys: "
+            "summary, hypotheses (list of {statement, confidence, validation_method}), "
+            "math_requirements (list of {concept, formalism, critical_equations}), "
+            "implementation_goals (list of {module, language, requirements}), "
+            "estimated_complexity (Low/Medium/High/Critical), novelty_score (0-10), "
+            "reproducibility_risks (list)"
         )
 
     @staticmethod
     def _fallback_critique_prompt() -> str:
         return (
-            "Review this business plan for weaknesses:\n{generate_output}\n\n"
-            "Score: market_viability, scope_realism, revenue_clarity (1-10 each).\n"
+            "Review this research plan for scientific rigor:\n{generate_output}\n\n"
+            "Score: math_rigor, implementation_feasibility, novelty_confidence (1-10 each).\n"
             'Return JSON: {{"scores": {{}}, "weaknesses": [], "improvements": []}}'
         )
 
@@ -230,7 +226,7 @@ class CEOAgent(BaseAgent):
         return (
             "Your plan had these weaknesses:\n{critique_output}\n\n"
             "Original plan:\n{generate_output}\n\n"
-            "Produce a REVISED plan fixing every weakness. Return valid JSON only."
+            "Produce a REVISED scientific plan fixing every weakness. Return valid JSON only."
         )
 
     # ── Safe fallback plan ──────────────────────────────────────────

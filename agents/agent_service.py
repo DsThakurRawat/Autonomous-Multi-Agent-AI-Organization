@@ -33,13 +33,14 @@ logger = structlog.get_logger(__name__)
 
 # -- Agent Role → (Module, Class) Mapping ------------------------------------─
 AGENT_REGISTRY: dict[str, tuple] = {
-    AgentRole.CEO: ("agents.ceo_agent", "CEOAgent"),
-    AgentRole.CTO: ("agents.cto_agent", "CTOAgent"),
-    AgentRole.ENGINEER_BACKEND: ("agents.backend_agent", "BackendAgent"),
-    AgentRole.ENGINEER_FRONTEND: ("agents.frontend_agent", "FrontendAgent"),
-    AgentRole.QA: ("agents.qa_agent", "QAAgent"),
-    AgentRole.DEVOPS: ("agents.devops_agent", "DevOpsAgent"),
-    AgentRole.FINANCE: ("agents.finance_agent", "FinanceAgent"),
+    AgentRole.LEAD_RESEARCHER: ("agents.lead_researcher_agent", "LeadResearcherAgent"),
+    AgentRole.MATH_ARCHITECT: ("agents.math_architect_agent", "MathArchitectAgent"),
+    AgentRole.IMPLEMENTATION_SPECIALIST: ("agents.implementation_specialist_agent", "ImplementationSpecialistAgent"),
+    AgentRole.VISUAL_INSIGHTS: ("agents.visual_insights_agent", "VisualInsightsAgent"),
+    AgentRole.REPRODUCIBILITY_ENGINEER: ("agents.reproducibility_engineer_agent", "ReproducibilityEngineerAgent"),
+    AgentRole.PEER_REVIEWER: ("agents.peer_reviewer_agent", "PeerReviewerAgent"),
+    AgentRole.COMPUTE_MONITOR: ("agents.compute_monitor_agent", "ComputeMonitorAgent"),
+    AgentRole.ORCHESTRATOR: ("agents.orchestrator_agent", "OrchestratorAgent"),
 }
 
 
@@ -152,7 +153,7 @@ class AgentMicroservice:
     """
 
     def __init__(self):
-        self.role = os.getenv("AGENT_ROLE", AgentRole.CEO)
+        self.role = os.getenv("AGENT_ROLE", AgentRole.LEAD_RESEARCHER)
         self.topic = os.getenv(
             "KAFKA_CONSUMER_TOPIC"
         ) or KafkaTopics.task_topic_for_role(self.role)

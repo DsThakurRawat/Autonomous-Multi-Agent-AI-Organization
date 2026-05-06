@@ -169,7 +169,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         """Internal helper for git automation."""
         git = GitTool(repo_path=deliverables_path)
         await git.run("init")
-        await git.commit_all("Initial release by Proximus AI Organization")
+        await git.commit_all("Initial release by SARANG AI Organization")
         
         token = os.getenv("GITHUB_TOKEN")
         if token:
