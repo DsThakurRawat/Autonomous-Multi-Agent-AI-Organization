@@ -2,6 +2,7 @@
 
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useEffect } from 'react';
 import { Sparkles, ArrowRight, LayoutDashboard, Search, Workflow, Zap, ShieldCheck } from 'lucide-react';
 

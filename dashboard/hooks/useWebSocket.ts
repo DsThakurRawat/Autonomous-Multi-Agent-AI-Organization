@@ -6,25 +6,21 @@ export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
 export interface AgentEvent {
     id: string
-    type: 'thinking' | 'task_start' | 'task_complete' | 'task_failed' | 'phase_change' | 'cost_update' | 'system' | 'message' | 'error'
+    type: 'thinking' | 'message' | 'error' | 'system'
     agent: string
     message: string
     data?: Record<string, unknown>
     timestamp: string
-    project_id: string
-    trace_id?: string
     level?: 'info' | 'warning' | 'error' | 'success'
 }
 
 interface UseWebSocketOptions {
-    projectId?: string
     onEvent?: (event: AgentEvent) => void
     reconnectMs?: number
     maxEvents?: number
 }
 
 export function useWebSocket({
-    projectId,
     onEvent,
     reconnectMs = 3000,
     maxEvents = 200,
@@ -43,10 +39,7 @@ export function useWebSocket({
     const connect = useCallback(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-        const url = projectId
-            ? `${wsUrl}/ws/projects/${projectId}/events`
-            : `${wsUrl}/ws/events`
-
+        const url = `${wsUrl}/ws/chat`
         setStatus('connecting')
 
         try {
@@ -55,7 +48,6 @@ export function useWebSocket({
 
             ws.onopen = () => {
                 setStatus('connected')
-                // Start ping interval for latency measurement
                 pingRef.current = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) {
                         pingStartRef.current = Date.now()
@@ -67,40 +59,28 @@ export function useWebSocket({
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data)
-
-                    // Handle ping/pong
                     if (data.type === 'pong') {
                         setLatency(Date.now() - pingStartRef.current)
                         return
                     }
 
                     const agentEvent: AgentEvent = {
-                        id: data.id || `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                        type: data.type || 'system',
-                        agent: data.agent || data.agent_role || 'system',
-                        message: data.message || data.content || '',
-                        data: data.data || data.payload,
+                        id: `evt-${Date.now()}`,
+                        type: data.type || 'message',
+                        agent: data.agent || 'system',
+                        message: data.message || '',
                         timestamp: data.timestamp || new Date().toISOString(),
-                        project_id: data.project_id || projectId || '',
-                        trace_id: data.trace_id,
                         level: data.level || 'info',
                     }
 
-                    setEvents(prev => {
-                        const next = [agentEvent, ...prev]
-                        return next.slice(0, maxEvents)
-                    })
-
+                    setEvents(prev => [agentEvent, ...prev].slice(0, maxEvents))
                     onEvent?.(agentEvent)
-                } catch (e) {
-                    console.warn('WS parse error:', e)
-                }
+                } catch (e) {}
             }
 
             ws.onclose = () => {
                 setStatus('disconnected')
                 clearInterval(pingRef.current!)
-                // Auto-reconnect
                 reconnectRef.current = setTimeout(connect, reconnectMs)
             }
 
@@ -112,7 +92,7 @@ export function useWebSocket({
             setStatus('error')
             reconnectRef.current = setTimeout(connect, reconnectMs)
         }
-    }, [wsUrl, projectId, reconnectMs, maxEvents, onEvent])
+    }, [wsUrl, reconnectMs, maxEvents, onEvent])
 
     const disconnect = useCallback(() => {
         clearTimeout(reconnectRef.current!)
@@ -121,40 +101,18 @@ export function useWebSocket({
         setStatus('disconnected')
     }, [])
 
-    const clearEvents = useCallback(() => setEvents([]), [])
-
-    // Inject a mock event — useful when API is offline (dev mode)
-    const injectMockEvent = useCallback((msg: Partial<AgentEvent>) => {
-        const event: AgentEvent = {
-            id: `mock-${Date.now()}`,
-            type: msg.type || 'thinking',
-            agent: msg.agent || 'Lead_Researcher',
-            message: msg.message || 'Analyzing research requirements...',
-            timestamp: new Date().toISOString(),
-            project_id: msg.project_id || 'demo',
-            level: msg.level || 'info',
-            ...msg,
-        }
-        setEvents(prev => [event, ...prev].slice(0, maxEvents))
-    }, [maxEvents])
-
-    const sendMessage = useCallback((message: string, agentRole: string = 'Lead_Researcher') => {
+    const sendMessage = useCallback((message: string, role: string = 'Research_Intelligence') => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({
-                mission_id: projectId,
-                message: message,
-                agent_role: agentRole
-            }))
+            wsRef.current.send(JSON.stringify({ message, role }))
             return true
         }
         return false
-    }, [projectId])
+    }, [])
 
     useEffect(() => {
         connect()
         return () => disconnect()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [projectId])
+    }, [connect, disconnect])
 
-    return { status, events, latency, connect, disconnect, clearEvents, injectMockEvent, sendMessage }
+    return { status, events, latency, connect, disconnect, sendMessage }
 }

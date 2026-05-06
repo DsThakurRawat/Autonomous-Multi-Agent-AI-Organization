@@ -1,39 +1,39 @@
 """
-Agents Package
-All AI agent role definitions and executors.
+SARANG Research Swarm Package
+All scientific AI agent role definitions and executors.
 """
 
-from .backend_agent import BackendAgent
 from .base_agent import BaseAgent
-from .ceo_agent import CEOAgent
-from .cto_agent import CTOAgent
-from .devops_agent import DevOpsAgent
+from .research_intelligence import ResearchIntelligence
+from .math_architect_agent import MathArchitectAgent
+from .implementation_specialist_agent import ImplementationSpecialistAgent
+from .peer_reviewer_agent import PeerReviewerAgent
+from .reproducibility_engineer_agent import ReproducibilityEngineerAgent
+from .visual_insights_agent import VisualInsightsAgent
+from .compute_monitor_agent import ComputeMonitorAgent
 from .events import AgentEvent
-from .finance_agent import FinanceAgent
-from .frontend_agent import FrontendAgent
-from .qa_agent import QAAgent
 from .reasoning import ReasoningChain, ReasoningStep
 from .schemas import (
-    Architecture,
-    BusinessPlan,
-    FinancialReport,
-    QAReport,
+    ResearchHypothesis,
+    MathRequirement,
+    ImplementationGoal,
+    DeconstructionPlan,
 )
 
 __all__ = [
     "AgentEvent",
-    "Architecture",
-    "BackendAgent",
     "BaseAgent",
-    "BusinessPlan",
-    "CEOAgent",
-    "CTOAgent",
-    "DevOpsAgent",
-    "FinancialReport",
-    "FinanceAgent",
-    "FrontendAgent",
-    "QAAgent",
-    "QAReport",
+    "ResearchIntelligence",
+    "MathArchitectAgent",
+    "ImplementationSpecialistAgent",
+    "PeerReviewerAgent",
+    "ReproducibilityEngineerAgent",
+    "VisualInsightsAgent",
+    "ComputeMonitorAgent",
     "ReasoningChain",
     "ReasoningStep",
+    "ResearchHypothesis",
+    "MathRequirement",
+    "ImplementationGoal",
+    "DeconstructionPlan",
 ]

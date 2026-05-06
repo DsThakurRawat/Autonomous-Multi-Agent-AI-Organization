@@ -1,140 +1,219 @@
 import os
 import asyncio
-from typing import List, Optional
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+import json
+from typing import List, Optional, Dict, Any
+from datetime import datetime, UTC
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import structlog
 from dotenv import load_dotenv
 from google import genai
+import redis.asyncio as aioredis
 
-# Import the real agents from the agents/ directory
-from agents.lead_researcher_agent import LeadResearcherAgent
-from agents.roles import AgentRole
+from agents.research_intelligence import ResearchIntelligence
+from agents.events import AgentEvent
 
 load_dotenv()
 
-# -- Professional Logging Configuration -----------------------------
-structlog.configure(
-    processors=[
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.add_log_level,
-        structlog.processors.JSONRenderer() if os.getenv("PROD") else structlog.dev.ConsoleRenderer()
-    ]
-)
+# -- Logging --------------------------------------------------------
 logger = structlog.get_logger(__name__)
 
 app = FastAPI(title="SARANG Intelligence Engine")
 
-# -- Gemini Initialization ------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# -- State & Infrastructure -----------------------------------------
 api_key = os.getenv("GEMINI_API_KEY")
 llm_client = None
 if api_key:
     try:
         llm_client = genai.Client(api_key=api_key)
-        logger.info("Gemini-1.5 AI ready", status="online")
+        logger.info("Gemini-3.1 AI Ready", status="online")
     except Exception as e:
         logger.error("Failed to initialize Gemini", error=str(e))
-else:
-    logger.warning("GEMINI_API_KEY missing - running in legacy mock mode")
 
-# -- Pydantic Models (Modern Dev Standards) ------------------------
-class ResearchMission(BaseModel):
-    mission_id: str = Field(..., example="mission-123")
-    goal: str = Field(..., example="Deconstruct a paper on Quantum Neural Networks")
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+rdb = aioredis.from_url(redis_url, decode_responses=True)
+
+# Global store for active missions
+active_missions: Dict[str, ResearchIntelligence] = {}
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., example="What are the mathematical requirements for this paper?")
-    role: str = Field(default="Lead_Researcher")
-    history: Optional[List[dict]] = []
+    message: str
+    role: str = "Research_Intelligence"
+    project_id: Optional[str] = "default"
 
 class AgentResponse(BaseModel):
     agent_role: str
     content: str
-    status: str = "success"
 
-# -- API Endpoints --------------------------------------------------
+# -- WebSocket Management -------------------------------------------
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
+
+manager = ConnectionManager()
+
+async def redis_listener():
+    """Listens to sarang:events and broadcasts to all connected WebSockets."""
+    pubsub = rdb.pubsub()
+    await pubsub.subscribe("sarang:events")
+    logger.info("Redis listener active", channel="sarang:events")
+    
+    try:
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                try:
+                    data = json.loads(message["data"])
+                    await manager.broadcast(data)
+                except Exception as e:
+                    logger.error("Failed to broadcast message", error=str(e))
+    finally:
+        await pubsub.unsubscribe("sarang:events")
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(redis_listener())
+
+# -- Endpoints ------------------------------------------------------
 
 @app.get("/health")
-def health_check():
-    return {
-        "status": "SARANG Intelligence Online",
-        "llm_provider": "google",
-        "llm_ready": llm_client is not None
-    }
+async def health_check():
+    return {"status": "online", "llm_ready": llm_client is not None}
 
-async def run_mission_logic(mission_id: str, goal: str):
-    """Executes a full research mission using the real agent swarm logic."""
-    log = logger.bind(mission_id=mission_id)
-    log.info("Research swarm launching", goal=goal)
+@app.websocket("/ws/chat")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    
+    # Welcome message
+    await websocket.send_json({
+        "type": "system",
+        "message": "SARANG Research Swarm Connected (Python Core).",
+        "agent": "system",
+        "timestamp": datetime.now(UTC).isoformat()
+    })
 
     try:
-        # Instantiate the real Lead Researcher with Redis support
-        agent = LeadResearcherAgent(llm_client=llm_client)
-        agent.model_name = "gemini-1.5-flash"
-        agent.provider = "google"
-        agent._current_task_id = mission_id  # This enables the Redis event bridge
+        while True:
+            data = await websocket.receive_text()
+            req_data = json.loads(data)
+            
+            if req_data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
 
-        # Execute the mission - results will be streamed via agent.emit()
-        result = await agent.run(research_goal=goal)
-        
-        log.info("Mission intelligence synthesis complete", 
-                 complexity=result.get("estimated_complexity"),
-                 hypotheses=len(result.get("hypotheses", [])))
-        
+            message = req_data.get("message")
+            role = req_data.get("role", "Research_Intelligence")
+            
+            # Start research mission in background
+            asyncio.create_task(process_chat_request(message, role))
+            
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
     except Exception as e:
-        log.error("Mission failed", error=str(e))
+        logger.error("WebSocket error", error=str(e))
+        manager.disconnect(websocket)
 
-@app.post("/agents/research")
-async def conduct_research(request: ResearchMission, background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_mission_logic, request.mission_id, request.goal)
-    return {
-        "status": "mission_launched",
-        "mission_id": request.mission_id,
-        "primary_agent": AgentRole.LEAD_RESEARCHER,
-        "message": "Scientific deconstruction swarm is now active."
-    }
+async def process_chat_request(message: str, role: str):
+    """Processes a chat request using the appropriate agent logic."""
+    if not llm_client:
+        await rdb.publish("sarang:events", json.dumps({
+            "type": "error",
+            "message": "Gemini API not configured",
+            "agent": "system"
+        }))
+        return
+
+    try:
+        # If it's a Research Intelligence request, use the full run() method
+        if role == "Research_Intelligence":
+            agent = ResearchIntelligence(llm_client=llm_client)
+            # Setup telemetry
+            agent._current_task_id = f"chat-{int(datetime.now().timestamp())}"
+            
+            # Custom context to emit events directly to Redis
+            class RedisContext:
+                async def emit_event(self, event: AgentEvent):
+                    payload = {
+                        "type": event.event_type,
+                        "agent": event.agent_role,
+                        "message": event.message,
+                        "level": event.level,
+                        "timestamp": datetime.now(UTC).isoformat(),
+                        "data": event.data
+                    }
+                    await rdb.publish("sarang:events", json.dumps(payload))
+
+            plan = await agent.run(research_goal=message, context=RedisContext())
+            
+            # Send final response
+            await rdb.publish("sarang:events", json.dumps({
+                "type": "message",
+                "agent": role,
+                "message": plan.get("summary", "Mission deconstructed."),
+                "timestamp": datetime.now(UTC).isoformat()
+            }))
+        else:
+            # Fallback to simple chat for other roles
+            system_msg = f"You are the {role} of SARANG Research Swarm."
+            response = await asyncio.to_thread(
+                llm_client.models.generate_content,
+                model="gemini-2.0-flash-lite",
+                contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {message}"}]}]
+            )
+            await rdb.publish("sarang:events", json.dumps({
+                "type": "message",
+                "agent": role,
+                "message": response.text,
+                "timestamp": datetime.now(UTC).isoformat()
+            }))
+            
+    except Exception as e:
+        logger.error("Processing failure", error=str(e))
+        await rdb.publish("sarang:events", json.dumps({
+            "type": "error",
+            "message": f"Intelligence failure: {str(e)}",
+            "agent": "system"
+        }))
 
 @app.post("/agents/chat", response_model=AgentResponse)
 async def chat_with_agent(request: ChatRequest):
-    """Direct conversational interface - behave like Claude/Gemini."""
+    """Legacy REST bridge for one-off requests."""
     if not llm_client:
-        raise HTTPException(status_code=503, detail="LLM provider not available")
-
-    log = logger.bind(agent=request.role)
-    log.info("Conversational request received", message=request.message[:50])
+        raise HTTPException(status_code=503, detail="Gemini API not configured")
 
     try:
-        # Detect if this is a greeting or a research request
-        # In a real LangGraph setup, this would be a node transition
-        is_greeting = any(word in request.message.lower() for word in ["hi", "hello", "hey", "who are you"])
-        
-        if is_greeting:
-            system_msg = (
-                "You are the Lead Researcher of SARANG. "
-                "Respond warmly and professionally. Explain that you are an autonomous research coordinator "
-                "capable of deconstructing papers, extracting math, and running simulations. "
-                "Ask how you can assist with their scientific inquiry today."
-            )
-        else:
-            system_msg = (
-                f"You are the {request.role} of SARANG. "
-                "Provide a high-level, intelligent response to the user's inquiry. "
-                "If they are asking for a research mission, confirm you can launch the swarm for them."
-            )
-
-        response = llm_client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=[
-                {"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {request.message}"}]}
-            ]
+        system_msg = f"You are the {request.role} of SARANG Research Swarm."
+        response = await asyncio.to_thread(
+            llm_client.models.generate_content,
+            model="gemini-2.0-flash-lite",
+            contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {request.message}"}]}]
         )
-        
-        return AgentResponse(
-            agent_role=request.role,
-            content=response.text
-        )
+        return AgentResponse(agent_role=request.role, content=response.text)
     except Exception as e:
-        log.error("Chat failed", error=str(e))
+        logger.error("REST intelligence failure", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

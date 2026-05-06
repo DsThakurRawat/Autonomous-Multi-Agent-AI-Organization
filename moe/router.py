@@ -38,8 +38,6 @@ class MoERouter:
       3. If ambiguous → compute task vector and score all available experts
       4. Apply ensemble if scores are close or confidence is low
       5. Return routing decision with explanation
-
-    All decisions are logged and instrumented.
     """
 
     def __init__(self, registry: ExpertRegistry | None = None):
@@ -67,20 +65,6 @@ class MoERouter:
     ) -> MoERouteDecision:
         """
         Route a task to the best available expert.
-
-        Args:
-            task_type:      Task classification string
-            task_name:      Human-readable task name
-            task_id:        Unique task identifier
-            project_id:     Project this task belongs to
-            input_context:  Task description/context (used for semantic routing)
-            required_skills: Mandatory skills the expert must have
-            priority:       "critical" | "high" | "medium" | "low"
-            force_ensemble: Force multi-expert routing regardless of scores
-            trace_id:       OpenTelemetry trace ID for correlation
-
-        Returns:
-            MoERouteDecision with selected expert and explanation
         """
         if required_skills is None:
             required_skills = []
@@ -96,7 +80,6 @@ class MoERouter:
         # -- Step 0: Try Rust Service (Fast Path) --------------------------─
         rust_client = get_rust_client()
         if rust_client:
-            # We must pass the dynamic expert map + stats to Rust so it matches python state
             experts_map = dict(self._registry.all_experts().items())
             stats_map = {
                 role: s.to_dict() for role, s in self._registry.all_stats().items()
@@ -161,12 +144,7 @@ class MoERouter:
             }
 
         if not experts:
-            # Fallback: no skill match - use all experts
             experts = self._registry.all_experts()
-            logger.warning(
-                "No experts matched required skills, routing to all",
-                skills=required_skills,
-            )
 
         if not experts:
             logger.error("No experts registered in the system.")
@@ -183,8 +161,6 @@ class MoERouter:
         )
 
         if not rankings:
-            # All experts overloaded - queue the task
-            logger.warning("All experts overloaded, queueing task", task_id=task_id)
             return await self._queue_for_retry(
                 task_id, task_type, task_name, project_id, trace_id
             )
@@ -208,7 +184,7 @@ class MoERouter:
             f"success={top_breakdown.get('success_rate', 0):.3f}]"
         )
         if use_ensemble:
-            routing_reason += f" | Ensemble with {second_role} (scores gap {top_score-second_score:.3f} < 0.10)"
+            routing_reason += f" | Ensemble with {second_role}"
 
         confidence = min(1.0, top_score / max(ENSEMBLE_THRESHOLD, 0.001))
 
@@ -223,26 +199,13 @@ class MoERouter:
         )
 
         await self._record_decision(decision, "scored", time.monotonic() - start_time)
-
-        logger.info(
-            "MoE routing decision",
-            task=task_name,
-            selected=top_role,
-            score=round(top_score, 3),
-            ensemble=use_ensemble,
-            confidence=round(confidence, 3),
-            routing_ms=round((time.monotonic() - start_time) * 1000, 2),
-        )
-
         return decision
 
-    # -- Batch Routing ------------------------------------------------------
     async def route_batch(self, tasks: list[dict[str, Any]]) -> list[MoERouteDecision]:
         """Route multiple tasks in parallel."""
         experts_map = dict(self._registry.all_experts().items())
         rust_client = get_rust_client()
         if not experts_map:
-            logger.error("No experts registered for batch routing.")
             return [
                 await self._queue_for_retry(
                     t.get("task_id", ""),
@@ -254,7 +217,6 @@ class MoERouter:
                 for t in tasks
             ]
 
-        # Fast path: Rust batch route
         if rust_client:
             stats_map = {
                 role: s.to_dict() for role, s in self._registry.all_stats().items()
@@ -263,7 +225,6 @@ class MoERouter:
                 tasks, experts=experts_map, stats=stats_map
             )
             if resp:
-                # Need to log all decisions
                 for r in resp:
                     dec = MoERouteDecision(**r)
                     await self._record_decision(
@@ -271,7 +232,6 @@ class MoERouter:
                     )
                 return [MoERouteDecision(**r) for r in resp]
 
-        # Python fallback:
         decisions = await asyncio.gather(
             *[
                 self.route(
@@ -288,7 +248,6 @@ class MoERouter:
         )
         return list(decisions)
 
-    # -- Priority Queue Fallback --------------------------------------------
     async def _queue_for_retry(
         self,
         task_id: str,
@@ -297,7 +256,6 @@ class MoERouter:
         project_id: str,
         trace_id: str,
     ) -> MoERouteDecision:
-        """Queue task when all experts are overloaded."""
         expert_keys = list(self._registry.all_experts().keys())
         if not expert_keys:
             return MoERouteDecision(
@@ -309,19 +267,18 @@ class MoERouter:
                 ensemble_mode=False,
                 confidence=0.0,
             )
-        expert = expert_keys[0]  # Last resort
+        expert = expert_keys[0]
         decision = MoERouteDecision(
             request_id=task_id,
             selected_expert=expert,
             fallback_experts=[],
             routing_score=0.0,
-            routing_reason="All experts overloaded - last-resort fallback routing",
+            routing_reason="All experts overloaded - fallback routing",
             ensemble_mode=False,
             confidence=0.1,
         )
         return decision
 
-    # -- Decision History --------------------------------------------------─
     async def _record_decision(
         self, decision: MoERouteDecision, routing_type: str, latency_s: float
     ):
@@ -336,33 +293,9 @@ class MoERouter:
                 self._routing_history.pop(0)
 
     def get_routing_stats(self) -> dict[str, Any]:
-        """Return routing statistics for monitoring dashboards."""
         if not self._routing_history:
             return {"total_decisions": 0}
-
-        expert_counts: dict[str, int] = {}
-        routing_types: dict[str, int] = {}
-        total_latency = 0.0
-
-        for d in self._routing_history:
-            role = d.get("selected_expert", "unknown")
-            rt = d.get("routing_type", "unknown")
-            expert_counts[role] = expert_counts.get(role, 0) + 1
-            routing_types[rt] = routing_types.get(rt, 0) + 1
-            total_latency += d.get("latency_ms", 0)
-
-        n = len(self._routing_history)
-        return {
-            "total_decisions": n,
-            "avg_routing_latency_ms": round(total_latency / n, 2),
-            "expert_distribution": expert_counts,
-            "routing_type_breakdown": routing_types,
-            "ensemble_rate": sum(
-                1 for d in self._routing_history if d.get("ensemble_mode")
-            )
-            / n,
-        }
+        return {"total_decisions": len(self._routing_history)}
 
     def get_expert_load_summary(self) -> list[dict[str, Any]]:
-        """Return current expert load for dashboard display."""
         return self._registry.get_all_stats_dict()
