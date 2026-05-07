@@ -13,7 +13,7 @@ import yaml
 
 from .base_agent import BaseAgent
 from .reasoning import ReasoningChain, ReasoningStep
-from .schemas import ImplementationGoal
+from .schemas import ImplementationBlueprint
 
 logger = structlog.get_logger(__name__)
 
@@ -86,7 +86,7 @@ class ImplementationSpecialistAgent(BaseAgent):
                     temperature=0.1,
                 ),
             ],
-            output_schema=ImplementationGoal,
+            output_schema=ImplementationBlueprint,
             max_validation_retries=2,
         )
 

@@ -1,64 +1,50 @@
 """
 Model Registry - Single source of truth for default agent model preferences.
 
-When a user has NOT configured custom agent preferences in the Settings panel,
-the Go Orchestrator falls back to these defaults when building the Kafka TaskMessage.
-The Python AgentMicroservice also reads these as its ultimate fallback if the
-Kafka payload arrives without an llm_config block.
-
-Prompting strategy references (for improving system prompts per agent):
-  CEO  / GPT-4o:      https://platform.openai.com/docs/guides/prompt-engineering
-  CTO  / Gemini:      https://ai.google.dev/gemini-api/docs/prompting-strategies
-  Eng  / Claude:      https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview
+All SARANG research agents default to Gemini for local development.
+The system supports switching agents to other providers dynamically
+via the settings API.
 """
 
 from typing import TypedDict
 
 
 class ModelConfig(TypedDict):
-    provider: str  # "openai" | "anthropic" | "google" | "bedrock"
-    model: str  # exact model ID for the provider's API
+    provider: str  # "google" | "openai" | "anthropic" | "bedrock"
+    model: str     # exact model ID for the provider's API
 
 
-# -- Agent Defaults ------------------------------------------------------------
-# The system defaults to Amazon Bedrock models. The orchestration layer
-# supports switching individual agents to Google (Gemini), Anthropic (Claude),
-# or OpenAI (GPT) for specific tasks dynamically via the settings API.
+# -- Agent Defaults --------------------------------------------------------
+# Local development defaults to Google Gemini (free tier).
+# Production deployments can override per-agent via environment or settings API.
 AGENT_MODEL_DEFAULTS: dict[str, ModelConfig] = {
-    # CEO - Strategic reasoning, structured JSON output
-    "CEO": {
-        "provider": "bedrock",
-        "model": "amazon.nova-lite-v1:0",
+    "Research_Intelligence": {
+        "provider": "google",
+        "model": "gemini-2.5-flash",
     },
-    # CTO / Architect - Long-context system design and research
-    "CTO": {
-        "provider": "bedrock",
-        "model": "amazon.nova-lite-v1:0",
+    "Math_Architect": {
+        "provider": "google",
+        "model": "gemini-2.5-flash",
     },
-    # Engineer (Backend) - Real, runnable code with minimal hallucinations
-    "Engineer_Backend": {
-        "provider": "bedrock",
-        "model": "amazon.nova-lite-v1:0",
+    "Implementation_Specialist": {
+        "provider": "google",
+        "model": "gemini-2.5-flash",
     },
-    # Engineer (Frontend) - UI generation and React components
-    "Engineer_Frontend": {
-        "provider": "bedrock",
-        "model": "amazon.nova-lite-v1:0",
+    "Peer_Reviewer": {
+        "provider": "google",
+        "model": "gemini-2.5-flash",
     },
-    # QA - Test writing and bug analysis
-    "QA": {
-        "provider": "bedrock",
-        "model": "amazon.nova-lite-v1:0",
+    "Reproducibility_Engineer": {
+        "provider": "google",
+        "model": "gemini-2.5-flash",
     },
-    # DevOps - YAML, Dockerfile, CI/CD generation
-    "DevOps": {
-        "provider": "bedrock",
-        "model": "amazon.nova-lite-v1:0",
+    "Visual_Insights": {
+        "provider": "google",
+        "model": "gemini-2.5-flash",
     },
-    # Finance - Cost analysis and budget reporting
-    "Finance": {
-        "provider": "bedrock",
-        "model": "amazon.nova-micro-v1:0",
+    "Compute_Monitor": {
+        "provider": "google",
+        "model": "gemini-2.5-flash",
     },
 }
 
@@ -69,5 +55,5 @@ def get_default(agent_role: str) -> ModelConfig:
     """
     return AGENT_MODEL_DEFAULTS.get(
         agent_role,
-        {"provider": "bedrock", "model": "amazon.nova-lite-v1:0"},
+        {"provider": "google", "model": "gemini-2.0-flash"},
     )

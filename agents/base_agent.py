@@ -50,7 +50,7 @@ class BaseAgent(ABC):
         self.llm_client = llm_client
         self.tools = tools or {}
         # Default to Gemini 2.0 Flash Lite for higher free-tier quota
-        self.model_name = model_name or "gemini-2.0-flash-lite"
+        self.model_name = model_name or "gemini-2.5-flash"
         self.provider = provider
         
         self._current_task_id: str | None = None
@@ -79,7 +79,7 @@ class BaseAgent(ABC):
             return
         
         try:
-            channel = f"mission:{self._current_task_id}:events"
+            channel = "sarang:events"
             payload = {
                 "type": event.event_type,
                 "agent": self.ROLE,

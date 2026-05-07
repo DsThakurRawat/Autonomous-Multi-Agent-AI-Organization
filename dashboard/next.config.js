@@ -1,14 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    output: 'standalone',
     experimental: {
         optimizePackageImports: ['lucide-react', 'recharts'],
     },
     images: {
         remotePatterns: [
-            { protocol: 'https', hostname: 'api.dicebear.com' },
-            { protocol: 'https', hostname: 'lh3.googleusercontent.com' }
-        ]
+            {
+                protocol: 'https',
+                hostname: 'lh3.googleusercontent.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'api.dicebear.com',
+            }
+        ],
+        unoptimized: true,
     },
     env: {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',

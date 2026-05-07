@@ -13,7 +13,7 @@ import yaml
 
 from .base_agent import BaseAgent
 from .reasoning import ReasoningChain, ReasoningStep
-from .schemas import MathRequirement
+from .schemas import MathDeconstruction
 
 logger = structlog.get_logger(__name__)
 
@@ -86,7 +86,7 @@ class MathArchitectAgent(BaseAgent):
                     temperature=0.1,
                 ),
             ],
-            output_schema=MathRequirement,
+            output_schema=MathDeconstruction,
             max_validation_retries=2,
         )
 

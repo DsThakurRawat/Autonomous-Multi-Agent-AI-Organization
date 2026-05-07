@@ -33,14 +33,13 @@ logger = structlog.get_logger(__name__)
 
 # -- Agent Role → (Module, Class) Mapping ------------------------------------─
 AGENT_REGISTRY: dict[str, tuple] = {
-    AgentRole.LEAD_RESEARCHER: ("agents.lead_researcher_agent", "LeadResearcherAgent"),
+    AgentRole.RESEARCH_INTELLIGENCE: ("agents.research_intelligence", "ResearchIntelligence"),
     AgentRole.MATH_ARCHITECT: ("agents.math_architect_agent", "MathArchitectAgent"),
     AgentRole.IMPLEMENTATION_SPECIALIST: ("agents.implementation_specialist_agent", "ImplementationSpecialistAgent"),
     AgentRole.VISUAL_INSIGHTS: ("agents.visual_insights_agent", "VisualInsightsAgent"),
     AgentRole.REPRODUCIBILITY_ENGINEER: ("agents.reproducibility_engineer_agent", "ReproducibilityEngineerAgent"),
     AgentRole.PEER_REVIEWER: ("agents.peer_reviewer_agent", "PeerReviewerAgent"),
     AgentRole.COMPUTE_MONITOR: ("agents.compute_monitor_agent", "ComputeMonitorAgent"),
-    AgentRole.ORCHESTRATOR: ("agents.orchestrator_agent", "OrchestratorAgent"),
 }
 
 

@@ -6,7 +6,7 @@ class AgentRole(StrEnum):
     Explicitly typed research roles for the SARANG multi-agent system.
     """
 
-    LEAD_RESEARCHER = "Lead_Researcher"
+    RESEARCH_INTELLIGENCE = "Research_Intelligence"
     MATH_ARCHITECT = "Math_Architect"
     IMPLEMENTATION_SPECIALIST = "Implementation_Specialist"
     VISUAL_INSIGHTS = "Visual_Insights"

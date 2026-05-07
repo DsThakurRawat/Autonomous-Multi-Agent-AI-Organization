@@ -2,7 +2,6 @@
 
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useEffect } from 'react';
 import { Sparkles, ArrowRight, LayoutDashboard, Search, Workflow, Zap, ShieldCheck } from 'lucide-react';
 
@@ -25,7 +24,7 @@ export default function LandingPage() {
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-md">
                         <Sparkles size={16} className="text-white" />
                     </div>
-                    <span className="text-zinc-400 text-sm font-medium tracking-tight">RESEARCH ENGINE v1.0 • POWERED BY GEMINI, CLAUDE & GPT</span>
+                    <span className="text-zinc-400 text-sm font-medium tracking-tight">RESEARCH ENGINE v1.0 • POWERED BY GEMINI</span>
                 </div>
                 
                 <nav className="hidden md:flex items-center gap-10 text-sm font-semibold text-slate-600">
@@ -36,8 +35,8 @@ export default function LandingPage() {
 
                 <div className="flex gap-4">
                      <button 
-                        onClick={() => signIn('google', { callbackUrl: '/chat' })}
-                        className="btn-primary"
+                        onClick={() => signIn('google')}
+                        className="btn-primary flex items-center gap-2 px-6 py-2.5 rounded-full bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all"
                      >
                         Get Started <ArrowRight size={16} />
                     </button>
@@ -72,22 +71,22 @@ export default function LandingPage() {
                     <div className="flex flex-col items-center gap-6">
                             <div className="flex gap-4">
                                 <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Gemini 1.5 Flash
-                                </span>
-                                <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> Claude 3.5 Sonnet
-                                </span>
-                                <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> GPT-4o
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Gemini 2.0 Flash
                                 </span>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <Link href="/chat" className="bg-white text-black px-10 py-5 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center gap-3 text-lg shadow-[0_0_40px_rgba(255,255,255,0.15)] active:scale-95">
-                                    Sign in with Google
-                                </Link>
-                                <Link href="/chat" className="bg-transparent border border-white/10 text-white px-10 py-5 rounded-2xl font-bold hover:bg-white/5 transition-all text-lg active:scale-95">
-                                    Try Demo (Local Account)
-                                </Link>
+                                <button 
+                                    onClick={() => signIn('google')}
+                                    className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center gap-3 text-lg shadow-xl active:scale-95"
+                                >
+                                    Sign in with Google <ArrowRight size={20} />
+                                </button>
+                                <button 
+                                    onClick={() => signIn('credentials', { username: 'admin', password: 'admin', callbackUrl: '/chat' })}
+                                    className="bg-white border border-slate-200 text-slate-600 px-10 py-5 rounded-2xl font-bold hover:bg-slate-50 transition-all text-lg active:scale-95"
+                                >
+                                    Developer Login
+                                </button>
                             </div>
                         </div>
                 </section>
@@ -140,11 +139,10 @@ export default function LandingPage() {
                                     
                                     {/* Terminal Lines */}
                                     <div className="space-y-4 font-mono text-xs leading-relaxed">
-                                        
                                         <div className="flex items-center gap-4">
                                             <div className="w-5 h-5 rounded bg-purple-500 shrink-0"></div>
                                             <div className="bg-slate-800/80 text-slate-300 px-4 py-2.5 rounded-lg w-full max-w-[80%] border border-slate-700/50">
-                                                [Lead_Researcher] Deconstructing scientific PDF... <span className="text-purple-400 animate-pulse">|</span>
+                                                [Research_Intelligence] Deconstructing scientific PDF... <span className="text-purple-400 animate-pulse">|</span>
                                             </div>
                                         </div>
                                         
@@ -174,7 +172,7 @@ export default function LandingPage() {
                 </section>
 
                 {/* Features Row - 3 Cards */}
-                <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto w-full z-10 relative bg-white/50">
+                <section id="features" className="py-20 px-6 md:px-12 max-w-7xl mx-auto w-full z-10 relative bg-white/50">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
                             { icon: <LayoutDashboard size={20} />, title: "Research Notebook", desc: "Watch the agents deconstruct papers live. See the math extraction and code synthesis happen in real-time.", color: "purple" },

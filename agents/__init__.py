@@ -18,6 +18,8 @@ from .schemas import (
     MathRequirement,
     ImplementationGoal,
     DeconstructionPlan,
+    MathDeconstruction,
+    ImplementationBlueprint,
 )
 
 __all__ = [
@@ -36,4 +38,6 @@ __all__ = [
     "MathRequirement",
     "ImplementationGoal",
     "DeconstructionPlan",
+    "MathDeconstruction",
+    "ImplementationBlueprint",
 ]

@@ -1,0 +1,32 @@
+# ── SARANG Research Swarm — Python Dependencies ─────────────────────
+# Core Framework
+fastapi==0.115.0
+uvicorn==0.32.0
+pydantic==2.9.2
+pydantic-settings>=2.0
+
+# LLM Provider
+google-genai==0.4.0
+
+# Infrastructure
+redis==5.2.0
+qdrant-client>=1.17.0
+
+# Observability & Resilience
+structlog==24.4.0
+tenacity>=9.0
+rich>=15.0
+
+# Utilities
+python-dotenv>=1.0
+pyyaml>=6.0
+httpx>=0.28
+networkx>=3.0
+
+# Security (for JWT/auth in agent_service)
+python-jose>=3.3
+passlib>=1.7
+
+# Database (optional, for production)
+sqlalchemy>=2.0
+asyncpg>=0.31

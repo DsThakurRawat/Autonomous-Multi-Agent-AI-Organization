@@ -1,13 +1,18 @@
+"""
+Semantic Cache — Vector-backed response caching with graceful degradation.
+
+Uses Qdrant + Gemini text-embedding-004 when available.
+Falls back to a no-op cache when Qdrant is unreachable, so the rest
+of the system never crashes due to a missing vector store.
+"""
+
 import asyncio
 import os
 import uuid
 
-from google import genai
-from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
-from structlog import get_logger
+import structlog
 
-logger = get_logger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SemanticCache:
@@ -15,20 +20,46 @@ class SemanticCache:
     Vector-backed Semantic Cache.
     Hashes prompts using Gemini text-embedding-004 and stores responses in Qdrant.
     Prevents duplicate LLM calls by returning cached answers for cosine similarity > 0.98.
+
+    Gracefully degrades to a no-op if Qdrant or the embedding model is unavailable.
     """
 
     def __init__(self, collection_name: str = "agent_semantic_cache"):
         self.qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
         self.collection_name = collection_name
-        self._client = AsyncQdrantClient(url=self.qdrant_url)
+        self._client = None
         self._initialized = False
         self._genai_client = None
+        self._unavailable = False  # Set once if Qdrant is confirmed down
+
+    def _get_qdrant_client(self):
+        """Lazy-init Qdrant client. Returns None if package not installed or unreachable."""
+        if self._unavailable:
+            return None
+        if self._client is not None:
+            return self._client
+        try:
+            from qdrant_client import AsyncQdrantClient
+            self._client = AsyncQdrantClient(url=self.qdrant_url)
+            return self._client
+        except ImportError:
+            logger.warning("qdrant-client not installed — semantic cache disabled")
+            self._unavailable = True
+            return None
+        except Exception as e:
+            logger.warning("Qdrant connection failed — semantic cache disabled", error=str(e))
+            self._unavailable = True
+            return None
 
     def _get_genai_client(self):
         if not self._genai_client:
             api_key = os.getenv("GEMINI_API_KEY")
             if api_key:
-                self._genai_client = genai.Client(api_key=api_key)
+                try:
+                    from google import genai
+                    self._genai_client = genai.Client(api_key=api_key)
+                except Exception:
+                    pass
         return self._genai_client
 
     async def _embed_text(self, text: str) -> list[float]:
@@ -37,8 +68,6 @@ class SemanticCache:
         if not client:
             raise ValueError("GEMINI_API_KEY is not set.")
 
-        # The new google-genai SDK
-        # We run it in a thread-pool because it is a sync call
         def _do_embed():
             result = client.models.embed_content(
                 model="text-embedding-004",
@@ -50,14 +79,18 @@ class SemanticCache:
         return await loop.run_in_executor(None, _do_embed)
 
     async def _ensure_collection(self):
-        if self._initialized:
+        if self._initialized or self._unavailable:
+            return
+
+        client = self._get_qdrant_client()
+        if not client:
             return
 
         try:
-            exists = await self._client.collection_exists(self.collection_name)
+            from qdrant_client.models import Distance, VectorParams
+            exists = await client.collection_exists(self.collection_name)
             if not exists:
-                # text-embedding-004 outputs 768 dimensions
-                await self._client.create_collection(
+                await client.create_collection(
                     collection_name=self.collection_name,
                     vectors_config=VectorParams(size=768, distance=Distance.COSINE),
                 )
@@ -67,20 +100,27 @@ class SemanticCache:
                 )
             self._initialized = True
         except Exception as e:
-            logger.warning("Failed to initialize semantic cache", error=str(e))
+            logger.warning("Failed to initialize semantic cache — disabling", error=str(e))
+            self._unavailable = True
 
     async def get_cached_response(
         self, prompt: str, threshold: float = 0.98
     ) -> str | None:
         """Search Qdrant for a semantically identical prompt."""
+        if self._unavailable:
+            return None
+
         try:
             await self._ensure_collection()
             if not self._initialized:
                 return None
 
             vector = await self._embed_text(prompt)
+            client = self._get_qdrant_client()
+            if not client:
+                return None
 
-            search_result = await self._client.search(
+            search_result = await client.search(
                 collection_name=self.collection_name,
                 query_vector=vector,
                 limit=1,
@@ -100,6 +140,9 @@ class SemanticCache:
 
     async def cache_response(self, prompt: str, response: str):
         """Store the prompt and response pair in the semantic cache."""
+        if self._unavailable:
+            return
+
         try:
             await self._ensure_collection()
             if not self._initialized:
@@ -107,8 +150,12 @@ class SemanticCache:
 
             vector = await self._embed_text(prompt)
             point_id = str(uuid.uuid4())
+            client = self._get_qdrant_client()
+            if not client:
+                return
 
-            await self._client.upsert(
+            from qdrant_client.models import PointStruct
+            await client.upsert(
                 collection_name=self.collection_name,
                 points=[
                     PointStruct(

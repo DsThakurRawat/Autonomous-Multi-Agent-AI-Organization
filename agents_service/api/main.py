@@ -1,6 +1,7 @@
 import os
 import asyncio
 import json
+import time
 from typing import List, Optional, Dict, Any
 from datetime import datetime, UTC
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -9,10 +10,8 @@ from pydantic import BaseModel, Field
 import structlog
 from dotenv import load_dotenv
 from google import genai
-import redis.asyncio as aioredis
-
-from agents.research_intelligence import ResearchIntelligence
-from agents.events import AgentEvent
+from agents_service.mock_llm import MockLLMClient
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 load_dotenv()
 
@@ -29,32 +28,85 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -- State & Infrastructure -----------------------------------------
-api_key = os.getenv("GEMINI_API_KEY")
-llm_client = None
-if api_key:
-    try:
-        llm_client = genai.Client(api_key=api_key)
-        logger.info("Gemini-3.1 AI Ready", status="online")
-    except Exception as e:
-        logger.error("Failed to initialize Gemini", error=str(e))
+# -- Key Rotation ---------------------------------------------------
+GEMINI_KEYS = [k.strip() for k in os.getenv("GEMINI_API_KEY", "").split(",") if k.strip()]
+current_key_index = 0
 
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-rdb = aioredis.from_url(redis_url, decode_responses=True)
+def get_next_client():
+    """Return the next Gemini client, falling back to MockLLMClient if no API keys.
+    This enables the whole stack to run locally for demos.
+    """
+    global current_key_index
+    if not GEMINI_KEYS:
+        logger.info("No Gemini keys configured – using MockLLMClient for demo.")
+        return MockLLMClient()
+    key = GEMINI_KEYS[current_key_index]
+    current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
+    return genai.Client(api_key=key)
 
-# Global store for active missions
-active_missions: Dict[str, ResearchIntelligence] = {}
+llm_client = get_next_client()
+if llm_client:
+    logger.info("Gemini AI Ready", keys_loaded=len(GEMINI_KEYS))
 
+MODEL_CHAIN = ["gemini-2.0-flash", "gemini-pro-latest"]
+
+# -- In-Memory Session Store ----------------------------------------
+# No Redis. No external deps. Just Python dicts.
+sessions_store: Dict[str, dict] = {}          # session_id -> metadata
+messages_store: Dict[str, List[dict]] = {}    # session_id -> [messages]
+user_sessions: Dict[str, List[str]] = {}      # user_email -> [session_ids]
+
+# -- Models ---------------------------------------------------------
 class ChatRequest(BaseModel):
     message: str
     role: str = "Research_Intelligence"
-    project_id: Optional[str] = "default"
+    session_id: Optional[str] = None
+    user_email: Optional[str] = "local@sarang.ai"
+
+class SessionCreate(BaseModel):
+    user_email: str
+    title: Optional[str] = "New Research"
 
 class AgentResponse(BaseModel):
     agent_role: str
     content: str
 
-# -- WebSocket Management -------------------------------------------
+# -- Session Helpers (In-Memory) ------------------------------------
+
+def create_session(user_email: str, title: str) -> dict:
+    session_id = f"sess_{int(time.time())}_{os.urandom(4).hex()}"
+    meta = {
+        "id": session_id,
+        "title": title,
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
+        "user_email": user_email
+    }
+    sessions_store[session_id] = meta
+    messages_store[session_id] = []
+    if user_email not in user_sessions:
+        user_sessions[user_email] = []
+    user_sessions[user_email].insert(0, session_id)
+    return meta
+
+def add_message(session_id: str, role: str, content: str):
+    msg = {
+        "role": role,
+        "content": content,
+        "timestamp": datetime.now(UTC).isoformat()
+    }
+    if session_id not in messages_store:
+        messages_store[session_id] = []
+    messages_store[session_id].append(msg)
+
+    # Auto-title from first user message
+    if role == "User" and session_id in sessions_store:
+        meta = sessions_store[session_id]
+        if meta.get("title") == "New Research":
+            meta["title"] = (content[:30] + '...') if len(content) > 30 else content
+        meta["updated_at"] = datetime.now(UTC).isoformat()
+
+# -- WebSocket Manager ----------------------------------------------
 
 class ConnectionManager:
     def __init__(self):
@@ -63,158 +115,200 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        logger.info("WebSocket client connected", total=len(self.active_connections))
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
+    async def send_to_session(self, session_id: str, message: dict):
+        """Broadcast to all connected clients (they filter by session_id)."""
+        dead = []
+        for conn in self.active_connections:
             try:
-                await connection.send_json(message)
+                await conn.send_json(message)
             except Exception:
-                pass
+                dead.append(conn)
+        for d in dead:
+            self.disconnect(d)
 
 manager = ConnectionManager()
 
-async def redis_listener():
-    """Listens to sarang:events and broadcasts to all connected WebSockets."""
-    pubsub = rdb.pubsub()
-    await pubsub.subscribe("sarang:events")
-    logger.info("Redis listener active", channel="sarang:events")
-    
+# -- LLM Call with Key Rotation -------------------------------------
+
+async def call_llm(system_msg: str, user_message: str, session_id: str = None) -> str:
+    """Direct LLM call with key rotation. No Redis. No queue."""
+    global llm_client, current_key_index
+    max_attempts = len(GEMINI_KEYS) * len(MODEL_CHAIN) * 2
+
+    for attempt in range(max_attempts):
+        for model_name in MODEL_CHAIN:
+            try:
+                logger.info("LLM call", model=model_name, key=current_key_index, attempt=attempt)
+
+                resp = await asyncio.to_thread(
+                    llm_client.models.generate_content,
+                    model=model_name,
+                    contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {user_message}"}]}]
+                )
+                return resp.text
+
+            except Exception as e:
+                err = str(e).lower()
+                if "429" in err or "quota" in err or "resource" in err:
+                    logger.warning("Quota hit, rotating key", model=model_name, key=current_key_index)
+                    llm_client = get_next_client()
+
+                    # Tell the user what's happening
+                    if session_id:
+                        await manager.send_to_session(session_id, {
+                            "type": "status",
+                            "message": f"Rate limit on key {current_key_index}. Switching... (waiting 10s)",
+                            "session_id": session_id,
+                            "agent": "system"
+                        })
+                    await asyncio.sleep(10)
+                    continue
+                else:
+                    logger.warning("Model error", model=model_name, error=str(e))
+                    continue
+
+    # All real keys exhausted — fall back to mock so the demo still works
+    logger.warning("All Gemini keys exhausted, falling back to MockLLMClient")
+    mock = MockLLMClient()
+    resp = await asyncio.to_thread(
+        mock.models.generate_content,
+        model="mock-demo",
+        contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {user_message}"}]}]
+    )
+    return resp.text
+
+# -- Direct Chat Processing -----------------------------------------
+
+async def process_chat(message: str, role: str, session_id: str):
+    """Process chat DIRECTLY. No queue. No Redis. No worker."""
     try:
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                try:
-                    data = json.loads(message["data"])
-                    await manager.broadcast(data)
-                except Exception as e:
-                    logger.error("Failed to broadcast message", error=str(e))
-    finally:
-        await pubsub.unsubscribe("sarang:events")
+        # 1. Tell user we're thinking
+        await manager.send_to_session(session_id, {
+            "type": "status",
+            "message": f"{role} is analyzing your request...",
+            "session_id": session_id,
+            "agent": role
+        })
 
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(redis_listener())
+        # 2. Call LLM directly
+        system_msg = f"""You are the {role} of the SARANG Research Swarm — an elite AI research collective.
+You provide deep, thoughtful, well-structured research responses.
+Use markdown formatting for clarity. Be comprehensive but concise."""
 
-# -- Endpoints ------------------------------------------------------
+        content = await call_llm(system_msg, message, session_id)
 
-@app.get("/health")
-async def health_check():
-    return {"status": "online", "llm_ready": llm_client is not None}
+        # 3. Save to memory
+        add_message(session_id, role, content)
+
+        # 4. Send result directly to WebSocket
+        await manager.send_to_session(session_id, {
+            "type": "message",
+            "agent": role,
+            "message": content,
+            "session_id": session_id,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+
+    except Exception as e:
+        logger.error("Chat processing failed", error=str(e))
+        await manager.send_to_session(session_id, {
+            "type": "message",
+            "agent": "system",
+            "message": f"⚠️ Intelligence error: {str(e)}. Please try again in a minute.",
+            "session_id": session_id,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+
+# -- REST Endpoints -------------------------------------------------
+
+@app.get("/sessions")
+async def list_sessions(user_email: str):
+    sids = user_sessions.get(user_email, [])
+    return [sessions_store[sid] for sid in sids if sid in sessions_store]
+
+@app.post("/sessions")
+async def start_session(req: SessionCreate):
+    return create_session(req.user_email, req.title or "New Research")
+
+@app.get("/sessions/{session_id}/messages")
+async def list_messages(session_id: str):
+    return messages_store.get(session_id, [])
+
+@app.delete("/sessions/{session_id}")
+async def delete_session(session_id: str, user_email: str):
+    sessions_store.pop(session_id, None)
+    messages_store.pop(session_id, None)
+    if user_email in user_sessions:
+        user_sessions[user_email] = [s for s in user_sessions[user_email] if s != session_id]
+    return {"status": "deleted"}
+
+@app.post("/agents/chat", response_model=AgentResponse)
+async def chat_with_agent(request: ChatRequest):
+    """REST fallback — processes inline."""
+    if not llm_client:
+        raise HTTPException(status_code=503, detail="Gemini API not configured")
+
+    if request.session_id:
+        add_message(request.session_id, "User", request.message)
+
+    # Process in background so we return immediately
+    asyncio.create_task(process_chat(request.message, request.role, request.session_id))
+    return AgentResponse(agent_role=request.role, content="Agent is thinking...")
+
+# -- WebSocket Endpoint ---------------------------------------------
 
 @app.websocket("/ws/chat")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    
-    # Welcome message
-    await websocket.send_json({
-        "type": "system",
-        "message": "SARANG Research Swarm Connected (Python Core).",
-        "agent": "system",
-        "timestamp": datetime.now(UTC).isoformat()
-    })
-
     try:
+        # Greeting
+        await websocket.send_json({
+            "type": "system",
+            "message": "SARANG Intelligence Swarm Connected.",
+            "agent": "system"
+        })
+
         while True:
             data = await websocket.receive_text()
             req_data = json.loads(data)
-            
+
             if req_data.get("type") == "ping":
                 await websocket.send_json({"type": "pong"})
                 continue
 
             message = req_data.get("message")
             role = req_data.get("role", "Research_Intelligence")
-            
-            # Start research mission in background
-            asyncio.create_task(process_chat_request(message, role))
-            
+            session_id = req_data.get("session_id")
+
+            if not message or not session_id:
+                continue
+
+            # Save user message
+            add_message(session_id, "User", message)
+
+            # Process in background — response comes via WebSocket
+            asyncio.create_task(process_chat(message, role, session_id))
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
         logger.error("WebSocket error", error=str(e))
         manager.disconnect(websocket)
 
-async def process_chat_request(message: str, role: str):
-    """Processes a chat request using the appropriate agent logic."""
-    if not llm_client:
-        await rdb.publish("sarang:events", json.dumps({
-            "type": "error",
-            "message": "Gemini API not configured",
-            "agent": "system"
-        }))
-        return
-
-    try:
-        # If it's a Research Intelligence request, use the full run() method
-        if role == "Research_Intelligence":
-            agent = ResearchIntelligence(llm_client=llm_client)
-            # Setup telemetry
-            agent._current_task_id = f"chat-{int(datetime.now().timestamp())}"
-            
-            # Custom context to emit events directly to Redis
-            class RedisContext:
-                async def emit_event(self, event: AgentEvent):
-                    payload = {
-                        "type": event.event_type,
-                        "agent": event.agent_role,
-                        "message": event.message,
-                        "level": event.level,
-                        "timestamp": datetime.now(UTC).isoformat(),
-                        "data": event.data
-                    }
-                    await rdb.publish("sarang:events", json.dumps(payload))
-
-            plan = await agent.run(research_goal=message, context=RedisContext())
-            
-            # Send final response
-            await rdb.publish("sarang:events", json.dumps({
-                "type": "message",
-                "agent": role,
-                "message": plan.get("summary", "Mission deconstructed."),
-                "timestamp": datetime.now(UTC).isoformat()
-            }))
-        else:
-            # Fallback to simple chat for other roles
-            system_msg = f"You are the {role} of SARANG Research Swarm."
-            response = await asyncio.to_thread(
-                llm_client.models.generate_content,
-                model="gemini-2.0-flash-lite",
-                contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {message}"}]}]
-            )
-            await rdb.publish("sarang:events", json.dumps({
-                "type": "message",
-                "agent": role,
-                "message": response.text,
-                "timestamp": datetime.now(UTC).isoformat()
-            }))
-            
-    except Exception as e:
-        logger.error("Processing failure", error=str(e))
-        await rdb.publish("sarang:events", json.dumps({
-            "type": "error",
-            "message": f"Intelligence failure: {str(e)}",
-            "agent": "system"
-        }))
-
-@app.post("/agents/chat", response_model=AgentResponse)
-async def chat_with_agent(request: ChatRequest):
-    """Legacy REST bridge for one-off requests."""
-    if not llm_client:
-        raise HTTPException(status_code=503, detail="Gemini API not configured")
-
-    try:
-        system_msg = f"You are the {request.role} of SARANG Research Swarm."
-        response = await asyncio.to_thread(
-            llm_client.models.generate_content,
-            model="gemini-2.0-flash-lite",
-            contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {request.message}"}]}]
-        )
-        return AgentResponse(agent_role=request.role, content=response.text)
-    except Exception as e:
-        logger.error("REST intelligence failure", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/health")
+async def health():
+    return {
+        "status": "online",
+        "llm_ready": llm_client is not None,
+        "keys_loaded": len(GEMINI_KEYS),
+        "architecture": "Pure Python (No Redis)"
+    }
 
 if __name__ == "__main__":
     import uvicorn

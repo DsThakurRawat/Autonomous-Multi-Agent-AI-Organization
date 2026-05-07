@@ -34,16 +34,15 @@ export function useWebSocket({
     const pingRef = useRef<NodeJS.Timeout | null>(null)
     const pingStartRef = useRef<number>(0)
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080'
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/chat'
 
     const connect = useCallback(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-        const url = `${wsUrl}/ws/chat`
         setStatus('connecting')
 
         try {
-            const ws = new WebSocket(url)
+            const ws = new WebSocket(wsUrl)
             wsRef.current = ws
 
             ws.onopen = () => {
@@ -101,9 +100,13 @@ export function useWebSocket({
         setStatus('disconnected')
     }, [])
 
-    const sendMessage = useCallback((message: string, role: string = 'Research_Intelligence') => {
+    const sendMessage = useCallback((message: string, role: string = 'Research_Intelligence', sessionId?: string) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ message, role }))
+            wsRef.current.send(JSON.stringify({ 
+                message, 
+                role,
+                session_id: sessionId 
+            }))
             return true
         }
         return false
