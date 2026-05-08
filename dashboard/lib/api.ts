@@ -117,73 +117,27 @@ async function apiFetch<T>(path: string, options?: RequestInit & { idempotencyKe
 export const api = {
     // Health
     health: () =>
-        apiFetch<{ status: string; uptime_seconds: number }>('/healthz'),
+        apiFetch<{ status: string; uptime_seconds: number }>('/health'),
 
-    // Missions — Go Gateway: /v1/missions
+    // Sessions — Python Backend: /sessions
     listMissions: () =>
-        apiFetch<ResearchMission[]>('/v1/missions'),
+        apiFetch<ResearchMission[]>('/sessions'),
 
     getMission: (id: string) =>
-        apiFetch<ResearchMission>(`/v1/missions/${id}`),
+        apiFetch<ResearchMission>(`/sessions/${id}`),
 
-    createMission: (data: CreateProjectRequest, idempotencyKey?: string) =>
-        apiFetch<ResearchMission>('/v1/missions', {
+    createMission: (data: CreateProjectRequest) =>
+        apiFetch<ResearchMission>('/sessions', {
             method: 'POST',
-            idempotencyKey,
             body: JSON.stringify({
                 goal: data.idea,
-                budget: { max_cost_usd: data.budget_usd },
                 name: data.name ?? 'New Research Mission',
             }),
         }),
 
-    cancelProject: (id: string, reason = 'User cancelled') =>
-        apiFetch<void>(`/v1/projects/${id}`, {
+    cancelProject: (id: string) =>
+        apiFetch<void>(`/sessions/${id}`, {
             method: 'DELETE',
-            body: JSON.stringify({ reason }),
-        }),
-
-    // Milestones / DAG — Go Gateway: /v1/missions/:id/milestones
-    getMissionMilestones: (missionId: string) =>
-        apiFetch<TaskNode[]>(`/v1/missions/${missionId}/milestones`),
-
-    postIntervention: (projectId: string, taskId: string, approved: boolean) =>
-        apiFetch<void>(`/v1/projects/${projectId}/tasks/${taskId}/intervene`, {
-            method: 'POST',
-            body: JSON.stringify({ approved }),
-        }),
-
-    // Cost report — Go Gateway: /v1/missions/:id/cost
-    getMissionCost: (missionId: string) =>
-        apiFetch<{ total_usd: number; by_agent: Record<string, number> }>(
-            `/v1/missions/${missionId}/cost`
-        ),
-
-    // Settings — LLM key management (Go Gateway: /v1/settings/keys)
-    listKeys: () =>
-        apiFetch<{ keys: unknown[]; total: number }>('/v1/settings/keys'),
-
-    addKey: (provider: string, apiKey: string, label = 'default') =>
-        apiFetch<unknown>('/v1/settings/keys', {
-            method: 'POST',
-            body: JSON.stringify({ provider, api_key: apiKey, label }),
-        }),
-
-    deleteKey: (id: string) =>
-        apiFetch<void>(`/v1/settings/keys/${id}`, { method: 'DELETE' }),
-
-    // Settings — Agent model preferences (Go Gateway: /v1/settings/agent-prefs)
-    getAgentPrefs: () =>
-        apiFetch<{ prefs: unknown[] }>('/v1/settings/agent-prefs'),
-
-    setAgentPref: (payload: {
-        agent_role: string;
-        provider: string;
-        model_name: string;
-        key_id?: string;
-        model_params?: Record<string, unknown>;
-    }) =>
-        apiFetch<unknown>('/v1/settings/agent-prefs', {
             method: 'POST',
             body: JSON.stringify(payload),
         }),
