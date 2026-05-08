@@ -132,6 +132,8 @@ export const api = {
 
     getMission: (id: string) =>
         apiFetch<ResearchMission>(`/sessions/${id}`),
+    getProject: (id: string) =>
+        apiFetch<Project>(`/sessions/${id}`),
     getProjectTasks: (id: string) =>
         apiFetch<TaskNode[]>(`/sessions/${id}/messages`), // Map to messages in this architecture
 
@@ -155,6 +157,12 @@ export const api = {
     cancelProject: (id: string) =>
         apiFetch<void>(`/sessions/${id}`, {
             method: 'DELETE',
+        }),
+
+    postIntervention: (projectId: string, taskId: string, approved: boolean) =>
+        apiFetch<void>(`/sessions/${projectId}/tasks/${taskId}/intervention`, {
+            method: 'POST',
+            body: JSON.stringify({ approved })
         }),
 
     resetAgentPref: (role: string) =>

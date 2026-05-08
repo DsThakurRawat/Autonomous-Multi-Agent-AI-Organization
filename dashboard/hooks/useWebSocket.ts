@@ -10,6 +10,7 @@ export interface AgentEvent {
     agent: string
     message: string
     session_id?: string
+    project_id?: string
     data?: Record<string, unknown>
     timestamp: string
     level?: 'info' | 'warning' | 'error' | 'success' | string
