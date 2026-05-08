@@ -77,7 +77,7 @@ export default function ChatPage() {
         }
     });
 
-    const fetchSessions = async () => {
+    const fetchSessions = useCallback(async () => {
         if (!session?.user?.email && !AUTH_DISABLED) return;
         const email = session?.user?.email || 'local@sarang.ai';
         try {
@@ -87,7 +87,7 @@ export default function ChatPage() {
         } catch (err) {
             console.error("Failed to fetch sessions", err);
         }
-    };
+    }, [session?.user?.email]);
 
     const loadSessionHistory = async (sessionId: string) => {
         setIsLoadingHistory(true);
@@ -280,10 +280,12 @@ export default function ChatPage() {
                 <div className="p-6 border-t border-white/5 bg-[#09090b]/50">
                     <div className="flex items-center gap-4 mb-6 px-2">
                         {userImage ? (
-                            <img 
+                            <Image 
                                 src={userImage} 
                                 alt="User" 
-                                referrerPolicy="no-referrer"
+                                width={40}
+                                height={40}
+                                unoptimized={true}
                                 className="w-10 h-10 rounded-xl border border-white/10 object-cover" 
                             />
                         ) : (
