@@ -6,13 +6,13 @@ export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
 export interface AgentEvent {
     id: string
-    type: 'thinking' | 'message' | 'error' | 'system' | 'status'
+    type: string
     agent: string
     message: string
     session_id?: string
     data?: Record<string, unknown>
     timestamp: string
-    level?: 'info' | 'warning' | 'error' | 'success'
+    level?: 'info' | 'warning' | 'error' | 'success' | string
 }
 
 interface UseWebSocketOptions {
