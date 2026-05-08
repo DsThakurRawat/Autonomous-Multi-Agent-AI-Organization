@@ -19,6 +19,7 @@ interface UseWebSocketOptions {
     onEvent?: (event: AgentEvent) => void
     reconnectMs?: number
     maxEvents?: number
+    projectId?: string
 }
 
 export function useWebSocket({
@@ -118,10 +119,24 @@ export function useWebSocket({
         return false
     }, [])
 
+    const clearEvents = useCallback(() => {
+        setEvents([])
+    }, [])
+
+    const injectMockEvent = useCallback((event: Omit<AgentEvent, 'id' | 'timestamp'>) => {
+        const fullEvent: AgentEvent = {
+            id: `mock-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            ...event
+        }
+        setEvents(prev => [fullEvent, ...prev].slice(0, maxEvents))
+        onEventRef.current?.(fullEvent)
+    }, [maxEvents])
+
     useEffect(() => {
         connect()
         return () => disconnect()
     }, [connect, disconnect])
 
-    return { status, events, latency, connect, disconnect, sendMessage }
+    return { status, events, latency, connect, disconnect, sendMessage, clearEvents, injectMockEvent }
 }
