@@ -22,5 +22,5 @@ ENV PYTHONUNBUFFERED=1
 # Expose the port (Railway uses $PORT env var automatically)
 EXPOSE 8000
 
-# Start the FastAPI engine using uvicorn
-CMD ["uvicorn", "agents_service.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start the FastAPI engine using uvicorn with shell expansion for $PORT
+CMD uvicorn agents_service.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
