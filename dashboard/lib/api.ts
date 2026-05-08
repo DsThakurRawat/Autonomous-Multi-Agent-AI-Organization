@@ -15,8 +15,13 @@ export interface ResearchMission {
     milestones_total: number
     milestones_done: number
     created_at: string
+    updated_at: string
     completed_at?: string
+    tasks_done?: number
+    tasks_total?: number
 }
+
+export type Project = ResearchMission
 
 export interface AgentStatus {
     role: string
@@ -122,9 +127,13 @@ export const api = {
     // Sessions — Python Backend: /sessions
     listMissions: () =>
         apiFetch<ResearchMission[]>('/sessions'),
+    listProjects: () =>
+        apiFetch<Project[]>('/sessions'),
 
     getMission: (id: string) =>
         apiFetch<ResearchMission>(`/sessions/${id}`),
+    getProjectTasks: (id: string) =>
+        apiFetch<TaskNode[]>(`/sessions/${id}/messages`), // Map to messages in this architecture
 
     createMission: (data: CreateProjectRequest) =>
         apiFetch<ResearchMission>('/sessions', {
@@ -132,6 +141,14 @@ export const api = {
             body: JSON.stringify({
                 goal: data.idea,
                 name: data.name ?? 'New Research Mission',
+            }),
+        }),
+    createProject: (data: CreateProjectRequest) =>
+        apiFetch<Project>('/sessions', {
+            method: 'POST',
+            body: JSON.stringify({
+                user_email: "local@sarang.ai",
+                title: data.name || "New Research"
             }),
         }),
 
