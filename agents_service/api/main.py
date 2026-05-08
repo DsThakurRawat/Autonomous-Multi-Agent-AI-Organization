@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 import structlog
 from dotenv import load_dotenv
 from google import genai
+from groq import Groq as GroqClient
 from agents_service.mock_llm import MockLLMClient
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
@@ -30,23 +31,30 @@ app.add_middleware(
 
 # -- Key Rotation ---------------------------------------------------
 GEMINI_KEYS = [k.strip() for k in os.getenv("GEMINI_API_KEY", "").split(",") if k.strip()]
-current_key_index = 0
+GROQ_KEYS   = [k.strip() for k in os.getenv("GROQ_API_KEY",   "").split(",") if k.strip()]
+current_gemini_index = 0
+current_groq_index   = 0
 
-def get_next_client():
-    """Return the next Gemini client, falling back to MockLLMClient if no API keys.
-    This enables the whole stack to run locally for demos.
-    """
-    global current_key_index
-    if not GEMINI_KEYS:
-        logger.info("No Gemini keys configured – using MockLLMClient for demo.")
-        return MockLLMClient()
-    key = GEMINI_KEYS[current_key_index]
-    current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
+def get_next_gemini_client():
+    global current_gemini_index
+    key = GEMINI_KEYS[current_gemini_index]
+    current_gemini_index = (current_gemini_index + 1) % len(GEMINI_KEYS)
     return genai.Client(api_key=key)
 
-llm_client = get_next_client()
-if llm_client:
-    logger.info("Gemini AI Ready", keys_loaded=len(GEMINI_KEYS))
+def get_next_groq_client():
+    global current_groq_index
+    key = GROQ_KEYS[current_groq_index]
+    current_groq_index = (current_groq_index + 1) % len(GROQ_KEYS)
+    return GroqClient(api_key=key)
+
+# Legacy alias kept for startup log
+def get_next_client():
+    if GEMINI_KEYS:
+        return get_next_gemini_client()
+    return MockLLMClient()
+
+llm_client = get_next_client() if GEMINI_KEYS else None
+logger.info("SARANG LLM Ready", gemini_keys=len(GEMINI_KEYS), groq_keys=len(GROQ_KEYS))
 
 MODEL_CHAIN = ["gemini-2.0-flash", "gemini-pro-latest"]
 
@@ -136,45 +144,116 @@ manager = ConnectionManager()
 
 # -- LLM Call with Key Rotation -------------------------------------
 
+GROQ_MODEL = "llama-3.3-70b-versatile"
+
+async def call_groq(system_msg: str, user_message: str, session_id: str = None) -> str:
+    """Try all 10 Groq keys in rotation. Returns text or raises."""
+    global current_groq_index
+    exhausted: set = set()
+
+    for _ in range(len(GROQ_KEYS)):
+        key_idx = current_groq_index
+        client = get_next_groq_client()
+        try:
+            logger.info("Groq LLM call", key=key_idx, model=GROQ_MODEL)
+            resp = await asyncio.to_thread(
+                client.chat.completions.create,
+                model=GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user",   "content": user_message}
+                ],
+                max_tokens=2048,
+            )
+            return resp.choices[0].message.content
+        except Exception as e:
+            err = str(e).lower()
+            if "429" in err or "quota" in err or "rate" in err:
+                logger.warning("Groq quota hit, rotating", key=key_idx)
+                exhausted.add(key_idx)
+                if len(exhausted) >= len(GROQ_KEYS):
+                    raise RuntimeError("All Groq keys exhausted")
+                await asyncio.sleep(1)
+            else:
+                logger.warning("Groq model error", error=str(e))
+                raise
+    raise RuntimeError("All Groq keys exhausted")
+
+
 async def call_llm(system_msg: str, user_message: str, session_id: str = None) -> str:
-    """Direct LLM call with key rotation. No Redis. No queue."""
-    global llm_client, current_key_index
-    max_attempts = len(GEMINI_KEYS) * len(MODEL_CHAIN) * 2
+    """LLM call with tiered fallback: Gemini → Groq → Mock."""
+    global llm_client, current_gemini_index
 
-    for attempt in range(max_attempts):
-        for model_name in MODEL_CHAIN:
-            try:
-                logger.info("LLM call", model=model_name, key=current_key_index, attempt=attempt)
+    # ── Tier 1: Gemini ──────────────────────────────────────────────
+    if GEMINI_KEYS:
+        gemini_exhausted: set = set()
+        gemini_client = get_next_gemini_client()
 
-                resp = await asyncio.to_thread(
-                    llm_client.models.generate_content,
-                    model=model_name,
-                    contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {user_message}"}]}]
-                )
-                return resp.text
-
-            except Exception as e:
-                err = str(e).lower()
-                if "429" in err or "quota" in err or "resource" in err:
-                    logger.warning("Quota hit, rotating key", model=model_name, key=current_key_index)
-                    llm_client = get_next_client()
-
-                    # Tell the user what's happening
-                    if session_id:
-                        await manager.send_to_session(session_id, {
-                            "type": "status",
-                            "message": f"Rate limit on key {current_key_index}. Switching... (waiting 10s)",
-                            "session_id": session_id,
-                            "agent": "system"
-                        })
-                    await asyncio.sleep(10)
+        for attempt in range(len(GEMINI_KEYS) * len(MODEL_CHAIN)):
+            for model_name in MODEL_CHAIN:
+                try:
+                    logger.info("Gemini call", model=model_name, key=current_gemini_index, attempt=attempt)
+                    resp = await asyncio.to_thread(
+                        gemini_client.models.generate_content,
+                        model=model_name,
+                        contents=[{"role": "user", "parts": [{"text": f"System: {system_msg}\n\nUser: {user_message}"}]}]
+                    )
+                    return resp.text
+                except Exception as e:
+                    err = str(e).lower()
+                    if "429" in err or "quota" in err or "resource" in err:
+                        logger.warning("Gemini quota hit", model=model_name, key=current_gemini_index)
+                        gemini_exhausted.add(current_gemini_index)
+                        gemini_client = get_next_gemini_client()
+                        if len(gemini_exhausted) >= len(GEMINI_KEYS):
+                            logger.warning("All Gemini keys exhausted, switching to Groq")
+                            if session_id:
+                                await manager.send_to_session(session_id, {
+                                    "type": "status",
+                                    "message": "Gemini keys rate-limited. Switching to Groq...",
+                                    "session_id": session_id,
+                                    "agent": "system"
+                                })
+                            break
+                        if session_id:
+                            await manager.send_to_session(session_id, {
+                                "type": "status",
+                                "message": f"Rate limit hit. Trying next key... ({len(gemini_exhausted)}/{len(GEMINI_KEYS)} exhausted)",
+                                "session_id": session_id,
+                                "agent": "system"
+                            })
+                        await asyncio.sleep(1)
+                    else:
+                        logger.warning("Gemini model error", model=model_name, error=str(e))
                     continue
-                else:
-                    logger.warning("Model error", model=model_name, error=str(e))
-                    continue
+            else:
+                continue
+            break  # inner for broke — all Gemini exhausted
 
-    # All real keys exhausted — fall back to mock so the demo still works
-    logger.warning("All Gemini keys exhausted, falling back to MockLLMClient")
+    # ── Tier 2: Groq ────────────────────────────────────────────────
+    if GROQ_KEYS:
+        try:
+            text = await call_groq(system_msg, user_message, session_id)
+            return text
+        except Exception as e:
+            logger.warning("Groq exhausted too", error=str(e))
+            if session_id:
+                await manager.send_to_session(session_id, {
+                    "type": "status",
+                    "message": "All Groq keys rate-limited. Switching to Demo Mode...",
+                    "session_id": session_id,
+                    "agent": "system"
+                })
+
+    # ── Tier 3: Mock (Demo Mode) ─────────────────────────────────────
+    logger.warning("All LLM providers exhausted — falling back to MockLLMClient")
+    if session_id:
+        await manager.send_to_session(session_id, {
+            "type": "status",
+            "message": "All API keys rate-limited. Switching to Demo Mode...",
+            "session_id": session_id,
+            "agent": "system"
+        })
     mock = MockLLMClient()
     resp = await asyncio.to_thread(
         mock.models.generate_content,

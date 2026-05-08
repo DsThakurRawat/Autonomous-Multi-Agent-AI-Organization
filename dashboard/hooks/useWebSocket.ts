@@ -6,9 +6,10 @@ export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
 export interface AgentEvent {
     id: string
-    type: 'thinking' | 'message' | 'error' | 'system'
+    type: 'thinking' | 'message' | 'error' | 'system' | 'status'
     agent: string
     message: string
+    session_id?: string
     data?: Record<string, unknown>
     timestamp: string
     level?: 'info' | 'warning' | 'error' | 'success'
@@ -33,8 +34,12 @@ export function useWebSocket({
     const reconnectRef = useRef<NodeJS.Timeout | null>(null)
     const pingRef = useRef<NodeJS.Timeout | null>(null)
     const pingStartRef = useRef<number>(0)
+    const onEventRef = useRef(onEvent)
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/chat'
+
+    // Keep ref always up-to-date so ws.onmessage never has a stale closure
+    useEffect(() => { onEventRef.current = onEvent }, [onEvent])
 
     const connect = useCallback(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN) return
@@ -68,12 +73,13 @@ export function useWebSocket({
                         type: data.type || 'message',
                         agent: data.agent || 'system',
                         message: data.message || '',
+                        session_id: data.session_id,
                         timestamp: data.timestamp || new Date().toISOString(),
                         level: data.level || 'info',
                     }
 
                     setEvents(prev => [agentEvent, ...prev].slice(0, maxEvents))
-                    onEvent?.(agentEvent)
+                    onEventRef.current?.(agentEvent)
                 } catch (e) {}
             }
 
@@ -91,7 +97,7 @@ export function useWebSocket({
             setStatus('error')
             reconnectRef.current = setTimeout(connect, reconnectMs)
         }
-    }, [wsUrl, reconnectMs, maxEvents, onEvent])
+    }, [wsUrl, reconnectMs, maxEvents])
 
     const disconnect = useCallback(() => {
         clearTimeout(reconnectRef.current!)

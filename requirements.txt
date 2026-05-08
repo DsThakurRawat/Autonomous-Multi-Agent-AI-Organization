@@ -7,6 +7,7 @@ pydantic-settings>=2.0
 
 # LLM Provider
 google-genai==0.4.0
+groq>=0.9.0
 
 # Infrastructure
 redis==5.2.0
