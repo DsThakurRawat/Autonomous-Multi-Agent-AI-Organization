@@ -138,8 +138,6 @@ export const api = {
     cancelProject: (id: string) =>
         apiFetch<void>(`/sessions/${id}`, {
             method: 'DELETE',
-            method: 'POST',
-            body: JSON.stringify(payload),
         }),
 
     resetAgentPref: (role: string) =>

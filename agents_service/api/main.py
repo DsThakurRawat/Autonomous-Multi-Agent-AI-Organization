@@ -53,7 +53,7 @@ def get_next_client():
         return get_next_gemini_client()
     return MockLLMClient()
 
-llm_client = get_next_client() if GEMINI_KEYS else None
+llm_client = get_next_client()
 logger.info("SARANG LLM Ready", gemini_keys=len(GEMINI_KEYS), groq_keys=len(GROQ_KEYS))
 
 MODEL_CHAIN = ["gemini-2.0-flash", "gemini-pro-latest"]
