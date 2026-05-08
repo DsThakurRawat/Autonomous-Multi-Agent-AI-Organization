@@ -146,7 +146,7 @@ export default function ChatPage() {
         if (status === 'authenticated' || AUTH_DISABLED) {
             fetchSessions();
         }
-    }, [status]);
+    }, [status, fetchSessions]);
 
     useEffect(() => {
         scrollToBottom();
