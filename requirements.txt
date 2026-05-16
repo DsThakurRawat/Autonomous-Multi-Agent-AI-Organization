@@ -6,7 +6,7 @@
 
 # ── Core Framework ─────────────────────────────────────────────
 fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
+uvicorn[standard]>=0.47.0
 pydantic>=2.6.0
 pydantic-settings>=2.2.0
 starlette>=0.40.0
