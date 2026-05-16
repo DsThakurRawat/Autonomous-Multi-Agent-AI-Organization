@@ -38,7 +38,7 @@ export function useWebSocket({
     const pingStartRef = useRef<number>(0)
     const onEventRef = useRef(onEvent)
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/chat'
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws/chat'
 
     // Keep ref always up-to-date so ws.onmessage never has a stale closure
     useEffect(() => { onEventRef.current = onEvent }, [onEvent])

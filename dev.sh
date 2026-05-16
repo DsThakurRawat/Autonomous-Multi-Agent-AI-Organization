@@ -9,41 +9,31 @@ if [ -f .env ]; then
     export $(cat .env | xargs)
 fi
 
-echo "🧹 Cleaning up old SARANG processes..."
-fuser -k 8000/tcp 3000/tcp 2>/dev/null
-pkill -f "python3 agents_service/api/main.py" 2>/dev/null
-sleep 1
+# ── 1. Install & Build ──────────────────────────────────────────────
+echo "📦 checking dependencies..."
+if [ -d "venv" ]; then source venv/bin/activate; fi
+pip install -q -r requirements.txt
 
-echo "🚀 Starting SARANG Research Swarm..."
+echo "🏗️  building go gateway..."
+cd gateway && go build -o sarang-gateway main.go && cd ..
 
-# Check for existing services
-for port in 8000 3000; do
-    if lsof -i :$port -t &>/dev/null; then
-        echo "⚠️  Port $port still in use. Kill it: fuser -k ${port}/tcp"
-    fi
-done
+# ── 2. Start Services ───────────────────────────────────────────────
+echo "🚀 launching sarang swarm..."
 
-# Install Python dependencies
-echo "📦 Checking Python dependencies..."
-if [ -d "venv" ]; then
-    source venv/bin/activate
-fi
-pip install -q -r requirements.txt 2>/dev/null
+# Go Gateway (Port 8080)
+nohup ./gateway/sarang-gateway > gateway.log 2>&1 &
+echo "  [✓] Go Gateway Active (8080)"
 
-# Start Python Intelligence Engine (Port 8000)
-echo "🧠 Starting Python Intelligence Engine (Port 8000)..."
+# Python Intelligence API (Port 8000)
 export PYTHONPATH=$PYTHONPATH:.
 nohup python3 agents_service/api/main.py > agents.log 2>&1 &
-echo "  Python Brain Active (PID: $!)"
+echo "  [✓] Python API Active (8000)"
 
-# Wait for Python to come up
-sleep 2
+# LangGraph Swarm Worker (Background)
+nohup python3 agents_service/api/swarm_worker.py > worker.log 2>&1 &
+echo "  [✓] Swarm Worker Active (LangGraph)"
 
-# Start Next.js Dashboard (Port 3000)
-echo "🖥️  Starting Next.js Dashboard (Port 3000)..."
-if [ -d "dashboard" ]; then
-    cd dashboard && npm run dev
-else
-    echo "❌ Error: Could not find dashboard directory."
-    exit 1
-fi
+# ── 3. Start Dashboard ──────────────────────────────────────────────
+echo "🖥️  Starting Next.js Dashboard (3000)..."
+cd dashboard && npm run dev
+

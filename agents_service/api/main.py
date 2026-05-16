@@ -329,16 +329,22 @@ async def delete_session(session_id: str, user_email: str):
 
 @app.post("/agents/chat", response_model=AgentResponse)
 async def chat_with_agent(request: ChatRequest):
-    """REST fallback — processes inline."""
-    if not llm_client:
-        raise HTTPException(status_code=503, detail="Gemini API not configured")
+    """REST entry point — delegates to the Swarm Worker via Redis."""
+    import redis.asyncio as aioredis
+    r = await aioredis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
+    
+    session_id = request.session_id or create_session(request.user_email, "Research")["id"]
+    add_message(session_id, "User", request.message)
 
-    if request.session_id:
-        add_message(request.session_id, "User", request.message)
-
-    # Process in background so we return immediately
-    asyncio.create_task(process_chat(request.message, request.role, request.session_id))
-    return AgentResponse(agent_role=request.role, content="Agent is thinking...")
+    payload = {
+        "message": request.message,
+        "role": request.role,
+        "session_id": session_id,
+        "user_email": request.user_email
+    }
+    await r.publish("sarang:tasks", json.dumps(payload))
+    
+    return AgentResponse(agent_role=request.role, content="Task delegated to SARANG Swarm.")
 
 # -- WebSocket Endpoint ---------------------------------------------
 
